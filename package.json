@@ -6,17 +6,18 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "npx eslint ."
+        "lint": "npx eslint .",
+        "format": "prettier --write ."
     },
     "dependencies": {
         "docx": "^9.5.1",
         "file-saver": "^2.0.5",
-        "framer-motion": "^12.15.0",
+        "framer-motion": "^12.23.24",
         "js-cookie": "^3.0.5",
-        "next": "^15.4.2",
+        "next": "^15.5.5",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-hook-form": "^7.57.0",
+        "react-hook-form": "^7.65.0",
         "react-textarea-autosize": "^8.5.9",
         "uuid": "^13.0.0"
     },
@@ -25,7 +26,8 @@
         "@svgr/webpack": "^8.1.0",
         "@tailwindcss/postcss": "^4",
         "eslint": "^9",
-        "eslint-config-next": "15.3.2",
+        "eslint-config-next": "15.5.5",
+        "prettier": "^3.6.2",
         "tailwindcss": "^4"
     },
     "eslintIgnore": [

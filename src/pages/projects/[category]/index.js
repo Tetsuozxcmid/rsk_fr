@@ -17,23 +17,13 @@ import Link from "next/link";
 
 export default function CategoryPage() {
     const router = useRouter();
-    // const { data, fetchProfile } = useProfile();
     const [dataProfile, fetchProfile] = useState({ Organization: 2 });
     const { loading, categories: projects, error, fetchProjects } = useProjects();
     const { category: url } = router.query;
 
-    // Выключено для теста
-    // useEffect(() => {
-    //     fetchProfile();
-    // }, [fetchProfile]);
-
     useEffect(() => {
         fetchProjects(dataProfile.Organization);
     }, [dataProfile.Organization, fetchProjects]);
-
-    useEffect(() => {
-        console.log("projects", projects);
-    }, [projects]);
 
     if (!router.isReady || !url)
         return (
@@ -130,7 +120,7 @@ export default function CategoryPage() {
         <Layout>
             <Header>
                 <Header.Heading>
-                    Проекты <span className="text-(--color-gray-black)">/</span> {staticCategory.name}
+                    Проекты <span className="text-[var(--color-gray-black)]">/</span> {staticCategory.name}
                 </Header.Heading>
                 <Button icon>
                     <Notify />
@@ -140,48 +130,49 @@ export default function CategoryPage() {
                 <div className="col-span-12 flex items-start justify-between">
                     <hgroup>
                         <h3>{staticCategory.name}</h3>
-                        <p className="text-(--color-gray-black)">{staticCategory.desc}</p>
+                        <p className="text-[var(--color-gray-black)]">{staticCategory.desc}</p>
                     </hgroup>
                     <Card>
                         <Card.Heading>
                             <h5>
-                                Вы выполнили <span className="text-(--color-blue)">{completedCount}</span> проекта из <span className="text-(--color-blue)">{total}</span>
+                                Вы выполнили <span className="text-[var(--color-blue)]">{completedCount}</span> проекта из <span className="text-[var(--color-blue)]">{total}</span>
                             </h5>
-                            <div className="w-full rounded-[6.25rem] overflow-hidden bg-(--color-blue-noise) h-[.75rem]">
+                            <div className="w-full rounded-[6.25rem] overflow-hidden bg-[var(--color-blue-noise)] h-[.75rem]">
                                 <div
-                                    className="bg-(--color-blue) h-full"
+                                    className="bg-[var(--color-blue)] h-full"
                                     style={{
                                         width: `${(completedCount / total) * 100}%`,
                                     }}></div>
                             </div>
                         </Card.Heading>
-                        <Card.Footer className="text-(--color-white)">
+                        <Card.Footer className="text-[var(--color-white)]">
                             <div className="z-10">Мотивационный текст :)</div>
                         </Card.Footer>
                     </Card>
                 </div>
+
                 <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit">
-                    {sorted.map((project) => (
-                        <Link
-                            href={`/projects/${url}/${project.id}`}
+                    {sorted.map((project, idx) => (
+                        <div
                             key={project.originalIdx}
-                            className="flex flex-col min-h-[200px] justify-between gap-[1rem] p-[1.25rem]
-                            rounded-[1rem] border-[1.5px] border-(--color-gray-plus-50) hover:bg-(--color-white-gray) hover:border-(--color-white-gray) transition">
+                            className="flex flex-col min-h-[200px] justify-between gap-[1rem] p-[1.25rem] rounded-[1rem] border-[1.5px] border-[var(--color-gray-plus-50)] hover:bg-[var(--color-white-gray)] hover:border-[var(--color-white-gray)] transition">
                             <div className="flex flex-col gap-[.5rem]">
                                 <div className="flex justify-between items-center gap-[.5rem]">
                                     <h5>{project.title}</h5>
-                                    {/* Нумерация по исходному порядку */}
-                                    <span className="link big text-(--color-gray-white)">#{project.originalIdx + 1}</span>
+                                    <span className="link big text-[var(--color-gray-white)]">#{project.originalIdx + 1}</span>
                                 </div>
-                                <p className="text-(--color-gray-black)">{project.description}</p>
+                                <p className="text-[var(--color-gray-black)]">{project.description}</p>
                             </div>
-                            <div
-                                className={`flex items-center justify-center px-[.75rem] py-[1rem] rounded-[6.25rem] ${
-                                    project.tasks.every((t) => t.status === "SUCCESS") ? "bg-(--color-green-noise) text-(--color-green-black)" : "bg-(--color-gray-plus-50) text-(--color-black)"
-                                }`}>
-                                {project.tasks.every((t) => t.status === "SUCCESS") ? "Выполнено" : "Выполнить"}
-                            </div>
-                        </Link>
+
+                            <Link href={`/projects/${url}/${project.id}`}>
+                                <div
+                                    className={`flex items-center justify-center px-[.75rem] py-[1rem] rounded-[6.25rem] ${
+                                        project.tasks.every((t) => t.status === "SUCCESS") ? "bg-[var(--color-green-noise)] text-[var(--color-green-peace)]" : "bg-[var(--color-gray-plus-50)] text-[var(--color-black)]"
+                                    }`}>
+                                    {project.tasks.every((t) => t.status === "SUCCESS") ? "Выполнено" : "Выполнить"}
+                                </div>
+                            </Link>
+                        </div>
                     ))}
                 </div>
             </div>
