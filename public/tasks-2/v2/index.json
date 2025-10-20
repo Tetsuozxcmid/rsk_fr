@@ -109,17 +109,19 @@
     {
         "file": "16.mp3",
         "instruction": "16.pdf",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "1: Suno",
-        "toolLink2": "https://www.perplexity.ai/",
-        "toolName2": "2: Perplexity",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "1: Perplexity",
+        "toolLink2": "https://suno.com/",
+        "toolName2": "2: Suno",
         "photo": "16.png"
     },
     {
         "file": "17.pdf",
         "instruction": "17.pdf",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "Suno",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "1: Perplexity",
+        "toolLink2": "https://suno.com/",
+        "toolName2": "2: Suno",
         "photo": "17.png"
     },
     {
@@ -147,23 +149,23 @@
     },
     {
         "file": "",
-        "instruction": "",
-        "toolLink1": "https://fusionbrain.ai/",
-        "toolName1": "fusionbrain",
+        "instruction": "21.pdf",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "21.png"
     },
     {
         "file": "22.jpg",
         "instruction": "22.pdf",
-        "toolLink1": "https://huggingface.co/spaces/Kwai-Kolors/Kolors-Virtual-Try-On",
-        "toolName1": "Huggingface",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "22.png"
     },
     {
         "file": "",
         "instruction": "23.pdf",
-        "toolLink1": "https://fusionbrain.ai/",
-        "toolName1": "fusionbrain",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "23.png"
     },
     {
@@ -176,15 +178,15 @@
     {
         "file": "25.zip",
         "instruction": "25.pdf",
-        "toolLink1": "https://www.krea.ai/",
-        "toolName1": "Krea",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "25.png"
     },
     {
         "file": "",
         "instruction": "26.pdf",
-        "toolLink1": "https://fusionbrain.ai/",
-        "toolName1": "fusionbrain",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "26.png"
     },
     {
@@ -246,24 +248,22 @@
     {
         "file": "35.pdf",
         "instruction": "35.pdf",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1: Perplexity",
-        "toolLink2": "https://pictory.ai/",
-        "toolName2": "2: Picrory",
+        "toolLink1": "https://pictory.ai/",
+        "toolName1": "Picrory",
         "photo": "35.png"
     },
     {
         "file": "36.pdf",
         "instruction": "36.pdf",
-        "toolLink1": "https://fusionbrain.ai/",
-        "toolName1": "fusionbrain",
+        "toolLink1": "https://app.pixverse.ai/",
+        "toolName1": "Pixverse",
         "photo": "36.png"
     },
     {
         "file": "37.zip",
         "instruction": "37.pdf",
         "toolLink1": "https://app.pixverse.ai/",
-        "toolName1": "pixverse",
+        "toolName1": "Pixverse",
         "photo": "37.png"
     },
     {
@@ -276,17 +276,15 @@
     {
         "file": "",
         "instruction": "39.pdf",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1: Perplexity",
-        "toolLink2": "https://pictory.ai/",
-        "toolName2": "2: Picrory",
+        "toolLink1": "https://pictory.ai/",
+        "toolName1": "Picrory",
         "photo": "39.png"
     },
     {
         "file": "40.pdf",
         "instruction": "40.pdf",
-        "toolLink1": "https://fusionbrain.ai/",
-        "toolName1": "fusionbrain",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "photo": "40.png"
     },
     {
@@ -306,15 +304,15 @@
     {
         "file": "43.xlsx",
         "instruction": "43.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity",
         "photo": "43.png"
     },
     {
         "file": "44.xlsx",
         "instruction": "44.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity",
         "photo": "44.png"
     },
     {
@@ -327,8 +325,8 @@
     {
         "file": "46.xlsx",
         "instruction": "46.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity",
         "photo": "46.png"
     },
     {

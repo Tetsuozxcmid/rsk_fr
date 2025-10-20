@@ -24,6 +24,8 @@ import Switcher from "@/components/ui/Switcher";
 
 import Block from "@/components/features/public/Block";
 
+import { STATIC_MAYAK_DATA } from "../../../../data/mayakDataConst";
+
 const TRAINER_PREFIX = 'trainer_v2'; // Уникальный префикс для этого тренажера
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
 
@@ -1082,13 +1084,7 @@ export default function TrainerPage({ goTo }) {
         }
     }, [goTo]); 
 
-    const [mayakData, setMayakData] = useState({
-        fieldsList: [],
-        defaultTypes: [],
-        defaultLinks: {},
-        contentTypeOptions: {},
-        synonyms: {},
-    });
+    const [mayakData, setMayakData] = useState({ ...STATIC_MAYAK_DATA, defaultLinks: {} });
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [errorData, setErrorData] = useState(null);
 
@@ -1098,15 +1094,20 @@ export default function TrainerPage({ goTo }) {
 
     useEffect(() => {
         const fetchData = async () => {
+            setIsLoadingData(true);
+            setErrorData(null);
             try {
                 const response = await fetch("/api/mayak/content-data");
                 if (!response.ok) {
-                    throw new Error("Не удалось загрузить данные для тренажера");
+                    throw new Error("Не удалось загрузить ссылки для тренажера");
                 }
-                const data = await response.json();
-                setMayakData(data);
+                const linksData = await response.json();
+                // Объединяем статические данные с загруженными ссылками
+                setMayakData({ ...STATIC_MAYAK_DATA, defaultLinks: linksData.defaultLinks || {} });
             } catch (err) {
                 setErrorData(err.message);
+                // В случае ошибки загружаем только статические данные
+                setMayakData({ ...STATIC_MAYAK_DATA, defaultLinks: {} });
             } finally {
                 setIsLoadingData(false);
             }
@@ -1270,7 +1271,7 @@ export default function TrainerPage({ goTo }) {
             removeKeyCookie();
 
 			localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
-            goTo("index");
+            goTo("mayakOko");
 
             // 3. Возвращаемся на главную страницу
             window.location.href = '/';
