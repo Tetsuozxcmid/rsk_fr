@@ -12,11 +12,11 @@ export default async function endProjectTask(req, res) {
                 Accept: "application/json",
                 Cookie: req.headers.cookie || "",
             },
-            body: JSON.stringify(bodyData)
+            body: JSON.stringify(bodyData),
         });
 
         const data = await response_info.json();
-        console.log(data)
+        console.log(data);
 
         return res.json({ success: true, data });
     } catch (err) {

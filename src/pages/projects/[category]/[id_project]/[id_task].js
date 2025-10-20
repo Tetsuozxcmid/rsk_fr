@@ -39,7 +39,7 @@ const TaskPage = () => {
         } finally {
             if (json?.success) {
                 router.reload();
-                alert("Вы начали задание!")
+                alert("Вы начали задание!");
             }
         }
     }
@@ -47,16 +47,16 @@ const TaskPage = () => {
     async function endTask() {
         let json;
         const end_data = {
-            "text_description": "Супер задание тест",
-            "result_url": "https://youtube.com",
-            "id": 0,
-            "task_id": 0,
-            "team_id": 0,
-            "submitted_at": "2025-10-16T10:27:51.045Z",
-            "status": "NOT_STARTED",
-            "moderator_id": 0,
-            "reviewed_at": "2025-10-16T10:27:51.045Z"
-        }
+            text_description: "Супер задание тест",
+            result_url: "https://youtube.com",
+            id: 0,
+            task_id: 0,
+            team_id: 0,
+            submitted_at: "2025-10-16T10:27:51.045Z",
+            status: "NOT_STARTED",
+            moderator_id: 0,
+            reviewed_at: "2025-10-16T10:27:51.045Z",
+        };
         try {
             const res = await fetch(`/api/projects/task/end/${id_task}`, {
                 method: "POST",
@@ -71,7 +71,7 @@ const TaskPage = () => {
         } finally {
             if (json?.success) {
                 router.reload();
-                alert("Вы завершили задание!")
+                alert("Вы завершили задание!");
             }
         }
     }
@@ -242,8 +242,7 @@ const TaskPage = () => {
                                                 href={material.link}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-1 px-4 py-2 bg-(--color-gray-plus) rounded-full hover:bg-(--color-gray-plus-50) transition"
-                                            >
+                                                className="flex items-center gap-1 px-4 py-2 bg-(--color-gray-plus) rounded-full hover:bg-(--color-gray-plus-50) transition">
                                                 <p>{material.name}</p>
                                                 <LinkArrow />
                                             </a>

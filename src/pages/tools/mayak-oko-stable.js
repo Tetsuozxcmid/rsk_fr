@@ -3,11 +3,11 @@ import { useState } from "react";
 import TransitionWrapper from "@/components/layout/TransitionWrapper";
 
 import Layout from "@/components/layout/Layout";
-import IndexPage from "@/components/features/tools-2";
-import TrainerPage from "@/components/features/tools-2/trainer";
-import HistoryPage from "@/components/features/tools-2/history";
-import SettingsPage from "@/components/features/tools-2/settings";
-import AdminPage from "@/components/features/tools-2/admin";
+import IndexPage from "@/components/features/tools";
+import TrainerPage from "@/components/features/tools/trainer";
+import HistoryPage from "@/components/features/tools/history";
+import SettingsPage from "@/components/features/tools/settings";
+import AdminPage from "@/components/features/tools/admin";
 
 export default function Home() {
     const [pageKey, setPageKey] = useState("mayakOko");
