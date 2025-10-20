@@ -115,7 +115,7 @@
         "name": "Udio",
         "url": "https://www.udio.com",
         "description": "Создание профессиональной музыки в любом жанре.",
-        "iconType": "hot",
+        "iconType": "standard",
         "order": 1
       },
       {
@@ -325,11 +325,6 @@
         "name": "i2OCR",
         "url": "https://www.i2ocr.com/free-online-russian-ocr",
         "order": 1
-      },
-      {
-        "name": "Google Docs (встроенно)",
-        "url": "https://docs.google.com/",
-        "order": 2
       }
     ]
   },

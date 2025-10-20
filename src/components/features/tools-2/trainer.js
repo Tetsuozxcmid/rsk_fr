@@ -851,16 +851,12 @@ const TrainerControls = memo(function TrainerControls({
             </div>
             {taskVersion !== "v2" && (
                 <div className="flex gap-[0.5rem]">
-                    <Switcher value={userType} onChange={onUserTypeChange} className="!w-full" disabled={isTaskRunning}>
-                        <span value="student">Студент</span>
-                        <span value="teacher">Преподаватель</span>
-                    </Switcher>
                     <Switcher
                         value={who}
-                        onChange={onWhoChange} // ✅ Правильно: используем функцию из пропсов
+                        onChange={onWhoChange}
                         className="!w-full">
-                        <span value="im">Я</span>
-                        <span value="we">Мы</span>
+                        <Switcher.Option value="im">Я</Switcher.Option>
+                        <Switcher.Option value="we">Мы</Switcher.Option>
                     </Switcher>
                 </div>
             )}
@@ -1648,10 +1644,11 @@ export default function TrainerPage({ goTo }) {
         selectedRole,
         onUserTypeChange: setUserType,
         onWhoChange: (value) => {
-            if (value === "we") {
-                handleSwitchToWe();
-            } else {
-                setWho(value);
+            // Сначала обновляем состояние, чтобы UI отреагировал
+            setWho(value); 
+            // Затем, если выбрали "Мы" и анкета не пройдена, показываем попап
+            if (value === "we" && !hasCompletedSecondQuestionnaire) {
+                showSwitchToWeConfirmation();
             }
         },
         onTaskVersionChange: (e) => setTaskVersion(e.target.value),
@@ -1715,7 +1712,7 @@ export default function TrainerPage({ goTo }) {
         <>
             <Header>
                 <Header.Heading>МАЯК ОКО</Header.Heading>
-                {/* <select
+                <select
 					value={taskVersion}
 					onChange={e => setTaskVersion(e.target.value)}
 					disabled={timerState.isRunning}
@@ -1723,8 +1720,7 @@ export default function TrainerPage({ goTo }) {
 				>
 					<option value="v1">v1</option>
 					<option value="v2">v2</option>
-				</select> */}
-                {/* Кнопка тренажера здесь убрана, т.к. мы уже в нем */}
+				</select> 
                 <Button
                     icon
                     onClick={() => {

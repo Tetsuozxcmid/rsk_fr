@@ -575,10 +575,58 @@
               "userType": "teacher",
               "who": "im"
             }
+          },
+          {
+            "timestamp": "2025-10-20T10:05:32.753Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 0,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "we"
+            }
+          },
+          {
+            "timestamp": "2025-10-20T10:05:41.650Z",
+            "timeSpent": 0,
+            "secondsSpent": 7,
+            "taskIndex": 0,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "we"
+            }
+          },
+          {
+            "timestamp": "2025-10-20T10:05:46.994Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 0,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "we"
+            }
+          },
+          {
+            "timestamp": "2025-10-20T10:05:58.331Z",
+            "timeSpent": 0,
+            "secondsSpent": 8,
+            "taskIndex": 0,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "we"
+            }
           }
         ],
         "bestTime": 0,
-        "lastAttempt": "2025-10-09T17:39:11.734Z"
+        "lastAttempt": "2025-10-20T10:05:58.331Z"
       },
       "Задание 3": {
         "attempts": [
@@ -1089,12 +1137,30 @@
         ],
         "bestTime": 0,
         "lastAttempt": "2025-10-09T17:39:15.765Z"
+      },
+      "Задание 21": {
+        "attempts": [
+          {
+            "timestamp": "2025-10-20T09:52:23.130Z",
+            "timeSpent": 0,
+            "secondsSpent": 7,
+            "taskIndex": 20,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-10-20T09:52:23.130Z"
       }
     },
     "stats": {
-      "totalTasksCompleted": 58,
+      "totalTasksCompleted": 63,
       "totalTimeSpent": 24,
-      "lastActivity": "2025-10-09T17:39:15.765Z"
+      "lastActivity": "2025-10-20T10:05:58.331Z"
     }
   },
   "{\"id\":\"2c659266-3b26-4d90-8f3c-e0dd143dd2b4\"}": {

@@ -25,6 +25,8 @@ import Button from "@/components/ui/Button";
 import Switcher from "@/components/ui/Switcher";
 import Block from "@/components/features/public/Block";
 
+import { STATIC_MAYAK_DATA } from "../../../../data/mayakDataConst";
+
 const STORAGE_PREFIX = "trainer_v2_"; // Префикс для новой версии
 const getStorageKey = (key) => `${STORAGE_PREFIX}${key}`;
 
@@ -48,11 +50,9 @@ const CORRECT_TOKENS = [
 
 export default function IndexPage({ goTo }) {
     const [contentData, setContentData] = useState({
-        fieldsList: [],
-        defaultTypes: [],
+        ...STATIC_MAYAK_DATA, 
+        // Динамические части, которые точно придут от API, можно инициализировать пустыми
         defaultLinks: {},
-        contentTypeOptions: {},
-        synonyms: {},
     });
 
     const [fields, setFields] = useState({
@@ -105,16 +105,23 @@ export default function IndexPage({ goTo }) {
     }, [goTo]);
 
     useEffect(() => {
-        async function fetchData() {
+        async function fetchDynamicData() {
             try {
                 const response = await fetch("/api/mayak/content-data");
-                const data = await response.json();
-                setContentData(data);
+                // data будет содержать { fieldsList, defaultTypes, defaultLinks }
+                const dynamicData = await response.json(); 
+                
+                // ОБНОВЛЯЕМ состояние, объединяя старые (статичные) и новые (динамические) данные
+                setContentData(prevData => ({
+                    ...prevData,
+                    ...dynamicData
+                }));
+
             } catch (error) {
-                console.error("Ошибка при загрузке данных контента:", error);
+                console.error("Ошибка при загрузке динамических данных:", error);
             }
         }
-        fetchData();
+        fetchDynamicData();
     }, []);
 
     useEffect(() => {
