@@ -971,10 +971,22 @@
               "userType": "teacher",
               "who": "im"
             }
+          },
+          {
+            "timestamp": "2025-10-21T05:38:14.688Z",
+            "timeSpent": 1,
+            "secondsSpent": 56,
+            "taskIndex": 67,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
           }
         ],
         "bestTime": 0,
-        "lastAttempt": "2025-10-09T16:34:38.209Z"
+        "lastAttempt": "2025-10-21T05:38:14.688Z"
       },
       "Задание 67": {
         "attempts": [
@@ -1590,9 +1602,9 @@
       }
     },
     "stats": {
-      "totalTasksCompleted": 93,
-      "totalTimeSpent": 29,
-      "lastActivity": "2025-10-20T16:30:29.026Z"
+      "totalTasksCompleted": 94,
+      "totalTimeSpent": 30,
+      "lastActivity": "2025-10-21T05:38:14.688Z"
     }
   },
   "{\"id\":\"2c659266-3b26-4d90-8f3c-e0dd143dd2b4\"}": {

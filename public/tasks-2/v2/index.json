@@ -337,33 +337,33 @@
         "photo": "47.png"
     },
     {
-        "file": "48",
+        "file": "",
         "instruction": "",
         "toolLink1": "",
         "toolName1": "",
         "photo": ""
     },
     {
-        "file": "49",
+        "file": "",
         "instruction": "",
         "toolLink1": "",
         "toolName1": "",
         "photo": ""
     },
     {
-        "file": "50",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
-        "file": "51",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
         "toolLink2": "https://lovable.dev/",
         "toolName2": "2: Lovable"
     },
     {
-        "file": "52",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
@@ -373,22 +373,22 @@
         "toolName1": "Perplexity"
     },
     {
-        "file": "54",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
-        "file": "55",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
-        "file": "56",
+        "file": "",
         "toolLink1": "",
         "toolName1": ""
     },
     {
-        "file": "57",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
@@ -398,7 +398,7 @@
         "toolName1": "Perplexity"
     },
     {
-        "file": "59",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
@@ -420,7 +420,7 @@
         "toolName2": "2: Gamma"
     },
     {
-        "file": "63",
+        "file": "",
         "toolLink1": "",
         "toolName1": ""
     },
@@ -430,7 +430,7 @@
         "toolName1": "Perplexity"
     },
     {
-        "file": "65",
+        "file": "",
         "toolLink1": "https://lovable.dev/",
         "toolName1": "Lovable"
     },
@@ -445,21 +445,21 @@
         "toolName1": "PerplexityS"
     },
     {
-        "file": "68",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
         "toolLink2": "https://pictory.ai/",
-        "toolName2": "Picrory"
+        "toolName2": "2: Picrory"
     },
     {
-        "file": "69",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
         "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
         "toolName2": "2: Gamma"
     },
     {
-        "file": "70",
+        "file": "",
         "toolLink1": "",
         "toolName1": ""
     },
@@ -486,17 +486,17 @@
         "toolName1": "Perplexity"
     },
     {
-        "file": "75",
+        "file": "",
         "toolLink1": "https://pictory.ai/",
         "toolName1": "Picrory"
     },
     {
-        "file": "76",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
-        "file": "77",
+        "file": "",
         "toolLink1": "",
         "toolName1": ""
     },
@@ -536,22 +536,22 @@
         "toolName1": ""
     },
     {
-        "file": "85",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
-        "file": "86",
+        "file": "",
         "toolLink1": "https://lovable.dev/",
         "toolName1": "Lovable"
     },
     {
-        "file": "87",
+        "file": "",
         "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
         "toolName1": "Gamma"
     },
     {
-        "file": "88",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
@@ -566,7 +566,7 @@
         "toolName1": "Perplexity"
     },
     {
-        "file": "91",
+        "file": "",
         "toolLink1": "",
         "toolName1": ""
     }
