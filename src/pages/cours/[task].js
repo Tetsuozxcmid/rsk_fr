@@ -2,33 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Cookies from "js-cookie";
-import { useRouter } from "next/router";
-
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
 import Warning from "@/assets/general/warning.svg";
 import TimeBefore from "@/assets/general/timeBefore.svg";
-import File from "@/assets/general/file.svg";
 import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input/Input";
 
 export default function Task() {
-    const router = useRouter();
-    const { task } = router.query;
+    const params = useParams();
+    const task = params?.task;
     const [lesson, setLesson] = useState(null);
     const [loading, setLoading] = useState(true);
-
-    const [fileSelected, setFileSelected] = useState(false);
-    const [fileName, setFileName] = useState("Прикрепите файл");
+    const [fileUrl, setFileUrl] = useState("");
     const [submitted, setSubmitted] = useState(false);
-
-    // Проверка куки при загрузке
-    useEffect(() => {
-        const submittedCookie = Cookies.get(`task_${task}_submitted`);
-        if (submittedCookie) {
-            setSubmitted(true);
-        }
-    }, [task]);
 
     useEffect(() => {
         async function fetchData() {
@@ -42,16 +29,12 @@ export default function Task() {
 
                 const json = await res.json();
                 if (!json.success) throw new Error("API вернуло ошибку");
-                console.log(json.data);
 
                 const found = json.data.find((l) => Number(l.lesson_number) === Number(task));
-                setLesson(found || null);
-
-                // проверяем куку
-                const cookie = document.cookie.split("; ").find((row) => row.startsWith(`lesson_${task}_uploaded=`));
-                if (cookie) {
-                    setStatus("waiting");
+                if (found.is_completed == "на рассмотрении" || found.is_completed == "одобрен") {
+                    setSubmitted(true);
                 }
+                setLesson(found || null);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -61,20 +44,25 @@ export default function Task() {
         if (task) fetchData();
     }, [task]);
 
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files.length > 0) {
-            setFileSelected(true);
-            setFileName(e.target.files[0].name);
-        } else {
-            setFileSelected(false);
-            setFileName("Прикрепите файл");
-        }
-    };
+    const handleSubmit = async () => {
+        try {
+            const res = await fetch("/api/cours/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id: 0,
+                    course_id: 1, // Можно заменить на lesson.course_id если есть в данных
+                    file_url: fileUrl,
+                }),
+            });
 
-    const handleSubmit = () => {
-        // условно "отправляем" файл
-        Cookies.set(`task_${task}_submitted`, "true", { expires: 1 }); // живёт 1 день
-        setSubmitted(true);
+            if (res.ok) {
+                setSubmitted(true);
+                window.location.reload(); // Перезагрузка страницы после успешной отправки
+            }
+        } catch (err) {
+            console.error("Ошибка отправки:", err);
+        }
     };
 
     if (loading) {
@@ -122,7 +110,7 @@ export default function Task() {
                     ) : (
                         <div className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
                             <h6>Задание доступно</h6>
-                            <p className="w-[70%] text-center">Выполните задание и прикрепите файл</p>
+                            <p className="w-[70%] text-center">Выполните задание и введите ссылку на файл</p>
                         </div>
                     )}
 
@@ -138,13 +126,9 @@ export default function Task() {
                             </a>
                         ) : (
                             <>
-                                <div className="flex flex-row gap-[0.75rem] max-w-full">
-                                    <Button inverted className="relative flex items-center gap-2">
-                                        <File />
-                                        <input type="file" accept={lesson.file_type || "*/*"} className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer" onChange={handleFileChange} />
-                                        <a className="w-max">{fileName}</a>
-                                    </Button>
-                                    <Button inverted disabled={!fileSelected} onClick={handleSubmit}>
+                                <div className="flex flex-row gap-[0.75rem] w-full">
+                                    <Input type="text" placeholder="Введите ссылку на файл" className="w-full" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
+                                    <Button className="!w-fit" inverted disabled={!fileUrl} onClick={handleSubmit}>
                                         Отправить
                                     </Button>
                                 </div>
