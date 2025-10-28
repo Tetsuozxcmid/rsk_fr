@@ -107,7 +107,7 @@
         "photo": "15.png"
     },
     {
-        "file": "16.mp3",
+        "file": "16.pdf",
         "instruction": "16.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
@@ -128,16 +128,16 @@
         "file": "18.m4a",
         "instruction": "18.pdf",
         "toolLink1": "https://auphonic.com/",
-        "toolName1": "auphonic",
+        "toolName1": "Auphonic",
         "photo": "18.png"
     },
     {
         "file": "",
         "instruction": "19.pdf",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "1: Suno",
-        "toolLink2": "https://www.perplexity.ai/",
-        "toolName2": "2: Perplexity",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "1: Perplexity",
+        "toolLink2": "https://suno.com/",
+        "toolName2": "2: Suno",
         "photo": "19.png"
     },
     {
@@ -150,22 +150,22 @@
     {
         "file": "",
         "instruction": "21.pdf",
-        "toolLink1": "https://chat.qwen.ai/",
-        "toolName1": "Qwen",
+        "toolLink1": "https://lmarena.ai/",
+        "toolName1": "LMArena",
         "photo": "21.png"
     },
     {
         "file": "22.jpg",
         "instruction": "22.pdf",
-        "toolLink1": "https://chat.qwen.ai/",
-        "toolName1": "Qwen",
+        "toolLink1": "https://lmarena.ai/",
+        "toolName1": "LMArena",
         "photo": "22.png"
     },
     {
         "file": "",
         "instruction": "23.pdf",
-        "toolLink1": "https://chat.qwen.ai/",
-        "toolName1": "Qwen",
+        "toolLink1": "https://lmarena.ai/",
+        "toolName1": "LMArena",
         "photo": "23.png"
     },
     {
@@ -178,15 +178,15 @@
     {
         "file": "25.zip",
         "instruction": "25.pdf",
-        "toolLink1": "https://chat.qwen.ai/",
-        "toolName1": "Qwen",
+        "toolLink1": "https://lmarena.ai/",
+        "toolName1": "LMArena",
         "photo": "25.png"
     },
     {
         "file": "",
         "instruction": "26.pdf",
-        "toolLink1": "https://chat.qwen.ai/",
-        "toolName1": "Qwen",
+        "toolLink1": "https://lmarena.ai/",
+        "toolName1": "LMArena",
         "photo": "26.png"
     },
     {
@@ -218,7 +218,7 @@
         "photo": "30.png"
     },
     {
-        "file": "31.pdf",
+        "file": "",
         "instruction": "31.pdf",
         "toolLink1": "https://t.me/AIMemeArenaBot",
         "toolName1": "AiMemeArena",
@@ -246,7 +246,7 @@
         "photo": ""
     },
     {
-        "file": "35.pdf",
+        "file": "",
         "instruction": "35.pdf",
         "toolLink1": "https://pictory.ai/",
         "toolName1": "Picrory",
@@ -281,7 +281,7 @@
         "photo": "39.png"
     },
     {
-        "file": "40.pdf",
+        "file": "",
         "instruction": "40.pdf",
         "toolLink1": "https://chat.qwen.ai/",
         "toolName1": "Qwen",
@@ -435,21 +435,19 @@
         "toolName1": "Lovable"
     },
     {
-        "file": "66.pdf",
+        "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
     {
         "file": "67.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "PerplexityS"
+        "toolName1": "Perplexity"
     },
     {
         "file": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1: Perplexity",
-        "toolLink2": "https://pictory.ai/",
-        "toolName2": "2: Picrory"
+        "toolLink1": "https://pictory.ai/",
+        "toolName1": "Picrory"
     },
     {
         "file": "",
@@ -472,8 +470,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity"
     },
     {
         "file": "73.pdf",
@@ -487,8 +485,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://pictory.ai/",
-        "toolName1": "Picrory"
+         "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity"
     },
     {
         "file": "",
@@ -536,7 +534,7 @@
         "toolName1": ""
     },
     {
-        "file": "",
+        "file": "85.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity"
     },
