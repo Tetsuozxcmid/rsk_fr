@@ -1,12 +1,13 @@
-export default async function getInfoTeam(req, res) {
+export default async function getIdOrg(req, res) {
     try {
         const token = req.cookies.users_access_token;
         if (!token) {
             return res.status(401).json({ success: false, error: "No token provided" });
         }
 
-        const response_info = await fetch(`https://api.rosdk.ru/teams/teams/get_team_by_id/${req.query.id}`, {
-            method: "GET",
+        const { id } = req.query;
+
+        const response_info = await fetch(`https://api.rosdk.ru/orgs/organizations/org-id/${id}`, {
             headers: {
                 Accept: "application/json",
                 Cookie: req.headers.cookie || "",
@@ -16,17 +17,16 @@ export default async function getInfoTeam(req, res) {
         if (!response_info.ok) {
             return res.status(response_info.status).json({
                 success: false,
-                error: "Failed to fetch profile",
+                error: "Failed to fetch orgs",
             });
         }
 
         const data = await response_info.json();
-        console.log(data);
-        if (!data || (Array.isArray(data) && data.length === 0)) {
-            return res.json({ success: false, data: "Not found team" });
-        } else {
-            return res.json({ success: true, data });
-        }
+
+        return res.json({
+            success: true,
+            data,
+        });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }

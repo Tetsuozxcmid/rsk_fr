@@ -19,7 +19,7 @@ export default function TeamNotFound() {
             <div className="hero" style={{ placeItems: "center" }}>
                 <div className="flex flex-col gap-[1rem] col-start-4 col-end-10">
                     <h1>Команда не найдена!</h1>
-                    <Button big onClick={() => router.push("/teams")}>
+                    <Button big onClick={() => router.back()}>
                         Вернуться назад
                     </Button>
                 </div>

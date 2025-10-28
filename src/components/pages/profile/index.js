@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 
 import Tags from "@/components/ui/Tags";
 import Button from "@/components/ui/Button";
+import Link from "next/link";
 
 import { getUserData } from "@/utils/auth";
 
@@ -118,15 +119,20 @@ export default function ProfileIndexPage({ goTo }) {
                     <div className="block-wrapper col-span-4">
                         <h6>Организация и команда</h6>
                         <div className="flex flex-col gap-[0.75rem]">
-                            <div className="group cursor-pointer flex items-center justify-between w-full">
-                                <a className="flex-1">{userData.data.Organization ? userData.data.Organization : "Отсутсвует"}</a>
-                                <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
-                            </div>
+                            <Link href={"/organizations/" + userData.data.Organization_id}>
+                                <div className="group cursor-pointer flex items-center justify-between w-full">
+                                    <p className="flex-1 link">{userData.data.Organization ? userData.data.Organization : "Отсутсвует"}</p>
+                                    <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
+                                </div>
+                            </Link>
+
                             <hr className="w-full border-solid border-[1.5px] border-(--color-gray-plus)" />
-                            <div className="group flex items-center justify-between w-full">
-                                <a className="flex-1">{userData.data.Team ? userData.data.Team : "Отсутсвует"}</a>
-                                <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
-                            </div>
+                            <Link href={"/teams/" + userData.data.team_id}>
+                                <div className="group flex items-center justify-between w-full">
+                                    <p className="flex-1 link">{userData.data.team ? userData.data.team : "Отсутсвует"}</p>
+                                    <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
+                                </div>
+                            </Link>
                         </div>
                     </div>
                 </div>
