@@ -58,13 +58,23 @@ export default function OrganIndexPage() {
 
     const getTotalCount = async () => {
         try {
-            const res = await fetch("/api/profile/getOrg");
+            const res = await fetch("/api/org/getOrg", {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+
             const data = await res.json();
-            if (data.success && Array.isArray(data.list)) {
-                setTotalCount(data.list.length);
+
+            if (data.success && Array.isArray(data.organizations)) {
+                setTotalCount(data.organizations.length);
+            } else {
+                console.error("Некорректный формат данных:", data);
+                setTotalCount(0);
             }
         } catch (err) {
             console.error("Ошибка при подсчете организаций:", err);
+            setTotalCount(0);
         }
     };
 

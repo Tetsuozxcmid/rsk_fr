@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
@@ -19,6 +20,7 @@ export default function Createteam() {
     });
     const [userData, setUserData] = useState(null);
     const [loading, setLoading] = useState(false);
+    const router = useRouter();
 
     // Загружаем данные пользователя для предзаполнения организации и региона
     useEffect(() => {
@@ -79,12 +81,7 @@ export default function Createteam() {
 
             if (response.ok && data.success) {
                 alert("Команда успешно создана!");
-                // Можно добавить редирект или очистку формы
-                setFormData({
-                    name: "",
-                    region: userData?.Region || "",
-                    organization_name: userData?.Organization || "",
-                });
+                router.push(`/teams/my`);
             } else {
                 alert("Ошибка при создании команды: " + (data.data.detail || "Неизвестная ошибка"));
             }
