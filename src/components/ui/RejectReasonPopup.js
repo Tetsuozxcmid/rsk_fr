@@ -31,21 +31,17 @@ export default function RejectReasonPopup({ onClose, onConfirm, projectId }) {
     };
 
     return (
-        <div className="fixed top-[4.6875rem] right-0 bottom-0 left-[12.5rem] flex items-center justify-center z-50 bg-(--color-white-gray)" onClick={onClose}>
-            <div
-                className="bg-white rounded-[1.25rem] p-[2rem] max-w-[37.5rem] w-full mx-4"
-                style={{
-                    boxShadow: "0 0 60px 20px rgba(0, 0, 0, 0.08), 0 20px 50px -12px rgba(0, 0, 0, 0.15)",
-                }}
-                onClick={(e) => e.stopPropagation()}>
-                <div className="flex flex-col gap-[1.5rem]">
-                    {/* Кнопка закрытия */}
-                    <div className="flex justify-end -mt-[0.5rem] -mr-[0.5rem]">
-                        <Button inverted roundeful className="!w-fit !px-[1rem]" onClick={onClose}>
-                            Закрыть Pop-Up
-                        </Button>
-                    </div>
+        <div className="fixed top-[4.6875rem] right-0 bottom-0 left-[12.5rem] flex items-center justify-center z-50 bg-white">
+            <div className="bg-white max-w-[28rem] w-full mx-4 flex flex-col">
+                {/* Кнопка закрытия - в самом верху */}
+                <div className="flex justify-center py-[1rem]">
+                    <Button inverted roundeful className="!w-fit !px-[1rem]" onClick={onClose}>
+                        Закрыть Pop-Up
+                    </Button>
+                </div>
 
+                {/* Основной контент */}
+                <div className="p-[2rem] flex flex-col gap-[1.5rem]">
                     {/* Заголовок */}
                     <div className="flex flex-col gap-[0.5rem]">
                         <h4>Причина отклонения</h4>
