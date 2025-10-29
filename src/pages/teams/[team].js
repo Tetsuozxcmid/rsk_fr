@@ -8,11 +8,13 @@ import TeamWorkfolderPage from "@/components/pages/teams/folder";
 import TeamSettsPage from "@/components/pages/teams/settings";
 
 import TransitionWrapper from "@/components/layout/TransitionWrapper";
+import NotFound from "@/components/pages/teams/not-found";
 
 export default function TeamPage() {
     const router = useRouter();
     let { team } = router.query;
     const [teamData, setTeamData] = useState(null);
+    const [notFound, setNotFound] = useState(false);
 
     const [pageKey, setPageKey] = useState("index");
 
@@ -43,8 +45,6 @@ export default function TeamPage() {
                 }
             }
 
-            console.log("teamId: ", teamId);
-
             try {
                 const response = await fetch(`/api/teams/info/${teamId}`, {
                     method: "GET",
@@ -53,11 +53,15 @@ export default function TeamPage() {
                 });
 
                 const data = await response.json();
-                if (data.success) {
+                console.log(data);
+                if (data.success === true) {
                     setTeamData(data.data);
+                } else {
+                    setNotFound(true);
                 }
             } catch (err) {
                 console.error("Ошибка при загрузке команды:", err);
+                setNotFound(true);
             }
         };
 
@@ -67,6 +71,14 @@ export default function TeamPage() {
     const goTo = (pageName) => {
         setPageKey(pageName);
     };
+
+    if (notFound) {
+        return (
+            <Layout>
+                <NotFound />
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

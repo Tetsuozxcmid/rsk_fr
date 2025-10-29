@@ -21,8 +21,12 @@ export default async function getInfoTeam(req, res) {
         }
 
         const data = await response_info.json();
-
-        return res.json({ success: true, data });
+        console.log(data);
+        if (!data || (Array.isArray(data) && data.length === 0)) {
+            return res.json({ success: false, data: "Not found team" });
+        } else {
+            return res.json({ success: true, data });
+        }
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }

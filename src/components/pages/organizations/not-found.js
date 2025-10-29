@@ -20,7 +20,7 @@ export default function OrganNotFound() {
                     <h1 className="text-center">Организация не найдена!</h1>
                     <p className="text-center">Мы уже работаем над этим. Возможно скоро она появится! Следите за социальными ресурсами РСК</p>
                     <div className="flex gap-[1rem]">
-                        <Button onClick={() => router.push("/organizations")}>Вернуться назад</Button>
+                        <Button onClick={() => router.back()}>Вернуться назад</Button>
                         <Link className="button text-white bg-(--color-blue)" target="_blank" href="https://t.me/rskfed">
                             Наш телеграм
                         </Link>

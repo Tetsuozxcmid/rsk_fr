@@ -8,7 +8,7 @@ export default async function getOrg(req, res) {
         // читаем skip, limit и search из query
         const { skip = 0, limit = 20, search = "" } = req.query;
 
-        const response_info = await fetch(`https://api.rosdk.ru/users/profile_interaction/get_orgs/?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`, {
+        const response_info = await fetch(`https://api.rosdk.ru/orgs/organizations/?skip=${skip}&limit=${limit}&search=${encodeURIComponent(search)}`, {
             headers: {
                 Accept: "application/json",
                 Cookie: req.headers.cookie || "",
@@ -18,7 +18,7 @@ export default async function getOrg(req, res) {
         if (!response_info.ok) {
             return res.status(response_info.status).json({
                 success: false,
-                error: "Failed to fetch profile",
+                error: "Failed to fetch orgs",
             });
         }
 
@@ -26,7 +26,7 @@ export default async function getOrg(req, res) {
 
         return res.json({
             success: true,
-            organizations: data.organizations || [],
+            organizations: data || [],
         });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
