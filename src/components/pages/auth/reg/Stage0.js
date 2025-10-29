@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
 import Switcher from "@/components/ui/Switcher";
+import { useEffect } from "react";
 
 import Yandex from "@/assets/general/yandex.svg";
 import VK from "@/assets/general/vk.svg";
@@ -15,6 +16,10 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
         password: "",
         role: userType,
     });
+
+    useEffect(() => {
+        setFormData((prev) => ({ ...prev, role: userType }));
+    }, [userType]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;

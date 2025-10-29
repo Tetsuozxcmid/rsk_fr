@@ -34,15 +34,16 @@ export default function SettingsPage({ goTo }) {
 
         const OrgList = async () => {
             try {
-                const response = await fetch("/api/profile/getOrg", {
+                const response = await fetch("/api/org/getOrg", {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
 
                 const data = await response.json();
-                if (data.success && Array.isArray(data.list)) {
-                    setOrgList(data.list); // Устанавливаем только массив list
+                if (data.success && Array.isArray(data.organizations)) {
+                    const orgNames = data.organizations.map((org) => org.name);
+                    setOrgList(orgNames);
                 } else {
                     console.error("Invalid orgList data:", data);
                     setOrgList([]);
