@@ -6,6 +6,7 @@ import Layout from "@/components/layout/Layout";
 import Button from "@/components/ui/Button";
 import Warning from "@/assets/general/warning.svg";
 import Clock from "@/assets/general/clock.svg";
+import Cours_les from "@/assets/general/cours_les.svg";
 
 export default function Cours() {
     const router = useRouter();
@@ -61,18 +62,14 @@ export default function Cours() {
                                 // Первый урок всегда доступен
                                 if (idx === 0) {
                                     return (
-                                        <iframe
-                                            key={lesson.id}
-                                            src={lesson.download_url}
-                                            width="100%"
-                                            height="100%"
-                                            style={{
-                                                border: "none",
-                                                borderRadius: "1rem",
-                                            }}
-                                            allow="autoplay; fullscreen"
-                                            allowFullScreen
-                                        />
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] grid place-items-center rounded-full bg-(--color-green-noise) text-red-500">
+                                                <Cours_les />
+                                            </span>
+                                            <h6>Урок {lesson.id}</h6>
+                                            <p className="w-[60%] text-center">{lesson.lesson_name}</p>
+                                            <Button onClick={() => router.push(`/cours/${lesson.lesson_number}`)}>К уроку</Button>
+                                        </div>
                                     );
                                 }
 
@@ -104,7 +101,6 @@ export default function Cours() {
                                             </span>
                                             <h6>Нет доступа</h6>
                                             <p className="w-[60%] text-center">Для начала пройдите предыдущее задание</p>
-                                            <Button onClick={() => router.push(`/cours/${lesson.lesson_number}`)}>К заданию</Button>
                                         </div>
                                     );
                                 }

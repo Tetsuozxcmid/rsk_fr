@@ -50,8 +50,7 @@ export default function Task() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    user_id: 0,
-                    course_id: 1, // Можно заменить на lesson.course_id если есть в данных
+                    course_id: lesson.id,
                     file_url: fileUrl,
                 }),
             });
@@ -99,20 +98,18 @@ export default function Task() {
             <div className="hero overflow-hidden" style={{ placeItems: "center" }}>
                 <div className="h-full w-full col-span-12 grid grid-cols-2 gap-[1.5rem]">
                     {/* Блок доступа */}
-                    {!lesson.is_completed ? (
-                        <div className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
-                            <span className="w-[2.25rem] h-[2.25rem]">
-                                <Warning />
-                            </span>
-                            <h6>Нет доступа</h6>
-                            <p className="w-[60%] text-center">Для начала пройдите задание</p>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
-                            <h6>Задание доступно</h6>
-                            <p className="w-[70%] text-center">Выполните задание и введите ссылку на файл</p>
-                        </div>
-                    )}
+                    <iframe
+                        key={lesson.id}
+                        src={lesson.download_url}
+                        width="100%"
+                        style={{
+                            border: "none",
+                            borderRadius: "1rem",
+                            aspectRatio: 16 / 9,
+                        }}
+                        allow="autoplay; fullscreen"
+                        allowFullScreen
+                    />
 
                     {/* Блок описания */}
                     <div className="flex flex-col justify-start items-start gap-[1rem]">
