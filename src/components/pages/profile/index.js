@@ -106,7 +106,7 @@ export default function ProfileIndexPage({ goTo }) {
                             <Tags
                                 tags={[
                                     {
-                                        name: `${userData.data.Type === "teacher" ? "Преподаватель" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : "Ошибка данных"}`,
+                                        name: `${userData.data.Type === "worker" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : "Ошибка данных"}`,
                                         color: "blue",
                                         icon: "coin",
                                     },

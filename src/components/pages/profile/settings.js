@@ -6,6 +6,7 @@ import Notify from "@/assets/general/notify.svg";
 import Input from "@/components/ui/Input/Input";
 import Textarea from "@/components/ui/Textarea";
 import DropdownInput from "@/components/ui/Input/DropdownInput";
+import Link from "next/link";
 
 export default function SettingsPage({ goTo }) {
     const [userData, setUserData] = useState(null); // оригинальные данные
@@ -127,15 +128,19 @@ export default function SettingsPage({ goTo }) {
                         </div>
                     </div>
                     <Textarea inverted id="about" name="Description" placeholder="Расскажите о себе кратко" value={formData.Description || ""} onChange={handleChange} />
-                    <DropdownInput id="region" name="Region" placeholder="Введите регион" value={formData.Region || ""} onChange={handleChange} />
                 </div>
 
                 <div className="flex flex-col gap-[1.25rem]">
-                    <h6>Организация и команда</h6>
+                    <h6>Организация и регион</h6>
                     <div className="flex flex-col gap-[.75rem]">
                         <DropdownInput id="Organization" name="Organization" placeholder="Организация" value={formData.Organization || ""} onChange={handleChange} options={orgList} />
-                        <Input disabled id="teames" name="teames" placeholder="Команда" autoComplete="off" readOnly />
-                        <p style={{ color: "var(--color-gray-black)" }}>* &quot;Команды&quot; временно недоступны</p>
+                        <DropdownInput id="region" name="Region" placeholder="Введите регион" value={formData.Region || ""} onChange={handleChange} />
+                        <p style={{ color: "var(--color-gray-black)" }}>
+                            * Если вашей организации нет в списке, заполните{" "}
+                            <Link target="_blank" className="text-(--color-blue)" href="https://forms.yandex.ru/u/690391e1068ff0a3ba625eef">
+                                форму
+                            </Link>
+                        </p>
                     </div>
                 </div>
 

@@ -11,7 +11,7 @@ import VK from "@/assets/general/vk.svg";
 export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
     const [userType, setUserType] = useState("student");
     const [formData, setFormData] = useState({
-        name: "",
+        firstName: "",
         email: "",
         password: "",
         role: userType,
@@ -34,11 +34,6 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
 
         if (formData.password.length < 8) {
             alert("Пароль должен содержать минимум 8 символов");
-            return;
-        }
-
-        if (formData.password !== formData.confirmPassword) {
-            alert("Пароли не совпадают");
             return;
         }
 
@@ -88,14 +83,13 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             <h3>Добро пожаловать</h3>
             <Switcher className="!w-full" value={userType} onChange={setUserType}>
                 <Switcher.Option value="student">Студент</Switcher.Option>
-                <Switcher.Option value="teacher">Преподаватель</Switcher.Option>
+                <Switcher.Option value="worker">Сотрудник</Switcher.Option>
             </Switcher>
-            <form id="registration" className="w-full grid grid-cols-2 grid-rows-2 gap-[0.75rem]" onSubmit={handleSubmit}>
+            <form id="registration" className="w-full grid grid-rows-3 gap-[0.75rem]" onSubmit={handleSubmit}>
                 {[
-                    { name: "name", placeholder: "Логин", type: "text", tabIndex: 1 },
-                    { name: "password", placeholder: "Пароль", type: "password", autocomplete: "new-password", tabIndex: 3 },
-                    { name: "email", placeholder: "Почта", type: "email", autocomplete: "email", tabIndex: 2 },
-                    { name: "confirmPassword", placeholder: "Подтвердите пароль", autocomplete: "new-password", type: "password", tabIndex: 4 },
+                    { name: "firstName", placeholder: "Имя", type: "text", autocomplete: "firstName", tabIndex: 0 },
+                    { name: "email", placeholder: "Почта", type: "email", autocomplete: "email", tabIndex: 1 },
+                    { name: "password", placeholder: "Пароль", type: "password", autocomplete: "new-password", tabIndex: 2 },
                 ].map(({ name, placeholder, type, tabIndex, autocomplete }) => (
                     <Input key={name} name={name} type={type} placeholder={placeholder} value={formData[name] || ""} autoComplete={autocomplete} onChange={handleInputChange} tabIndex={tabIndex} required />
                 ))}

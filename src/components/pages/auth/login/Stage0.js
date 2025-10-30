@@ -86,7 +86,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
         <motion.div key="login-stage0" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute w-full">
             <h3>С возвращением!</h3>
             <form id="login" className="w-full grid grid-cols-1 gap-[0.75rem]" autoComplete="on" onSubmit={handleSubmit}>
-                <Input type="text" name="name" placeholder="Логин" autoComplete="username" required value={formData.name} onChange={handleChange} />
+                <Input type="text" name="name" placeholder="Почта / Логин" autoComplete="username" required value={formData.name} onChange={handleChange} />
                 <Input type="password" name="password" autoComplete="current-password" placeholder="Пароль" required value={formData.password} onChange={handleChange} />
             </form>
             <div className="flex flex-col w-full gap-[0.75rem]">
