@@ -31,48 +31,51 @@ export default function RejectReasonPopup({ onClose, onConfirm, projectId }) {
     };
 
     return (
-        <div className="fixed top-[4.6875rem] right-0 bottom-0 left-[12.5rem] flex items-center justify-center z-50 bg-white">
-            <div className="bg-white max-w-[28rem] w-full mx-4 flex flex-col">
-                {/* Кнопка закрытия - в самом верху */}
-                <div className="flex justify-center py-[1rem]">
-                    <Button inverted roundeful className="!w-fit !px-[1rem]" onClick={onClose}>
-                        Закрыть Pop-Up
-                    </Button>
-                </div>
-
-                {/* Основной контент */}
-                <div className="p-[2rem] flex flex-col gap-[1.5rem]">
-                    {/* Заголовок */}
-                    <div className="flex flex-col gap-[0.5rem]">
-                        <h4>Причина отклонения</h4>
-                        <p className="text-(--color-gray-black)">Выберите причину по которой вы отклоняете это дело</p>
+        <div className="fixed top-[5.6875rem] right-0 bottom-0 left-[16rem] max-lg:!left-0 z-50 bg-white p-[2rem] max-lg:!p-8 flex items-center justify-center">
+            <div className="w-full max-w-[32rem]">
+                {/* Контейнер с обводкой */}
+                <div className="relative p-[4rem] border-[3px] border-dashed border-[#EBEDF0] rounded-[0.75rem] w-full bg-white">
+                    {/* Кнопка закрытия - на обводке */}
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                        <Button inverted roundeful className="!w-fit !py-[0.75rem] !px-[1rem] !bg-[#F3F4F5] !border-[2px] !border-dashed !border-[#EBEDF0] !rounded-full !gap-[0.75rem]" onClick={onClose}>
+                            Закрыть Pop-Up
+                        </Button>
                     </div>
+                    
+                    {/* Основной контент */}
+                    <div className="max-h-[30rem] overflow-y-auto w-full flex flex-col gap-[1.5rem] mt-[2rem] items-center">
+                        {/* Заголовок */}
+                        <div className="flex flex-col gap-[0.5rem] text-center">
+                            <h4>Причина отклонения</h4>
+                            <p className="text-(--color-gray-black)">Выберите причину по которой вы отклоняете это дело</p>
+                        </div>
 
-                    {/* Список причин */}
-                    <div className="flex flex-col gap-[0.75rem]">
-                        {reasons.map((reason) => (
-                            <div key={reason.id} className="flex items-start gap-[0.75rem]">
-                                <div className="input-wrapper !border-none !p-0 !bg-transparent">
-                                    <input type="radio" id={reason.id} name="reason" checked={selectedReason === reason.id} onChange={() => setSelectedReason(reason.id)} className="size-[1.5rem] rounded-full flex-shrink-0 mt-[0.125rem]" />
+                        {/* Список причин */}
+                        <div className="flex flex-col gap-[0.75rem] w-full">
+                            {reasons.map((reason) => (
+                                <div key={reason.id} className="flex items-start gap-[0.75rem]">
+                                    <div className="input-wrapper !border-none !p-0 !bg-transparent">
+                                        <input type="radio" id={reason.id} name="reason" checked={selectedReason === reason.id} onChange={() => setSelectedReason(reason.id)} className="size-[1.5rem] rounded-full flex-shrink-0 mt-[0.125rem]" />
+                                    </div>
+                                    <label htmlFor={reason.id} className="cursor-pointer flex-1">
+                                        <p className="big">{reason.label}</p>
+                                    </label>
                                 </div>
-                                <label htmlFor={reason.id} className="cursor-pointer flex-1">
-                                    <p className="big">{reason.label}</p>
-                                </label>
-                            </div>
-                        ))}
+                            ))}
 
-                        {/* Поле для индивидуальной причины */}
-                        {selectedReason === "custom" && (
-                            <div className="ml-[2.25rem]">
-                                <Textarea inverted rows={3} placeholder="Введите причину..." value={customReason} onChange={(e) => setCustomReason(e.target.value)} />
-                            </div>
-                        )}
+                            {/* Поле для индивидуальной причины */}
+                            {selectedReason === "custom" && (
+                                <div className="ml-[2.25rem]">
+                                    <Textarea inverted rows={3} placeholder="Введите причину..." value={customReason} onChange={(e) => setCustomReason(e.target.value)} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Кнопка отклонить */}
+                        <Button className="reject-button nh" onClick={handleConfirm}>
+                            Отклонить <Zapret />
+                        </Button>
                     </div>
-
-                    {/* Кнопка отклонить */}
-                    <Button className="reject-button nh" onClick={handleConfirm}>
-                        Отклонить <Zapret />
-                    </Button>
                 </div>
             </div>
         </div>

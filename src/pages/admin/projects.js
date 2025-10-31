@@ -56,7 +56,7 @@ export default function AdminProjects() {
 
     return (
         <Layout>
-            <Header>
+            <Header className="border-b border-[#EBEDF0]">
                 <Header.Heading>Проекты</Header.Heading>
                 <Button icon>
                     <Notify />
