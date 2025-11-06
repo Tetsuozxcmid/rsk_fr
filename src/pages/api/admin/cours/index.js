@@ -6,7 +6,7 @@ export default async function adminCours(req, res) {
         }
 
         // Получаем основную инфу профиля
-        const response_info = await fetch("https://api.rosdk.ru/learning/pending", {
+        const response_info = await fetch("https://api.rosdk.ru/learning/api/submissions/pending", {
             headers: {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",

@@ -6,7 +6,7 @@ export default async function Cours(req, res) {
         }
 
         // Получаем основную инфу профиля
-        const response_info = await fetch("https://api.rosdk.ru/learning/", {
+        const response_info = await fetch("https://api.rosdk.ru/learning/api/courses/", {
             headers: {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",

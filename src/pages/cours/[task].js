@@ -98,18 +98,22 @@ export default function Task() {
             <div className="hero overflow-hidden" style={{ placeItems: "center" }}>
                 <div className="h-full w-full col-span-12 grid grid-cols-2 gap-[1.5rem]">
                     {/* Блок доступа */}
-                    <iframe
-                        key={lesson.id}
-                        src={lesson.download_url}
-                        width="100%"
-                        style={{
-                            border: "none",
-                            borderRadius: "1rem",
-                            aspectRatio: 16 / 9,
-                        }}
-                        allow="autoplay; fullscreen"
-                        allowFullScreen
-                    />
+                    {lesson.download_url.includes("rutube.ru") ? (
+                        <iframe
+                            key={lesson.id}
+                            src={lesson.download_url}
+                            width="100%"
+                            style={{
+                                border: "none",
+                                borderRadius: "1rem",
+                                aspectRatio: 16 / 9,
+                            }}
+                            allow="autoplay; fullscreen"
+                            allowFullScreen
+                        />
+                    ) : (
+                        <p className="w-full ratio-16/9 flex items-center justify-center text-center">Видео с Rutube не отображается</p>
+                    )}
 
                     {/* Блок описания */}
                     <div className="flex flex-col justify-start items-start gap-[1rem]">
