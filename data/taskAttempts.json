@@ -2165,10 +2165,22 @@
               "userType": "teacher",
               "who": "im"
             }
+          },
+          {
+            "timestamp": "2025-11-11T18:55:14.970Z",
+            "timeSpent": 0,
+            "secondsSpent": 12,
+            "taskIndex": 77,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
           }
         ],
         "bestTime": 0,
-        "lastAttempt": "2025-10-28T15:29:05.703Z"
+        "lastAttempt": "2025-11-11T18:55:14.970Z"
       },
       "Задание 74": {
         "attempts": [
@@ -2493,12 +2505,888 @@
         ],
         "bestTime": 0,
         "lastAttempt": "2025-10-28T15:37:43.835Z"
+      },
+      "Задание 281": {
+        "attempts": [
+          {
+            "timestamp": "2025-10-30T17:57:34.684Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 280,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-10-30T17:57:34.684Z"
+      },
+      "Задание 301": {
+        "attempts": [
+          {
+            "timestamp": "2025-10-30T18:06:14.251Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 300,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-10-30T18:06:14.251Z"
+      },
+      "Задание 202": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:21:30.015Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:24:15.743Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:24:29.422Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:25:46.942Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:50:52.147Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:50:54.795Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:51:45.202Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 201,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:45.202Z"
+      },
+      "Задание 201": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:21:42.567Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:24:12.912Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:25:42.565Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:29:33.582Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:50:50.123Z",
+            "timeSpent": 0,
+            "secondsSpent": 4,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:51:41.340Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 200,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:41.340Z"
+      },
+      "Задание 200": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:24:02.880Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 199,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:24:04.776Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 199,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:26:53.409Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 199,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:26:53.409Z"
+      },
+      "Задание 203": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:24:17.990Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 202,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:24:24.990Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 202,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:51:49.019Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 202,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:49.019Z"
+      },
+      "Задание 207": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:29:38.390Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:29:55.414Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:31:58.247Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:33:31.117Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:34:54.501Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:41:41.093Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:52:04.003Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:57:10.306Z",
+            "timeSpent": 0,
+            "secondsSpent": 4,
+            "taskIndex": 206,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:57:10.306Z"
+      },
+      "Задание 205": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:31:48.437Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 204,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:31:51.998Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 204,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:51:55.155Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 204,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:55.155Z"
+      },
+      "Задание 208": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:32:35.197Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:34:18.829Z",
+            "timeSpent": 1,
+            "secondsSpent": 42,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:41:47.836Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:41:57.500Z",
+            "timeSpent": 0,
+            "secondsSpent": 8,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:42:17.917Z",
+            "timeSpent": 0,
+            "secondsSpent": 18,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:57:15.699Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 207,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:57:15.699Z"
+      },
+      "Задание 291": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:42:22.340Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 290,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:42:29.222Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 290,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:42:29.222Z"
+      },
+      "Задание 290": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:42:32.518Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 289,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:42:32.518Z"
+      },
+      "Задание 289": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:43:15.348Z",
+            "timeSpent": 0,
+            "secondsSpent": 11,
+            "taskIndex": 288,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:43:15.348Z"
+      },
+      "Задание 218": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:43:51.189Z",
+            "timeSpent": 0,
+            "secondsSpent": 5,
+            "taskIndex": 217,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:43:51.189Z"
+      },
+      "Задание 217": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:43:55.372Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 216,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:43:55.372Z"
+      },
+      "Задание 237": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:44:43.796Z",
+            "timeSpent": 1,
+            "secondsSpent": 40,
+            "taskIndex": 236,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:44:54.110Z",
+            "timeSpent": 0,
+            "secondsSpent": 4,
+            "taskIndex": 236,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:44:54.110Z"
+      },
+      "Задание 240": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:47:15.246Z",
+            "timeSpent": 0,
+            "secondsSpent": 26,
+            "taskIndex": 239,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:47:15.246Z"
+      },
+      "Задание 228": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:47:37.292Z",
+            "timeSpent": 0,
+            "secondsSpent": 17,
+            "taskIndex": 227,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:47:37.292Z"
+      },
+      "Задание 224": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:48:08.132Z",
+            "timeSpent": 0,
+            "secondsSpent": 21,
+            "taskIndex": 223,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:48:08.132Z"
+      },
+      "Задание 231": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:49:54.243Z",
+            "timeSpent": 0,
+            "secondsSpent": 26,
+            "taskIndex": 230,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:49:54.243Z"
+      },
+      "Задание 225": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:50:10.299Z",
+            "timeSpent": 0,
+            "secondsSpent": 13,
+            "taskIndex": 224,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:50:19.396Z",
+            "timeSpent": 0,
+            "secondsSpent": 6,
+            "taskIndex": 224,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:50:19.396Z"
+      },
+      "Задание 204": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:51:52.629Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 203,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:52.629Z"
+      },
+      "Задание 206": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:51:57.931Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 205,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:51:57.931Z"
+      },
+      "Задание 210": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:52:08.019Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 209,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:52:12.635Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 209,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:52:12.635Z"
+      },
+      "Задание 209": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:52:14.914Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 208,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-11T18:54:58.923Z",
+            "timeSpent": 1,
+            "secondsSpent": 65,
+            "taskIndex": 208,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:54:58.923Z"
+      },
+      "Задание 284": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:56:32.446Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 283,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:56:32.446Z"
+      },
+      "Задание 211": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-11T18:57:22.699Z",
+            "timeSpent": 0,
+            "secondsSpent": 4,
+            "taskIndex": 210,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-11T18:57:22.699Z"
       }
     },
     "stats": {
-      "totalTasksCompleted": 150,
-      "totalTimeSpent": 37,
-      "lastActivity": "2025-10-28T15:38:22.218Z"
+      "totalTasksCompleted": 211,
+      "totalTimeSpent": 40,
+      "lastActivity": "2025-11-11T18:57:22.699Z"
     }
   },
   "{\"id\":\"2c659266-3b26-4d90-8f3c-e0dd143dd2b4\"}": {
