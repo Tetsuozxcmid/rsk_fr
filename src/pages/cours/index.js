@@ -7,6 +7,7 @@ import Button from "@/components/ui/Button";
 import Warning from "@/assets/general/warning.svg";
 import Clock from "@/assets/general/clock.svg";
 import Cours_les from "@/assets/general/cours_les.svg";
+import BadgeAlert from "@/assets/general/badge-alert.svg";
 
 export default function Cours() {
     const router = useRouter();
@@ -22,6 +23,7 @@ export default function Cours() {
                     credentials: "include",
                 });
                 const data = await res.json();
+
                 if (data.success) {
                     setLessons(data.data);
                 } else {
@@ -42,6 +44,7 @@ export default function Cours() {
             <Header>
                 <Header.Heading>Обучение</Header.Heading>
             </Header>
+
             <div className="hero overflow-hidden" style={{ placeItems: "center" }}>
                 <div className="h-full w-full col-span-12 grid grid-cols-3 gap-[1.5rem]">
                     {loading &&
@@ -56,14 +59,18 @@ export default function Cours() {
                     {!loading &&
                         lessons &&
                         (() => {
-                            let lockFound = false;
+                            let lockFound = true;
+                            let lockEnd = false;
 
-                            return lessons.map((lesson, idx) => {
-                                // Первый урок всегда доступен
-                                if (idx === 0) {
+                            return lessons.map((lesson) => {
+                                const isCompleted = lesson.is_completed === "true";
+                                const isRutube = lesson.download_url.includes("rutube");
+
+                                // 1️⃣ Выполненный и рабочий урок
+                                if (isCompleted && isRutube) {
                                     return (
-                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
-                                            <span className="w-[2.25rem] h-[2.25rem] grid place-items-center rounded-full bg-(--color-green-noise) text-red-500">
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] grid place-items-center rounded-full bg-(--color-green-noise)">
                                                 <Cours_les />
                                             </span>
                                             <h6>Урок {lesson.id}</h6>
@@ -73,48 +80,60 @@ export default function Cours() {
                                     );
                                 }
 
-                                if (lesson.is_completed) {
-                                    // доступен → видео
+                                // 2️⃣ Сломанный урок (есть отметка выполнен, но нет rutube)
+                                if (isCompleted && !isRutube) {
                                     return (
-                                        <iframe
-                                            key={lesson.id}
-                                            src={lesson.download_url}
-                                            width="100%"
-                                            height="100%"
-                                            style={{
-                                                border: "none",
-                                                borderRadius: "1rem",
-                                            }}
-                                            allow="autoplay; fullscreen"
-                                            allowFullScreen
-                                        />
-                                    );
-                                }
-
-                                if (!lockFound) {
-                                    // первый закрытый → нет доступа
-                                    lockFound = true;
-                                    return (
-                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
-                                            <span className="w-[2.25rem] h-[2.25rem] text-red-500">
-                                                <Warning />
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] grid place-items-center rounded-full bg-(--color-red-noise)">
+                                                <BadgeAlert />
                                             </span>
-                                            <h6>Нет доступа</h6>
-                                            <p className="w-[60%] text-center">Для начала пройдите предыдущее задание</p>
+                                            <h6>Урок {lesson.id} недоступен</h6>
+                                            <p className="w-[60%] text-center">Файл урока повреждён. Обратитесь в поддержку.</p>
                                         </div>
                                     );
                                 }
 
-                                // все остальные после закрытого → в будущем
-                                return (
-                                    <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
-                                        <span className="w-[2.25rem] h-[2.25rem] text-blue-500">
-                                            <Clock />
-                                        </span>
-                                        <h6>В будущем</h6>
-                                        <p className="w-[60%] text-center">Закончите предыдущие задания и уроки</p>
-                                    </div>
-                                );
+                                // 3️⃣ Следующий после завершённых (доступен к изучению)
+                                if (!isCompleted && lockFound) {
+                                    lockFound = false; // После этого урока доступ блокируется
+                                    return (
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] grid place-items-center rounded-full bg-(--color-green-noise)">
+                                                <Cours_les />
+                                            </span>
+                                            <h6>Урок {lesson.id}</h6>
+                                            <p className="w-[60%] text-center">{lesson.lesson_name}</p>
+                                            <Button onClick={() => router.push(`/cours/${lesson.lesson_number}`)}>К уроку</Button>
+                                        </div>
+                                    );
+                                }
+
+                                // 4️⃣ Недоступен (жёлтый) — предыдущий не выполнен
+                                if (!isCompleted && !lockFound && !lockEnd) {
+                                    lockEnd = true;
+                                    return (
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] text-yellow-500">
+                                                <Warning />
+                                            </span>
+                                            <h6>Нет доступа</h6>
+                                            <p className="w-[60%] text-center">Пройдите предыдущий урок, чтобы открыть этот.</p>
+                                        </div>
+                                    );
+                                }
+
+                                // 5️⃣ Всё остальное — "в будущем" (синий)
+                                if (lockEnd) {
+                                    return (
+                                        <div key={lesson.id} className="flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9" }}>
+                                            <span className="w-[2.25rem] h-[2.25rem] text-blue-500">
+                                                <Clock />
+                                            </span>
+                                            <h6>В будущем</h6>
+                                            <p className="w-[60%] text-center">Закончите предыдущие задания и уроки</p>
+                                        </div>
+                                    );
+                                }
                             });
                         })()}
 

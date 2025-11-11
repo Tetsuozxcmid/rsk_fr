@@ -57,48 +57,15 @@ export default function OrganIndexPage() {
     );
 
     const getTotalCount = async () => {
-        try {
-            let allOrganizations = [];
-            let skip = 0;
-            const limit = 250;
-            let hasMore = true;
+        const res = await fetch(`/api/org/count`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+        });
 
-            // Загружаем организации пачками по 50, пока не получим все
-            while (hasMore) {
-                const res = await fetch(`/api/org/getOrg?skip=${skip}&limit=${limit}`, {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                });
+        const data = await res.json();
 
-                const data = await res.json();
-
-                if (data.success && Array.isArray(data.organizations)) {
-                    if (data.organizations.length === 0) {
-                        // Больше нет организаций
-                        hasMore = false;
-                    } else {
-                        // Добавляем полученные организации к общему массиву
-                        allOrganizations = [...allOrganizations, ...data.organizations];
-                        skip += limit; // Увеличиваем skip для следующей пачки
-
-                        // Если получили меньше организаций, чем limit, значит это последняя пачка
-                        if (data.organizations.length < limit) {
-                            hasMore = false;
-                        }
-                    }
-                } else {
-                    console.error("Некорректный формат данных:", data);
-                    hasMore = false;
-                }
-            }
-
-            // Устанавливаем общее количество организаций
-            setTotalCount(allOrganizations.length);
-        } catch (err) {
-            console.error("Ошибка при подсчете организаций:", err);
-            setTotalCount(0);
-        }
+        setTotalCount(data.data.count);
     };
 
     useEffect(() => {
