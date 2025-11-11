@@ -31,19 +31,19 @@ export default function RejectReasonPopup({ onClose, onConfirm, projectId }) {
     };
 
     return (
-        <div className="fixed top-[5.6875rem] right-0 bottom-0 left-[16rem] max-lg:!left-0 z-50 bg-white p-[2rem] max-lg:!p-8 flex items-center justify-center">
-            <div className="w-full max-w-[32rem]">
+        <div className="fixed top-[5.6875rem] right-0 bottom-0 left-[16rem] max-lg:!left-0 z-50 bg-(--color-white) p-[2rem] max-lg:!p-8 flex items-center justify-center">
+            <div className="w-full h-full">
                 {/* Контейнер с обводкой */}
-                <div className="relative p-[4rem] border-[3px] border-dashed border-[#EBEDF0] rounded-[0.75rem] w-full bg-white">
+                <div className="relative p-[2rem] border-[3px] border-dashed border-(--color-gray-plus) rounded-[0.75rem] w-full h-full bg-(--color-white) flex items-center justify-center">
                     {/* Кнопка закрытия - на обводке */}
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                        <Button inverted roundeful className="!w-fit !py-[0.75rem] !px-[1rem] !bg-[#F3F4F5] !border-[2px] !border-dashed !border-[#EBEDF0] !rounded-full !gap-[0.75rem]" onClick={onClose}>
+                        <Button inverted roundeful className="!w-fit !py-[0.75rem] !px-[1rem] !bg-(--color-gray-plus-50) !border-[2px] !border-dashed !border-(--color-gray-plus) !rounded-full !gap-[0.75rem]" onClick={onClose}>
                             Закрыть Pop-Up
                         </Button>
                     </div>
                     
                     {/* Основной контент */}
-                    <div className="max-h-[30rem] overflow-y-auto w-full flex flex-col gap-[1.5rem] mt-[2rem] items-center">
+                    <div className="overflow-y-auto w-[18vw] mx-auto flex flex-col gap-[1.5rem] items-center justify-center h-full">
                         {/* Заголовок */}
                         <div className="flex flex-col gap-[0.5rem] text-center">
                             <h4>Причина отклонения</h4>
@@ -52,27 +52,38 @@ export default function RejectReasonPopup({ onClose, onConfirm, projectId }) {
 
                         {/* Список причин */}
                         <div className="flex flex-col gap-[0.75rem] w-full">
-                            {reasons.map((reason) => (
-                                <div key={reason.id} className="flex items-start gap-[0.75rem]">
+                            {reasons.slice(0, -1).map((reason) => (
+                                <div key={reason.id} className="flex items-center gap-[0.75rem]">
                                     <div className="input-wrapper !border-none !p-0 !bg-transparent">
-                                        <input type="radio" id={reason.id} name="reason" checked={selectedReason === reason.id} onChange={() => setSelectedReason(reason.id)} className="size-[1.5rem] rounded-full flex-shrink-0 mt-[0.125rem]" />
+                                        <input type="radio" id={reason.id} name="reason" checked={selectedReason === reason.id} onChange={() => setSelectedReason(reason.id)} className="size-[1.5rem] rounded-full flex-shrink-0" />
                                     </div>
                                     <label htmlFor={reason.id} className="cursor-pointer flex-1">
-                                        <p className="big">{reason.label}</p>
+                                        <p className="hyphens-auto">{reason.label}</p>
                                     </label>
                                 </div>
                             ))}
-
+                            
                             {/* Поле для индивидуальной причины */}
-                            {selectedReason === "custom" && (
-                                <div className="ml-[2.25rem]">
-                                    <Textarea inverted rows={3} placeholder="Введите причину..." value={customReason} onChange={(e) => setCustomReason(e.target.value)} />
+                            <div className="flex items-center gap-[0.75rem]">
+                                <div className="input-wrapper !border-none !p-0 !bg-transparent">
+                                    <input type="radio" id="custom" name="reason" checked={selectedReason === "custom"} onChange={() => setSelectedReason("custom")} className="size-[1.5rem] rounded-full flex-shrink-0" />
                                 </div>
-                            )}
+                                <div className="flex-1">
+                                    <div className="input-wrapper flex items-center px-[0.875rem] gap-[0.875rem] border-[1.5px] border-(--color-gray-plus-50) rounded-[0.75rem]">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Индивидуальная причина..." 
+                                            value={customReason} 
+                                            onChange={(e) => setCustomReason(e.target.value)}
+                                            className="bg-transparent outline-none flex-1"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Кнопка отклонить */}
-                        <Button className="reject-button nh" onClick={handleConfirm}>
+                        <Button className="reject-button nh  self-center" onClick={handleConfirm}>
                             Отклонить <Zapret />
                         </Button>
                     </div>

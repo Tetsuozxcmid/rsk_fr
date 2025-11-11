@@ -56,7 +56,7 @@ export default function AdminProjects() {
 
     return (
         <Layout>
-            <Header className="border-b border-[#EBEDF0]">
+            <Header className="border-b border-(--color-gray-plus)">
                 <Header.Heading>Проекты</Header.Heading>
                 <Button icon>
                     <Notify />
@@ -66,7 +66,7 @@ export default function AdminProjects() {
                 <div className={`flex flex-col ${selectedProject ? "flex" : "col-start-4 col-end-10"} col-span-6 h-full gap-[.75rem]`}>
                     <div className="gap-[0.625rem] bg-(--color-white-gray) flex items-center justify-center rounded-[.625rem] px-[.875rem] py-[.5rem]">
                         <div className="h-[1.25rem] aspect-square rounded-full bg-(--color-gray-plus-50)"></div>
-                        <span className="link">Ожидают подтверждения</span>
+                        <p className="link">Ожидают подтверждения</p>
                     </div>
                     {projects.map((project, idx) => (
                         <div key={idx} className="flex flex-col border-[1.5px] border-(--color-gray-plus-50) rounded-[1rem] gap-[1rem] p-[1.25rem]">
@@ -74,11 +74,11 @@ export default function AdminProjects() {
                             <div className="flex items-center justify-start gap-[1.5rem] ">
                                 <div className="flex gap-[0.5rem]">
                                     <Cases />
-                                    <span className="link small">{project.case}</span>
+                                    <p className="link small">{project.case}</p>
                                 </div>
                                 <div className="flex gap-[0.5rem]">
                                     <Projectsss />
-                                    <span className="link small">{project.num} проект</span>
+                                    <p className="link small">{project.num} проект</p>
                                 </div>
                             </div>
                             <div className="flex justify-end gap-[0.5rem]">
@@ -156,19 +156,19 @@ export default function AdminProjects() {
                                                         className="flex p-[1rem] rounded-[1rem] gap-[.75rem] h-fit
                                                 border-[1.5px] border-(--color-gray-plus-50) items-center">
                                                         <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div>
-                                                        <span className="link big">Хз, Чел какой-то</span>
+                                                        <p className="link big">Хз, Чел какой-то</p>
                                                     </div>
                                                     <div
                                                         className="flex p-[1rem] rounded-[1rem] gap-[.75rem] h-fit
                                                 border-[1.5px] border-(--color-gray-plus-50) items-center">
                                                         <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div>
-                                                        <span className="link big">Хз, Чел какой-то</span>
+                                                        <p className="link big">Хз, Чел какой-то</p>
                                                     </div>
                                                     <div
                                                         className="flex p-[1rem] rounded-[1rem] gap-[.75rem] h-fit
                                                 border-[1.5px] border-(--color-gray-plus-50) items-center">
                                                         <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div>
-                                                        <span className="link big">Хз, Чел какой-то</span>
+                                                        <p className="link big">Хз, Чел какой-то</p>
                                                     </div>
                                                 </div>
                                             </div>
