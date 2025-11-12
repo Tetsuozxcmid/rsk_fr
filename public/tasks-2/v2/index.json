@@ -1222,7 +1222,7 @@
     {
         "file": "",
         "instruction": "",
-        "toolLink1": "https://forms.yandex.ru/u/680cdb32eb614693f6dd4487",
+        "toolLink1": "https://forms.yandex.ru/u/689197c9eb6146293aca92fa/",
         "toolName1": "Входная анкета",
         "photo": ""
     },
@@ -1338,7 +1338,8 @@
             "toolName1": ""
         },
         {
-            "file": "221.pdf",  
+            "file": "221.pdf", 
+            "instruction": "221.pdf", 
             "toolLink1": "https://www.perplexity.ai/",
             "toolName1": "1: Perplexity",
             "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
@@ -1517,7 +1518,7 @@
             "instruction": "",
             "toolLink1": "",
             "toolName1": ""
-        },
+        }, 
         {
             "file": "",
             "instruction": "",
@@ -1789,7 +1790,14 @@
     {
         "file": "",
         "instruction": "",
-        "toolLink1": "https://forms.yandex.ru/u/680cdb32eb614693f6dd4487",
+        "toolLink1": "",
+        "toolName1": "",
+        "photo": "301.png"
+    },
+    {
+        "file": "",
+        "instruction": "",
+        "toolLink1": "https://forms.yandex.ru/u/689197c9eb6146293aca92fa/",
         "toolName1": "Входная анкета",
         "photo": "302.png"
     },

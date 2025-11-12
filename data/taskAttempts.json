@@ -2537,10 +2537,34 @@
               "userType": "teacher",
               "who": "im"
             }
+          },
+          {
+            "timestamp": "2025-11-12T10:03:20.401Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 300,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-12T10:03:53.956Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 300,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
           }
         ],
         "bestTime": 0,
-        "lastAttempt": "2025-10-30T18:06:14.251Z"
+        "lastAttempt": "2025-11-12T10:03:53.956Z"
       },
       "Задание 202": {
         "attempts": [
@@ -3381,12 +3405,120 @@
         ],
         "bestTime": 0,
         "lastAttempt": "2025-11-11T18:57:22.699Z"
+      },
+      "Задание 302": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-12T10:00:47.535Z",
+            "timeSpent": 0,
+            "secondsSpent": 3,
+            "taskIndex": 301,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-12T10:03:24.699Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 301,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-12T10:03:59.559Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 301,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          },
+          {
+            "timestamp": "2025-11-12T10:04:05.177Z",
+            "timeSpent": 0,
+            "secondsSpent": 2,
+            "taskIndex": 301,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-12T10:04:05.177Z"
+      },
+      "Задание 306": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-12T10:01:07.601Z",
+            "timeSpent": 0,
+            "secondsSpent": 0,
+            "taskIndex": 305,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-12T10:01:07.601Z"
+      },
+      "Задание 303": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-12T10:03:28.834Z",
+            "timeSpent": 0,
+            "secondsSpent": 1,
+            "taskIndex": 302,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-12T10:03:28.834Z"
+      },
+      "Задание 221": {
+        "attempts": [
+          {
+            "timestamp": "2025-11-12T10:04:18.416Z",
+            "timeSpent": 0,
+            "secondsSpent": 4,
+            "taskIndex": 220,
+            "completed": true,
+            "taskDetails": {
+              "type": "text",
+              "userType": "teacher",
+              "who": "im"
+            }
+          }
+        ],
+        "bestTime": 0,
+        "lastAttempt": "2025-11-12T10:04:18.416Z"
       }
     },
     "stats": {
-      "totalTasksCompleted": 211,
+      "totalTasksCompleted": 220,
       "totalTimeSpent": 40,
-      "lastActivity": "2025-11-11T18:57:22.699Z"
+      "lastActivity": "2025-11-12T10:04:18.416Z"
     }
   },
   "{\"id\":\"2c659266-3b26-4d90-8f3c-e0dd143dd2b4\"}": {
