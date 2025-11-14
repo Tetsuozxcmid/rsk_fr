@@ -51,6 +51,7 @@ export default function ProfileIndexPage({ goTo }) {
                 }
                 const data = await response.json();
                 setUserData(data);
+                console.log(data);
                 setHydrated(true);
             } catch (err) {
                 console.error("Request error:", err);
@@ -98,19 +99,19 @@ export default function ProfileIndexPage({ goTo }) {
                         <div className="flex gap-[1rem] w-full">
                             {/* <div className="w-[4.75rem] aspect-square rounded-full bg-(--color-black)"></div> */}
                             <div className="flex flex-col gap-[0.25rem] flex-1 ">
-                                <h4>{userData.data.NameIRL && userData.data.Surname && userData.data.Patronymic ? `${userData.data.NameIRL} ${userData.data.Surname} ${userData.data.Patronymic}` : "ФИО Незаполнено"}</h4>
-                                <p className="line-clamp-3">{userData.data?.Description ? userData.data.Description : "Описание Незаполнено"}</p>
+                                <h4>{userData.data.NameIRL || userData.data.Surname || userData.data.Patronymic ? `${userData.data.NameIRL} ${userData.data.Surname} ${userData.data.Patronymic}` : "ФИО Незаполнено"}</h4>
+                                <p className="line-clamp-3">{userData.data?.Description ? userData.data.Description : "Описание незаполнено"}</p>
                             </div>
                         </div>
                         <div className="flex gap-[0.5rem] flex-wrap">
                             <Tags
                                 tags={[
                                     {
-                                        name: `${userData.data.Type === "worker" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : "Ошибка данных"}`,
+                                        name: `${userData.data.Type === "teacher" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : "Ошибка данных"}`,
                                         color: "blue",
                                         icon: "coin",
                                     },
-                                    { name: `${userData.data?.Region ? `${userData.data.Region}` : "Регион Незаполнен"}`, color: "blue" },
+                                    { name: `${userData.data?.Region ? `${userData.data.Region}` : "Регион незаполнен"}`, color: "blue" },
                                 ]}
                             />
                         </div>

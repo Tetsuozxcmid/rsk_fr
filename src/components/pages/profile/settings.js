@@ -94,7 +94,6 @@ export default function SettingsPage({ goTo }) {
             const data = await response.json();
 
             if (response.ok) {
-                alert("Данные успешно обновлены");
                 setUserData((prev) => ({ ...prev, data: formData })); // обновляем оригинальные данные
                 setIsDirty(false);
                 window.location.reload();

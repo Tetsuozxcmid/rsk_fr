@@ -11,7 +11,7 @@ import VK from "@/assets/general/vk.svg";
 export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
     const [userType, setUserType] = useState("student");
     const [formData, setFormData] = useState({
-        firstName: "",
+        name: "",
         email: "",
         password: "",
         role: userType,
@@ -87,7 +87,7 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             </Switcher>
             <form id="registration" className="w-full grid grid-rows-3 gap-[0.75rem]" onSubmit={handleSubmit}>
                 {[
-                    { name: "firstName", placeholder: "Имя", type: "text", autocomplete: "firstName", tabIndex: 0 },
+                    { name: "name", placeholder: "Имя", type: "text", autocomplete: "name", tabIndex: 0 },
                     { name: "email", placeholder: "Почта", type: "email", autocomplete: "email", tabIndex: 1 },
                     { name: "password", placeholder: "Пароль", type: "password", autocomplete: "new-password", tabIndex: 2 },
                 ].map(({ name, placeholder, type, tabIndex, autocomplete }) => (
