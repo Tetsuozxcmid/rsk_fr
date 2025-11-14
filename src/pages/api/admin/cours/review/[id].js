@@ -23,6 +23,7 @@ export default async function ProfileUpdateHandler(req, res) {
         });
 
         const data = await response.json();
+        console.log(data);
 
         // Возвращаем клиенту
         return res.json({ success: true, data });
