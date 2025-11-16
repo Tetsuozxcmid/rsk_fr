@@ -54,6 +54,7 @@ export default function AdminProjects() {
                 credentials: "include",
                 body: JSON.stringify({
                     status: status,
+                    description: "string",
                 }),
             });
 
