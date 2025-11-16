@@ -936,6 +936,28 @@ const TrainerControls = memo(function TrainerControls({
                             </Button>
                         </span>
                     )}
+                   {currentTask?.sourceLink && (
+                    <span title={!isTaskRunning ? "Сначала начните задание" : "Источник"}>
+                        <Button
+                            icon
+                            as="a"
+                            href={currentTask.sourceLink}
+                            target="_blank"
+                            disabled={!isTaskRunning}
+                            className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                if (isTaskRunning) {
+                                    window.open(currentTask.sourceLink, "_blank");
+                                }
+                            }}
+                            >
+                            <div className="w-full h-full flex items-center justify-center">
+                            <InfoIcon className="w-4 h-4 relative translate-x-[0.25px] -translate-y-[0.25px]" />
+                            </div>
+                        </Button>
+                    </span>
+                )}
                     {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 300) && who === "im" && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>

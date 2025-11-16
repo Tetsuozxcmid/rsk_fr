@@ -216,6 +216,7 @@
         "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
         "toolName1": "Gamma",
         "photo": "30.png"
+
     },
     {
         "file": "",
@@ -417,7 +418,8 @@
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
         "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName2": "2: Gamma"
+        "toolName2": "2: Gamma",
+        "sourceLink": "https://gamma.app/signup?r=ffdoazwoqvphhy2"
     },
     {
         "file": "",
@@ -1829,613 +1831,516 @@
         "toolName1": "",
         "photo": "306.png"
     },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "307.png"
+{
+"file": "307.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://regions.ru/serpuhov/stroitelstvo/v-serpuhove-snosyat-rynok-truba"
+},
+{
+"file": "309.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://xn--80apfedmab8e4d.xn--p1ai/2021/11/kak-vernut-dengi-za-remont-podezda-esli-delali-ego-svoimi-silami-bez-upravlyayushhej-kompanii/"
+},
+{
+"file": "308.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://eos.ru/press-center/news/medo-2-7-1-metod-postepennyh-priblizhenij/"
+},
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://xn--80aapampemcchfmo7a3c9ehj.xn--p1ai/news/v-rostovskoy-oblasti-poyavitsya-novaya-mera-podderzhki-selskikh-uchiteley/"
+},
+{
+"file": "311.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity"
+},
+{
+"file": "312.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://precedent.tv/v-novosibirske-tysyachu-detej-zachislili-v-detsady-po-tsifrovym-dogovoram"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "314.png",
+"toolLink1": "https://lmarena.ai/",
+"toolName1": "LMArena",
+"sourceLink": "https://xn--80aapampemcchfmo7a3c9ehj.xn--p1ai/news/v-rostovskoy-oblasti-poyavitsya-novaya-mera-podderzhki-selskikh-uchiteley/"
+},
+{
+"file": "",
+"toolLink1": "https://lmarena.ai/",
+"toolName1": "LMArena"
+},
+{
+"file": "316.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://lmarena.ai/",
+"toolName2": "2: LMArena",
+"sourceLink": "https://regions.ru/serpuhov/stroitelstvo/v-serpuhove-snosyat-rynok-truba"
+},
+{
+"file": "",
+"toolLink1": "https://t.me/AIMemeArenaBot",
+"toolName1": "AiMemeArena"
+},
+{
+"file": "",
+"toolLink1": "https://lmarena.ai/",
+"toolName1": "LMArena"
+},
+{
+"file": "319.png",
+"toolLink1": "https://lmarena.ai/",
+"toolName1": "LMArena",
+"sourceLink": "https://precedent.tv/v-novosibirske-tysyachu-detej-zachislili-v-detsady-po-tsifrovym-dogovoram"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "321.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
+"toolName2": "2: Gamma",
+"sourceLink": "https://www.amic.ru/news/vyyasnilos-skolko-zemskih-uchiteley-v-altayskom-krae-vernuli-million-rubley-570788"
+},
+{
+"file": "322.pptx",
+"toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
+"toolName1": "Gamma",
+"sourceLink": "https://digitalocean.ru/n/deepfake-zefir"
+},
+{
+"file": "",
+"toolLink1": "https://lovable.dev/",
+"toolName1": "Lovable",
+"sourceLink": "https://eos.ru/press-center/news/medo-2-7-1-metod-postepennyh-priblizhenij/"
+},
+{
+"file": "",
+"toolLink1": "https://lovable.dev/",
+"toolName1": "Lovable"
+},
+{
+"file": "325.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
+"toolName2": "2: Gamma"
+},
+{
+"file": "326.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
+"toolName2": "2: Gamma",
+"sourceLink": "https://regions.ru/serpuhov/stroitelstvo/v-serpuhove-snosyat-rynok-truba"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "328.png",
+"toolLink1": "https://pixverse.ai/",
+"toolName1": "Pixverse",
+"sourceLink": "https://regions.ru/serpuhov/stroitelstvo/v-serpuhove-snosyat-rynok-truba"
+},
+{
+"file": "",
+"toolLink1": "https://pictory.ai/",
+"toolName1": "Pictory",
+"sourceLink": "https://www.amic.ru/news/vyyasnilos-skolko-zemskih-uchiteley-v-altayskom-krae-vernuli-million-rubley-570788"
+},
+{
+"file": "330.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://pictory.ai/",
+"toolName2": "2: Pictory",
+"sourceLink": "https://xn--80aapampemcchfmo7a3c9ehj.xn--p1ai/news/v-rostovskoy-oblasti-poyavitsya-novaya-mera-podderzhki-selskikh-uchiteley/"
+},
+{
+"file": "",
+"toolLink1": "https://t.me/AIMemeArenaBot",
+"toolName1": "AiMemeArena",
+"sourceLink": "https://digitalocean.ru/n/deepfake-zefir"
+},
+{
+"file": "332.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://pictory.ai/",
+"toolName2": "2: Pictory",
+"sourceLink": "https://xn--80apfedmab8e4d.xn--p1ai/2021/11/kak-vernut-dengi-za-remont-podezda-esli-delali-ego-svoimi-silami-bez-upravlyayushhej-kompanii/"
+},
+{
+"file": "333.mp4",
+"toolLink1": "https://any2text.com/",
+"toolName1": "Any2text",
+"sourceLink": "https://ura.news/news/1052596537"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://suno.com/",
+"toolName2": "2: Suno",
+"sourceLink": "https://eos.ru/press-center/news/medo-2-7-1-metod-postepennyh-priblizhenij/"
+},
+{
+"file": "336.wav",
+"toolLink1": "https://any2text.com/",
+"toolName1": "Any2text",
+"sourceLink": "https://precedent.tv/v-novosibirske-tysyachu-detej-zachislili-v-detsady-po-tsifrovym-dogovoram"
+},
+{
+"file": "337.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://suno.com/",
+"toolName2": "2: Suno",
+"sourceLink": "https://xn--80aapampemcchfmo7a3c9ehj.xn--p1ai/news/v-rostovskoy-oblasti-poyavitsya-novaya-mera-podderzhki-selskikh-uchiteley/"
+},
+{
+"file": "338.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://suno.com/",
+"toolName2": "2: Suno",
+"sourceLink": "https://digitalocean.ru/n/deepfake-zefir"
+},
+{
+"file": "339.MP3",
+"toolLink1": "https://auphonic.com/",
+"toolName1": "Auphonic",
+"sourceLink": "https://xn--80apfedmab8e4d.xn--p1ai/2021/11/kak-vernut-dengi-za-remont-podezda-esli-delali-ego-svoimi-silami-bez-upravlyayushhej-kompanii/"
+},
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://suno.com/",
+"toolName2": "2: Suno"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "342.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://precedent.tv/v-novosibirske-tysyachu-detej-zachislili-v-detsady-po-tsifrovym-dogovoram"
+},
+{
+"file": "343.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.amic.ru/news/vyyasnilos-skolko-zemskih-uchiteley-v-altayskom-krae-vernuli-million-rubley-570788"
+},
+{
+"file": "344.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity"
+},
+{
+"file": "345.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://ura.news/news/1052596537"
+},
+{
+"file": "346.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://digitalocean.ru/n/deepfake-zefir"
+},
+{
+"file": "347.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://www.napkin.ai/",
+"toolName2": "2: Napkin",
+"sourceLink": "https://regions.ru/serpuhov/stroitelstvo/v-serpuhove-snosyat-rynok-truba"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
     },
     {
         "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "308.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "309.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "310.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "311.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "312.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
         "toolLink1": "",
-        "toolName1": "",
-        "photo": "313.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "Suno",
-        "photo": "314.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://any2text.ru/",
-        "toolName1": "Any2text",
-        "toolLink2": "https://www.perplexity.ai/",
-        "toolName2": "Perplexity",
-        "photo": "315.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexit",
-        "toolLink2": "https://suno.com/",
-        "toolName2": "Suno",
-        "photo": "316.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "toolLink2": "https://suno.com/",
-        "toolName2": "Suno",
-        "photo": "317.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://auphonic.com/",
-        "toolName1": "Auphonic",
-        "photo": "318.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://auphonic.com/",
-        "toolName1": "Auphonic",
-        "photo": "319.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "320.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lmarena.ai/",
-        "toolName1": "LMArena",
-        "photo": "321.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lmarena.ai/",
-        "toolName1": "LMArena",
-        "photo": "322.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lmarena.ai/",
-        "toolName1": "LMArena",
-        "photo": "323.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lmarena.ai/",
-        "toolName1": "LMArena",
-        "photo": "324.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://t.me/AIMemeArenaBot",
-        "toolName1": "AiMemeArena",
-        "photo": "325.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lmarena.ai/",
-        "toolName1": "LMArena",
-        "photo": "326.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "327.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "328.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "329.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "330.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "331.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "332.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "333.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "334.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://app.pixverse.ai/",
-        "toolName1": "Pixverse",
-        "photo": "335.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory",
-        "photo": "336.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://app.pixverse.ai/",
-        "toolName1": "Pixverse",
-        "photo": "337.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://t.me/AIMemeArenaBot",
-        "toolName1": "AiMemeArena",
-        "photo": "338.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory",
-        "photo": "339.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory",
-        "photo": "340.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "341.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "342.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "343.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "344.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "345.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "346.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.napkin.ai/",
-        "toolName1": "Napkin",
-        "photo": "347.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "348.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": ""
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "350.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "351.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "352.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "353.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "354.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName1": "Gamma",
-        "photo": "355.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "356.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName2": "Gamma",
-        "photo": "357.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "358.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "359.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "360.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName2": "Gamma",
-        "photo": "361.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "362.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "363.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "364.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "365.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "366.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "367.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName2": "Gamma",
-        "photo": "368.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "369.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "370.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "371.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "372.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "toolLink2": "https://lovable.dev/",
-        "toolName2": "Lovable",
-        "photo": "373.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "374.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "375.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "376.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "377.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "378.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "379.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "380.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "381.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "382.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "383.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "384.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "385.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "386.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "387.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://notebooklm.google.com/",
-        "toolName1": "notebooklm",
-        "photo": "388.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "photo": "389.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "photo": "390.png"
-    },
-    {
-        "file": "",
-        "instruction": "",
-        "toolLink1": "",
-        "toolName1": "",
-        "photo": "391.png"
+        "toolName1": ""
+        },
+{
+"file": "350.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://rt-online.ru/news/v-skolax-tatarstana-ne-xvataet-37-tys-pedagogov-528817"
+},
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://xn--80adbkc3aefnffc4ahj.xn--p1ai/novosti/prokuratura-informiruet/po-materialam-prokurorskoj-proverki-vozbuzhdeno-ugolovnoe-delo-o-moshennichestve-pri-provedenii-kapitalnogo-remonta/"
+},
+{
+"file": "352.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://bft.ru/expert-bft/40329/"
+},
+{
+"file": "353.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkgz.ru/fas-i-sudy-uzkij-kriterij-sopostavimosti-opyta-ogranichivaet-konkurentsiyu/"
+},
+{
+"file": "354.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.livekuban.ru/news/zhizn/stalo-izvestno-skolko-socialnykh-obektov-stroitsya-v-krasnodare"
+},
+{
+"file": "355.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "1: Perplexity",
+"toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
+"toolName2": "2: Gamma",
+"sourceLink": "https://m.asninfo.ru/news/113988-v-2024-godu-peterburg-poraduyet-otkrytiyem-36-novykh-shkol-i-38-detskikh-sadov"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://rt-online.ru/news/v-skolax-tatarstana-ne-xvataet-37-tys-pedagogov-528817"
+},
+{
+"file": "358.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://lenobl.ru/ru/dlya-smi/news/83656/"
+},
+{
+"file": "359.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.livekuban.ru/news/zhizn/stalo-izvestno-skolko-socialnykh-obektov-stroitsya-v-krasnodare"
+},
+{
+"file": "360.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.vedomosti.ru/strana/ural/news/2025/11/07/1152962-demontazh-nto-ekaterinburge"
+},
+{
+"file": "361.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.vedomosti.ru/strana/ural/news/2025/11/07/1152962-demontazh-nto-ekaterinburge"
+},
+{
+"file": "362.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://bft.ru/expert-bft/40329/"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "364.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://lenobl.ru/ru/dlya-smi/news/83656/"
+},
+{
+"file": "365.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://xn--80adbkc3aefnffc4ahj.xn--p1ai/novosti/prokuratura-informiruet/po-materialam-prokurorskoj-proverki-vozbuzhdeno-ugolovnoe-delo-o-moshennichestve-pri-provedenii-kapitalnogo-remonta/"
+},
+{
+"file": "",
+"toolLink1": "https://lovable.dev/",
+"toolName1": "Lovable",
+"sourceLink": "http://newhq.b-edu.ru/deyatelnost/snizhenie-byurokraticheskoj-nagruzki/"
+},
+{
+"file": "367.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkhnews.ru/news/uk-obyazala-fond-kapitalnogo-remonta-ustranit/"
+},
+{
+"file": "368.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity"
+},
+{
+"file": "369.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkgz.ru/fas-i-sudy-uzkij-kriterij-sopostavimosti-opyta-ogranichivaet-konkurentsiyu/"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "371.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "http://newhq.b-edu.ru/deyatelnost/snizhenie-byurokraticheskoj-nagruzki/"
+},
+{
+"file": "372.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://m.asninfo.ru/news/113988-v-2024-godu-peterburg-poraduyet-otkrytiyem-36-novykh-shkol-i-38-detskikh-sadov"
+},
+{
+"file": "373.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.kommersant.ru/doc/8117534"
+},
+{
+"file": "374.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.vedomosti.ru/strana/ural/news/2025/11/07/1152962-demontazh-nto-ekaterinburge"
+},
+{
+"file": "",
+"toolLink1": "https://lovable.dev/",
+"toolName1": "Lovable",
+"sourceLink": "https://lenobl.ru/ru/dlya-smi/news/83656/"
+},
+{
+"file": "376.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkgz.ru/fas-i-sudy-uzkij-kriterij-sopostavimosti-opyta-ogranichivaet-konkurentsiyu/"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "378.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://m.asninfo.ru/news/113988-v-2024-godu-peterburg-poraduyet-otkrytiyem-36-novykh-shkol-i-38-detskikh-sadov"
+},
+{
+"file": "379.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://rt-online.ru/news/v-skolax-tatarstana-ne-xvataet-37-tys-pedagogov-528817"
+},
+{
+"file": "380.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "http://newhq.b-edu.ru/deyatelnost/snizhenie-byurokraticheskoj-nagruzki/"
+},
+{
+"file": "381.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.vedomosti.ru/strana/ural/news/2025/11/07/1152962-demontazh-nto-ekaterinburge"
+},
+{
+"file": "382.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://lenobl.ru/ru/dlya-smi/news/83656/"
+},
+{
+"file": "383.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.livekuban.ru/news/zhizn/stalo-izvestno-skolko-socialnykh-obektov-stroitsya-v-krasnodare"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
+    },
+{
+"file": "",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkgz.ru/fas-i-sudy-uzkij-kriterij-sopostavimosti-opyta-ogranichivaet-konkurentsiyu/"
+},
+{
+"file": "386.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.livekuban.ru/news/zhizn/stalo-izvestno-skolko-socialnykh-obektov-stroitsya-v-krasnodare"
+},
+{
+"file": "387.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://rt-online.ru/news/v-skolax-tatarstana-ne-xvataet-37-tys-pedagogov-528817"
+},
+{
+"file": "388.pdf",
+"toolLink1": "https://lovable.dev/",
+"toolName1": "Lovable",
+"sourceLink": "https://bft.ru/expert-bft/40329/"
+},
+{
+"file": "389.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://www.kommersant.ru/doc/8117534"
+},
+{
+"file": "390.pdf",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
+"sourceLink": "https://gkhnews.ru/news/uk-obyazala-fond-kapitalnogo-remonta-ustranit/"
+},
+{
+    "file": "",
+    "toolLink1": "",
+    "toolName1": ""
     }
 ]
