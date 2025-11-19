@@ -69,7 +69,8 @@ export default function OrganIndexPage({ goTo, organ }) {
             <div className="hero">
                 <div className="flex flex-col gap-[1.25rem] col-span-12">
                     <div className="gap-[1rem] bg-(--color-white-gray) col-span-12 h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
-                        <div className="h-[2rem] aspect-square rounded-full bg-(--color-blue-noise)" />
+                        {/* Убираем аватарку - кружочек */}
+                        {/* <div className="h-[2rem] aspect-square rounded-full bg-(--color-blue-noise)" /> */}
                         <h6>{organInfo.name}</h6>
                     </div>
 
@@ -81,7 +82,7 @@ export default function OrganIndexPage({ goTo, organ }) {
 
                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <DelIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
-                            <h6 className="text-(--color-gray-white)">Мастерская</h6>
+                            <h6 className="text-(--color-gray-white)">Мастерская (скоро)</h6>
                         </div>
 
                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">

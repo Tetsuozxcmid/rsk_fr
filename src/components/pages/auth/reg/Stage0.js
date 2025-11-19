@@ -83,7 +83,7 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             <h3>Добро пожаловать</h3>
             <Switcher className="!w-full" value={userType} onChange={setUserType}>
                 <Switcher.Option value="student">Студент</Switcher.Option>
-                <Switcher.Option value="worker">Сотрудник</Switcher.Option>
+                <Switcher.Option value="teacher">Сотрудник</Switcher.Option>
             </Switcher>
             <form id="registration" className="w-full grid grid-rows-3 gap-[0.75rem]" onSubmit={handleSubmit}>
                 {[
