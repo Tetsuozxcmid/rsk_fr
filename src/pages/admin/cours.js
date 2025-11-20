@@ -50,7 +50,7 @@ export default function AdminProjects() {
         fetchSubmissions();
     }, []);
 
-    const handleReview = async (submissionId, isApproved, reason = null) => {
+    const handleReview = async (submissionId, isApproved, reason = "Все хорошо") => {
         const status = isApproved ? "одобрен" : "отклонен";
         const actionText = isApproved ? "одобрить" : "отклонить";
 
