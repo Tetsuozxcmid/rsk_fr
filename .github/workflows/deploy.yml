@@ -1,0 +1,34 @@
+name: Build and Deploy
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Build project
+              run: npm run build
+
+            - name: Deploy to server (SSH)
+              if: success()
+              uses: appleboy/ssh-action@v1.2.0
+              with:
+                  host: ${{ secrets.SERVER_HOST }}
+                  username: ${{ secrets.SERVER_USER }}
+                  key: ${{ secrets.SERVER_SSH_KEY }}
+                  script: |
+                      cd /root/rsk_fr
+                      git pull
+                      npm install
+                      npm run build
+                      sudo systemctl restart start-next.service

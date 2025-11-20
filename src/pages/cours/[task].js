@@ -20,23 +20,24 @@ export default function Task() {
     useEffect(() => {
         async function fetchData() {
             try {
-                const res = await fetch("/api/cours", {
+                const res = await fetch(`/api/cours/${task}`, {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
                 if (!res.ok) throw new Error("Ошибка загрузки");
 
-                const json = await res.json();
-                if (!json.success) throw new Error("API вернуло ошибку");
-
-                const found = json.data.find((l) => Number(l.lesson_number) === Number(task));
-                if (found.is_completed == "process") {
-                    setSubmitted("process");
-                } else if (found.is_completed == "true") {
-                    setSubmitted("true");
+                const data = await res.json();
+                switch (data.data.is_completed) {
+                    case "process":
+                        setSubmitted("process");
+                        break;
+                    case "true":
+                        setSubmitted("true");
+                    default:
+                        break;
                 }
-                setLesson(found || null);
+                setLesson(data.data || null);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -59,7 +60,6 @@ export default function Task() {
 
             if (res.ok) {
                 setSubmitted("process");
-                window.location.reload(); // Перезагрузка страницы после успешной отправки
             }
         } catch (err) {
             console.error("Ошибка отправки:", err);

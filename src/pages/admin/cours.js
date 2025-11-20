@@ -7,11 +7,25 @@ import Button from "@/components/ui/Button";
 import Zapret from "@/assets/general/zapret.svg";
 import NeZapret from "@/assets/general/neZapret.svg";
 import Notify from "@/assets/general/notify.svg";
+import RejectReasonPopup from "@/components/ui/RejectReasonPopup";
 
 export default function AdminProjects() {
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [removingId, setRemovingId] = useState(null);
+
+    const [showRejectPopup, setShowRejectPopup] = useState(false);
+    const [rejectingProjectId, setRejectingProjectId] = useState(null);
+
+    const handleRejectClick = (projectId) => {
+        setRejectingProjectId(projectId);
+        setShowRejectPopup(true);
+    };
+
+    const handleRejectConfirm = (projectId, reason) => {
+        handleReview(projectId, false, reason);
+        setShowRejectPopup(false);
+    };
 
     useEffect(() => {
         async function fetchSubmissions() {
@@ -36,11 +50,11 @@ export default function AdminProjects() {
         fetchSubmissions();
     }, []);
 
-    const handleReview = async (submissionId, isApproved) => {
+    const handleReview = async (submissionId, isApproved, reason = null) => {
         const status = isApproved ? "одобрен" : "отклонен";
         const actionText = isApproved ? "одобрить" : "отклонить";
 
-        if (!window.confirm(`Вы уверены, что хотите ${actionText} эту заявку?`)) {
+        if (!window.confirm(`Вы уверены, что хотите ${actionText} эту заявку по причине ${reason}?`)) {
             return;
         }
 
@@ -54,7 +68,7 @@ export default function AdminProjects() {
                 credentials: "include",
                 body: JSON.stringify({
                     status: status,
-                    description: "string",
+                    description: reason,
                 }),
             });
 
@@ -67,7 +81,7 @@ export default function AdminProjects() {
             }, 500);
         } catch (err) {
             console.error(`Ошибка ${actionText}и:`, err);
-            alert(`Произошла ошибка при ${actionText}и заявки`);
+            alert(`Произошла ошибка при ${actionText} заявки`);
             setRemovingId(null);
         }
     };
@@ -126,7 +140,14 @@ export default function AdminProjects() {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-[0.5rem]">
-                                <Button inverted roundeful className="!w-fit reject-button" onClick={() => handleReview(submission.id, false)} disabled={removingId === submission.id}>
+                                <Button
+                                    inverted
+                                    roundeful
+                                    className="!w-fit reject-button"
+                                    onClick={() => {
+                                        handleRejectClick(submission.id);
+                                    }}
+                                    disabled={removingId === submission.id}>
                                     Отклонить <Zapret />
                                 </Button>
                                 <Button inverted roundeful className="!w-fit approve-button" onClick={() => handleReview(submission.id, true)} disabled={removingId === submission.id}>
@@ -136,6 +157,7 @@ export default function AdminProjects() {
                         </div>
                     ))}
                 </div>
+                {showRejectPopup && <RejectReasonPopup onClose={() => setShowRejectPopup(false)} onConfirm={handleRejectConfirm} projectId={rejectingProjectId} />}
             </div>
         </Layout>
     );
