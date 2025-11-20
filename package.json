@@ -14,10 +14,10 @@
         "file-saver": "^2.0.5",
         "framer-motion": "^12.23.24",
         "js-cookie": "^3.0.5",
-        "next": "^15.5.5",
+        "next": "^16.0.3",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-hook-form": "^7.65.0",
+        "react-hook-form": "^7.66.1",
         "react-textarea-autosize": "^8.5.9",
         "uuid": "^13.0.0"
     },
@@ -26,7 +26,7 @@
         "@svgr/webpack": "^8.1.0",
         "@tailwindcss/postcss": "^4",
         "eslint": "^9",
-        "eslint-config-next": "15.5.5",
+        "eslint-config-next": "16.0.3",
         "prettier": "^3.6.2",
         "tailwindcss": "^4"
     },
