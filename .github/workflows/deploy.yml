@@ -27,9 +27,8 @@ jobs:
                   username: ${{ secrets.SERVER_USER }}
                   password: ${{ secrets.SERVER_SSH_KEY }}
                   script: |
-                      export PATH=$PATH:/usr/local/bin
                       cd /root/rsk_fr
                       git pull
-                      npm install
+                      npm ci
                       npm run build
                       sudo systemctl restart nextjs.service
