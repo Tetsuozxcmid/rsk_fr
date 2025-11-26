@@ -101,7 +101,7 @@ export default function AdminProjects() {
             const diff = target - now;
 
             if (diff <= 0) {
-                router.reload();
+                router.replace(window.location.pathname);
                 clearInterval(interval);
                 return;
             }
