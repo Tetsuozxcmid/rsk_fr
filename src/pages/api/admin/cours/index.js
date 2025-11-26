@@ -6,7 +6,7 @@ export default async function adminCours(req, res) {
         }
 
         // Получаем основную инфу профиля
-        const response_info = await fetch("https://api.rosdk.ru/learning/api/submissions/pending", {
+        const response_info = await fetch("https://api.rosdk.ru/learning/api/moderator/assignments", {
             headers: {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",
@@ -21,7 +21,15 @@ export default async function adminCours(req, res) {
         }
 
         const data = await response_info.json();
-        return res.json({ success: true, data });
+
+        let timeList = [];
+        for (let i = 0; i < data.length; i++) {
+            timeList.push(data[i].expires_at);
+        }
+
+        const time = Math.max(...timeList);
+
+        return res.json({ success: true, data: { data, time } });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }

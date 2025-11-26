@@ -8,6 +8,7 @@ import Zapret from "@/assets/general/zapret.svg";
 import NeZapret from "@/assets/general/neZapret.svg";
 import Notify from "@/assets/general/notify.svg";
 import RejectReasonPopup from "@/components/ui/RejectReasonPopup";
+import { useRouter } from "next/navigation";
 
 export default function AdminProjects() {
     const [submissions, setSubmissions] = useState([]);
@@ -16,6 +17,9 @@ export default function AdminProjects() {
 
     const [showRejectPopup, setShowRejectPopup] = useState(false);
     const [rejectingProjectId, setRejectingProjectId] = useState(null);
+    const [time, setTime] = useState(0);
+
+    const router = useRouter();
 
     const handleRejectClick = (projectId) => {
         setRejectingProjectId(projectId);
@@ -39,7 +43,8 @@ export default function AdminProjects() {
                 if (!res.ok) throw new Error("Ошибка загрузки данных");
 
                 const data = await res.json();
-                setSubmissions(data.data || []);
+                setSubmissions(data.data.data || []);
+                setTime(data.data.time);
             } catch (err) {
                 console.error("Ошибка:", err);
             } finally {
@@ -86,6 +91,31 @@ export default function AdminProjects() {
         }
     };
 
+    useEffect(() => {
+        const timer = document.getElementById("timer");
+        if (!time || !timer) return;
+
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const target = time * 1000;
+            const diff = target - now;
+
+            if (diff <= 0) {
+                router.reload();
+                clearInterval(interval);
+                return;
+            }
+
+            const totalSeconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+
+            timer.innerText = `Оставшееся время сессии: ${minutes} мин ${seconds} сек`;
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [time]);
+
     if (loading) {
         return (
             <Layout>
@@ -114,7 +144,9 @@ export default function AdminProjects() {
                 <div className="col-start-4 col-end-10 h-full gap-[.75rem]">
                     <div className="gap-[0.625rem] bg-(--color-white-gray) flex items-center justify-center rounded-[.625rem] px-[.875rem] py-[.5rem] mb-[1rem]">
                         <div className="h-[1.25rem] aspect-square rounded-full bg-(--color-gray-plus-50)"></div>
-                        <span className="link">Ожидают подтверждения</span>
+                        <span id="timer" className="link">
+                            Оставшееся время сессии:
+                        </span>
                     </div>
 
                     {submissions.map((submission) => (
