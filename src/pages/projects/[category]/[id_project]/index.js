@@ -17,7 +17,7 @@ function getCategoryName(url) {
 
 function calculateProgress(tasks) {
     if (!tasks || tasks.length === 0) return 0;
-    const completed = tasks.filter((task) => task.status === "SUCCESS").length;
+    const completed = tasks.filter((task) => task.status === "ACCEPTED").length;
     const total = tasks.length;
     return Math.round((completed / total) * 100);
 }
@@ -104,6 +104,7 @@ const AICourses = () => {
     }
 
     const project = data.data;
+    const progress = calculateProgress(project.tasks);
 
     // === 3. Основная страница ===
     return (
@@ -120,7 +121,7 @@ const AICourses = () => {
                 <div className="flex flex-col items-start gap-5 w-full">
                     <h4 className="w-full">{project.title}</h4>
                     <div className="flex items-start w-full bg-(--color-blue-noise) rounded-full">
-                        <div className="py-1.5 rounded-full transition-all duration-500 w-1/2 bg-(--color-blue)" />
+                        <div className="py-1.5 rounded-full transition-all duration-500 bg-(--color-blue)" style={{ width: `${progress}%` }} />
                     </div>
                 </div>
 
@@ -156,7 +157,7 @@ const AICourses = () => {
                         <div key={task.id} className="flex justify-between items-center p-5 gap-8 w-full border border-(--color-gray-plus) rounded-2xl">
                             <h5>{task.title}</h5>
 
-                            {task.status === "SUCCESS" ? (
+                            {task.status === "ACCEPTED" ? (
                                 <div className="flex justify-center items-center px-4 py-2 bg-(--color-green-noise) rounded-full">
                                     <p className="text-(--color-green-peace)">Выполнено</p>
                                 </div>

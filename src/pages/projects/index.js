@@ -33,9 +33,13 @@ export default function Projects() {
         if (!loading && !error && projects) {
             const enhanced = staticCategories.map((cat) => {
                 const catProjects = projects.filter((p) => p.star_category === cat.url);
-                const star_index = catProjects.reduce((sum, p) => sum + p.star_index, 0);
-                const completedProjects = catProjects.filter((p) => p.tasks.length > 0 && p.tasks.every((t) => t.status === "SUCCESS"));
+
+                const completedProjects = catProjects.filter((p) => p.tasks.length > 0 && p.tasks.every((t) => t.status === "ACCEPTED"));
+
+                const star_index = completedProjects.reduce((sum, p) => sum + p.star_index, 0);
+
                 const level_number = completedProjects.length > 0 ? Math.max(...completedProjects.map((p) => p.level_number)) : 0;
+
                 return { ...cat, star_index, level_number };
             });
             setProcessedCategories(enhanced);
