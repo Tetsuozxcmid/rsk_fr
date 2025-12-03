@@ -1,33 +1,28 @@
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { getCookie } from "@/utils/cookies";
+import { useProjects } from "@/hooks/fetchProjects";
+import { categories as staticCategories } from "@/pages/projects/_categories";
 
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
-
 import Button from "@/components/ui/Button";
 
 import Index from "@/assets/general/index.svg";
 import Notify from "@/assets/general/notify.svg";
-import { useEffect, useState } from "react";
-import { useProfile } from "@/hooks/fetchProfile";
-import { useProjects } from "@/hooks/fetchProjects";
-import { categories as staticCategories } from "@/pages/projects/_categories";
 
 export default function Projects() {
-    // Выключено для теста
-    // const { data, fetchProfile } = useProfile();
-    const [dataProfile, fetchProfile] = useState({ Organization: 2 });
+    // Получаем организацию из cookies
+    const organization = getCookie("organization");
     const { loading, categories: projects, error, fetchProjects } = useProjects();
-
-    // Выключено для теста
-    // useEffect(() => {
-    //     fetchProfile();
-    // }, [fetchProfile]);
-
     const [processedCategories, setProcessedCategories] = useState([]);
 
     useEffect(() => {
-        fetchProjects(dataProfile.Organization);
-    }, [dataProfile.Organization, fetchProjects]);
+        if (organization) {
+            fetchProjects(organization);
+        }
+    }, [organization, fetchProjects]);
 
     useEffect(() => {
         if (!loading && !error && projects) {
@@ -45,6 +40,34 @@ export default function Projects() {
             setProcessedCategories(enhanced);
         }
     }, [loading, error, projects]);
+
+    // Если организации нет в cookies
+    if (!organization) {
+        return (
+            <Layout>
+                <Header>
+                    <Header.Heading>Проекты</Header.Heading>
+                    <Button icon>
+                        <Notify />
+                    </Button>
+                </Header>
+                <div className="hero" style={{ placeItems: "center" }}>
+                    <div className="flex flex-col gap-[1rem] col-start-4 col-end-10">
+                        <h1 className="text-center">У вас нет организации</h1>
+                        <p className="text-center text-(--color-gray-black)">Для доступа к проектам необходимо указать организацию в настройках профиля</p>
+                        <div className="flex gap-[1rem] justify-center">
+                            <Link href="/profile">
+                                <Button>Перейти в профиль</Button>
+                            </Link>
+                            <Link href="/organizations">
+                                <Button>Перейти в организации</Button>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     if (loading) {
         return (

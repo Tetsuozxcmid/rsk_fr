@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 
+import { getCookie, setCookie, clearCookies } from "@/utils/cookies";
+import { useProfile } from "@/hooks/fetchProfile";
+
 const DownIcon = dynamic(() => import("@/assets/general/down.svg"));
 
 // Базовый массив навигационных ссылок
@@ -67,18 +70,24 @@ export function useNavLinks() {
     const router = useRouter();
     const [navLinks, setNavLinks] = useState(BASE_NAV_LINKS);
     const [isLoading, setIsLoading] = useState(true);
+    const { data: profileData, fetchProfile } = useProfile();
 
+    // Функция обновления навигации
+    const updateNavLinks = (role, learn, hasToken) => {
+        setNavLinks((prevLinks) =>
+            prevLinks.map((link) => {
+                const updatedLink = { ...link };
+                if (link.label === "Админ панель") {
+                    updatedLink.disable = role !== "moder";
+                }
+                return updatedLink;
+            })
+        );
+    };
+
+    // Проверка авторизации и роли
     useEffect(() => {
         const checkAuthAndRole = async () => {
-            // Утилита для получения куки
-            const getCookie = (name) => {
-                if (typeof document === "undefined") return null;
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop().split(";").shift();
-                return null;
-            };
-
             const userData = getCookie("userData");
             const existingRole = getCookie("role");
             const existingLearn = getCookie("learn");
@@ -102,76 +111,37 @@ export function useNavLinks() {
                 return;
             }
 
-            // Если токен есть, но роли или learn в куках нет - делаем запрос
-            try {
-                const response = await fetch("/api/profile/info", {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                });
-
-                if (!response.ok) {
-                    // если сессия устарела — чистим куки и редиректим
-                    if (response.status === 401 || response.status === 403) {
-                        clearCookies();
-                        router.push("/auth");
-                        return;
-                    }
-                    throw new Error("Failed to fetch profile");
-                }
-
-                const data = await response.json();
-                const role = data?.data?.Type;
-                const learn = data?.data?.learn === true; // Преобразуем в boolean
-
-                if (!role) {
-                    // если роль не пришла — тоже чистим и редиректим
-                    clearCookies();
-                    router.push("/auth");
-                    return;
-                }
-
-                // Сохраняем роль и learn в куки на 1 день
-                if (typeof document !== "undefined") {
-                    document.cookie = `role=${role}; max-age=86400; path=/`;
-                    document.cookie = `learn=${learn}; max-age=10800; path=/`;
-                }
-
-                updateNavLinks(role, learn, true);
-            } catch (err) {
-                console.error("Request error:", err);
-                clearCookies();
-                router.push("/auth");
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        const updateNavLinks = (role, learn, hasToken) => {
-            setNavLinks((prevLinks) =>
-                prevLinks.map((link) => {
-                    const updatedLink = { ...link };
-
-                    // Для админ панели проверяем роль
-                    if (link.label === "Админ панель") {
-                        updatedLink.disable = role !== "moder";
-                    }
-
-                    return updatedLink;
-                })
-            );
-        };
-
-        const clearCookies = () => {
-            if (typeof document !== "undefined") {
-                document.cookie = "userData=; max-age=0; path=/";
-                document.cookie = "role=; max-age=0; path=/";
-                document.cookie = "learn=; max-age=0; path=/";
-            }
+            // Если токен есть, но роли или learn в куках нет - делаем запрос через hook
+            await fetchProfile();
         };
 
         checkAuthAndRole();
-    }, [router]);
+    }, [fetchProfile]);
+
+    // Обработка данных профиля после загрузки
+    useEffect(() => {
+        if (!profileData) return;
+
+        const role = profileData?.Type;
+        const learn = profileData?.learn === true;
+        const organization = profileData?.Organization;
+
+        if (!role) {
+            clearCookies();
+            router.push("/auth");
+            return;
+        }
+
+        // Сохраняем данные в куки через централизованную функцию
+        setCookie("role", role);
+        setCookie("learn", learn);
+        if (organization) {
+            setCookie("organization", organization);
+        }
+
+        updateNavLinks(role, learn, true);
+        setIsLoading(false);
+    }, [profileData, router]);
 
     return { navLinks, isLoading };
 }
@@ -180,15 +150,7 @@ export function NavItem({ label, href, icon: Icon, submenu, isCollapsed, isHover
     const router = useRouter();
     const isSubmenuActive = submenu?.some((item) => router.pathname === item.href);
 
-    // Получаем данные из кук
-    const getCookie = (name) => {
-        if (typeof document === "undefined") return null;
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(";").shift();
-        return null;
-    };
-
+    // Получаем данные из кук через централизованную функцию
     const userData = getCookie("userData");
     const userLearn = getCookie("learn") === "true";
 
