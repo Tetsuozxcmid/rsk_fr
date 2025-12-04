@@ -1,5 +1,4 @@
 import { useRouter } from "next/router";
-import { teams } from "./_teams";
 import TeamNotFound from "./not-found";
 
 import Header from "@/components/layout/Header";

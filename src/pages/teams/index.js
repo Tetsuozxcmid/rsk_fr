@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { useState } from "react";
-import { teams } from "@/components/pages/teams/_teams";
 
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
