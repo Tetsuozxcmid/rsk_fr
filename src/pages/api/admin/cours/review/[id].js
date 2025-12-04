@@ -12,7 +12,7 @@ export default async function ProfileUpdateHandler(req, res) {
             return res.status(405).json({ success: false, error: "Method not allowed" });
         }
 
-        const response = await fetch(`https://api.rosdk.ru/learning/api/submissions/${id.id}/review`, {
+        const response = await fetch(`https://api.rosdk.ru/learning/api/moderator/${id.id}/review`, {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -23,6 +23,7 @@ export default async function ProfileUpdateHandler(req, res) {
         });
 
         const data = await response.json();
+        console.log(data);
 
         // Возвращаем клиенту
         return res.json({ success: true, data });

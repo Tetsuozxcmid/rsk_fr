@@ -1,31 +1,32 @@
 import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
+import Link from "next/link";
+
+import { getCookie } from "@/utils/cookies";
+import { useProjects } from "@/hooks/fetchProjects";
+import { categories as staticCategories } from "../_categories";
 
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
-import { useProfile } from "@/hooks/fetchProfile";
-import { useProjects } from "@/hooks/fetchProjects";
-
-import { categories as staticCategories } from "../_categories";
-
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 
 import Index from "@/assets/general/index.svg";
 import Notify from "@/assets/general/notify.svg";
-import Link from "next/link";
 
 export default function CategoryPage() {
     const router = useRouter();
-    const [dataProfile, fetchProfile] = useState({ Organization: 2 });
+    const organization = getCookie("organization");
     const { loading, categories: projects, error, fetchProjects } = useProjects();
     const { category: url } = router.query;
     const [selectedLevel, setSelectedLevel] = useState(1);
     const [maxLevel, setMaxLevel] = useState(1);
 
     useEffect(() => {
-        fetchProjects(dataProfile.Organization);
-    }, [dataProfile.Organization, fetchProjects]);
+        if (organization) {
+            fetchProjects(organization);
+        }
+    }, [organization, fetchProjects]);
 
     useEffect(() => {
         if (projects.length > 0) {
@@ -50,6 +51,34 @@ export default function CategoryPage() {
                 <div>Загрузка...</div>
             </Layout>
         );
+
+    // Если организации нет в cookies
+    if (!organization) {
+        return (
+            <Layout>
+                <Header>
+                    <Header.Heading>Проекты</Header.Heading>
+                    <Button icon>
+                        <Notify />
+                    </Button>
+                </Header>
+                <div className="hero" style={{ placeItems: "center" }}>
+                    <div className="flex flex-col gap-[1rem] col-start-4 col-end-10">
+                        <h1 className="text-center">У вас нет организации</h1>
+                        <p className="text-center text-(--color-gray-black)">Для доступа к проектам необходимо указать организацию в настройках профиля</p>
+                        <div className="flex gap-[1rem] justify-center">
+                            <Link href="/profile">
+                                <Button>Перейти в профиль</Button>
+                            </Link>
+                            <Link href="/organizations">
+                                <Button>Перейти в организации</Button>
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    }
 
     if (loading) {
         return (

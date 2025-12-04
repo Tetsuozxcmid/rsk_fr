@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
+import Link from "next/link";
+
+import { setCookie } from "@/utils/cookies";
+
 import Button from "@/components/ui/Button";
 import Header from "@/components/layout/Header";
-import Setts from "@/assets/general/setts.svg";
-import Notify from "@/assets/general/notify.svg";
 import Input from "@/components/ui/Input/Input";
 import Textarea from "@/components/ui/Textarea";
 import DropdownInput from "@/components/ui/Input/DropdownInput";
-import Link from "next/link";
+
+import Setts from "@/assets/general/setts.svg";
+import Notify from "@/assets/general/notify.svg";
 
 export default function SettingsPage({ goTo }) {
     const [userData, setUserData] = useState(null); // оригинальные данные
@@ -94,9 +98,14 @@ export default function SettingsPage({ goTo }) {
             const data = await response.json();
 
             if (response.ok) {
-                alert("Данные успешно обновлены");
-                setUserData((prev) => ({ ...prev, data: formData })); // обновляем оригинальные данные
+                setUserData((prev) => ({ ...prev, data: formData }));
                 setIsDirty(false);
+
+                // Если организация изменилась - обновляем в cookies
+                if (changes.Organization) {
+                    setCookie("organization", changes.Organization);
+                }
+
                 window.location.reload();
             } else {
                 alert("Ошибка: " + JSON.stringify(data));

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Header from "@/components/layout/Header";
+import Link from "next/link";
 
 import Button from "@/components/ui/Button";
 
@@ -12,36 +13,13 @@ import Notify from "@/assets/general/notify.svg";
 import SettsIcon from "@/assets/general/setts.svg";
 
 export default function TeamIndexPage({ goTo, teamData }) {
-    const [teamMembers, setTeamMembers] = useState([]);
     const [idUserTeam, setIdUserTeam] = useState(null);
 
     const team = teamData;
     const router = useRouter();
 
     useEffect(() => {
-        if (!team?.id) return;
-
-        const TeamMembers = async () => {
-            try {
-                const response = await fetch(`/api/teams/members/${team.id}`, {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include",
-                });
-
-                const data = await response.json();
-                console.log(data.data);
-                if (data.success) {
-                    setTeamMembers(data.data);
-                } else {
-                    console.error("Invalid orgList data:", data);
-                    setTeamMembers(null);
-                }
-            } catch (err) {
-                console.error("Request error:", err);
-                setTeamMembers(null);
-            }
-        };
+        if (!team?.team_info) return;
 
         const ApiIdUserTeam = async () => {
             try {
@@ -52,7 +30,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 });
 
                 const data = await response.json();
-                console.log(data);
+                console.log(data)
                 if (data.success) {
                     setIdUserTeam(data.data[0].team.id);
                 } else {
@@ -64,10 +42,8 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 setIdUserTeam(null);
             }
         };
-
-        TeamMembers();
         ApiIdUserTeam();
-    }, [team?.id]);
+    }, [team?.team_info.id]);
 
     if (!teamData) {
         return <p>Команда не найдена или загружается...</p>;
@@ -75,7 +51,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
 
     const JoinTeam = async () => {
         try {
-            const response = await fetch(`/api/teams/join/${team.id}`, {
+            const response = await fetch(`/api/teams/join/${team.team_info.id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -100,7 +76,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
 
     const LeaveTeam = async () => {
         try {
-            const response = await fetch(`/api/teams/leave/${team.id}`, {
+            const response = await fetch(`/api/teams/leave/${team.team_info.id}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -123,14 +99,14 @@ export default function TeamIndexPage({ goTo, teamData }) {
         }
     };
 
-    const leader = teamMembers.find((member) => member.is_leader);
+    const leader = team.members.find((member) => member.is_leader);
     const leaderName = leader ? `${(leader.name || "").trim()} ${(leader.surname || "").trim()}`.trim() || "Незаполнено" : "Незаполнено";
 
     return (
         <>
             <Header>
                 <Header.Heading>
-                    Команды <span className="text-(--color-gray-black)">/</span> {team.name}
+                    Команды <span className="text-(--color-gray-black)">/</span> {team.team_info.name}
                 </Header.Heading>
                 <Button icon onClick={() => goTo("settings")}>
                     <SettsIcon />
@@ -144,13 +120,13 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 <div className="grid col-span-12 grid-cols-12 gap-[1.25rem]">
                     <div className="gap-[1rem] bg-(--color-white-gray) col-span-12 h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                         <div className="h-[2rem] aspect-square rounded-full bg-(--color-blue-noise)"></div>
-                        <h6>{team.name}</h6>
+                        <h6>{team.team_info.name}</h6>
                     </div>
 
                     <div className="block-wrapper col-span-4 h-fit">
                         <div className="flex flex-col gap-[.5rem]">
                             <h6>Описание</h6>
-                            <p>{team.description ? team.description : "Незаполнено"}</p>
+                            <p>{team.team_info.description ? team.team_info.description : "Незаполнено"}</p>
                         </div>
                         <hr />
                         <div className="flex flex-col gap-[.5rem]">
@@ -163,14 +139,14 @@ export default function TeamIndexPage({ goTo, teamData }) {
                                 <Button
                                     onClick={JoinTeam}
                                     small
-                                    disabled={idUserTeam || idUserTeam === team.id} // если уже в этой команде, кнопка неактивна
+                                    disabled={idUserTeam || idUserTeam === team.team_info.id} // если уже в этой команде, кнопка неактивна
                                 >
                                     Вступить
                                 </Button>
                                 <Button
                                     onClick={LeaveTeam}
                                     small
-                                    disabled={!idUserTeam || idUserTeam !== team.id} // если нет команды или не в этой команде, кнопка неактивна
+                                    disabled={!idUserTeam || idUserTeam !== team.team_info.id} // если нет команды или не в этой команде, кнопка неактивна
                                 >
                                     Выйти
                                 </Button>
@@ -181,15 +157,15 @@ export default function TeamIndexPage({ goTo, teamData }) {
                     <div className="block-wrapper col-span-4 h-fit">
                         <div className="flex flex-col gap-[.5rem]">
                             <h6>Организация</h6>
-                            <div className="group cursor-pointer flex items-center justify-between w-full">
-                                <span className="flex-1 link">{team.organization_name ? team.organization_name : "Незаполнено"}</span>
+                            <Link href={"/organizations/" + team.team_info.organization_id} className="group cursor-pointer flex items-center justify-between w-full">
+                                <span className="flex-1 link">{team.team_info.organization_name ? team.team_info.organization_name : "Незаполнено"}</span>
                                 <LinkIcon className="text-(--color-gray-white) group-hover:text-(--color-black)" style={{ transition: "all .3s ease-in-out" }} />
-                            </div>
+                            </Link>
                         </div>
                         <hr />
                         <div className="flex flex-col gap-[.5rem]">
                             <h6>Регион</h6>
-                            <p>{team.region ? team.region : "Незаполнено"}</p>
+                            <p>{team.team_info.region ? team.team_info.region : "Незаполнено"}</p>
                         </div>
                     </div>
 
@@ -199,7 +175,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 <div className="block-wrapper gap-[1.25rem] col-span-12 h-fit">
                     <h5>Участники</h5>
                     <div className="grid grid-cols-2 gap-[.75rem]">
-                        {teamMembers.map((member, idx) => (
+                        {team.members.map((member, idx) => (
                             <div
                                 key={idx}
                                 className="group flex items-center p-[1rem] rounded-[1rem] gap-[.75rem] cursor-pointer

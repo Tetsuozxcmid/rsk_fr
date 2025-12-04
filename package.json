@@ -3,8 +3,8 @@
     "version": "0.1.0",
     "private": true,
     "scripts": {
-        "dev": "next dev",
-        "build": "next build",
+        "dev": "next dev --webpack",
+        "build": "next build --webpack",
         "start": "next start",
         "lint": "npx eslint .",
         "format": "prettier --write ."
@@ -12,12 +12,12 @@
     "dependencies": {
         "docx": "^9.5.1",
         "file-saver": "^2.0.5",
-        "framer-motion": "^12.23.24",
+        "framer-motion": "^12.23.25",
         "js-cookie": "^3.0.5",
-        "next": "^15.5.5",
+        "next": "^16.0.6",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
-        "react-hook-form": "^7.65.0",
+        "react-hook-form": "^7.67.0",
         "react-textarea-autosize": "^8.5.9",
         "uuid": "^13.0.0"
     },
@@ -26,8 +26,8 @@
         "@svgr/webpack": "^8.1.0",
         "@tailwindcss/postcss": "^4",
         "eslint": "^9",
-        "eslint-config-next": "15.5.5",
-        "prettier": "^3.6.2",
+        "eslint-config-next": "16.0.6",
+        "prettier": "^3.7.3",
         "tailwindcss": "^4"
     },
     "eslintIgnore": [

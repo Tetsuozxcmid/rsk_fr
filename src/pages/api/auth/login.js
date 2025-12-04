@@ -5,7 +5,7 @@ export default async function RegHandler(req, res) {
             headers: { "Content-Type": "application/json", accept: "application/json" },
             body: JSON.stringify({
                 password: req.body.password,
-                name: req.body.name,
+                login: req.body.login,
             }),
             cache: "no-store",
             credentials: "include",

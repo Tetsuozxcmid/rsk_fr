@@ -154,7 +154,8 @@ export default function OrganIndexPage() {
                                 role="button">
                                 <div className="flex justify-between items-center">
                                     <div className="flex gap-[.75rem] items-center">
-                                        <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div>
+                                        {/* Пока убмраем логотип - а именно кружочек */}
+                                        {/* <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div> */}
                                         <span className="link big group-hover:text-(--color-blue)">{organ.name}</span>
                                     </div>
                                     <span className="link big text-(--color-gray-black)">#{idx + 1 + currentPage * limit}</span>

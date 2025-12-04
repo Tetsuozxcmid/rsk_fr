@@ -53,7 +53,6 @@ export default function TeamPage() {
                 });
 
                 const data = await response.json();
-                console.log(data);
                 if (data.success === true) {
                     setTeamData(data.data);
                 } else {

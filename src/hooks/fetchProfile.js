@@ -1,17 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { clearCookies } from "@/utils/cookies";
 
 export function useProfile() {
     const [data, setData] = useState("");
     const router = useRouter();
-
-    const clearCookies = useCallback(() => {
-        document.cookie.split(";").forEach((cookie) => {
-            const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
-        });
-    }, []);
 
     const fetchProfile = useCallback(async () => {
         try {
@@ -36,7 +29,7 @@ export function useProfile() {
         } catch (err) {
             console.error("Request error:", err);
         }
-    }, [router, clearCookies]); // зависимости
+    }, [router]);
 
     return { data, fetchProfile };
 }

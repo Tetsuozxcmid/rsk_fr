@@ -75,7 +75,7 @@ export default function Cours() {
                                             </span>
                                             <h6>Урок {lesson.id}</h6>
                                             <p className="w-[60%] text-center">{lesson.lesson_name}</p>
-                                            <Button onClick={() => router.push(`/cours/${lesson.lesson_number}`)}>К уроку</Button>
+                                            <Button onClick={() => router.push(`/cours/${lesson.id}`)}>К уроку</Button>
                                         </div>
                                     );
                                 }
@@ -103,7 +103,7 @@ export default function Cours() {
                                             </span>
                                             <h6>Урок {lesson.id}</h6>
                                             <p className="w-[60%] text-center">{lesson.lesson_name}</p>
-                                            <Button onClick={() => router.push(`/cours/${lesson.lesson_number}`)}>К уроку</Button>
+                                            <Button onClick={() => router.push(`/cours/${lesson.id}`)}>К уроку</Button>
                                         </div>
                                     );
                                 }

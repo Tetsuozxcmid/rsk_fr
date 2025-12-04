@@ -327,6 +327,7 @@ hr {
     }
 
     .dropdown-wrapper {
+        z-index: 3;
         outline: solid 1.5px var(--color-gray-plus);
 
         .dropdown {

@@ -15,26 +15,29 @@ export default function Task() {
     const [lesson, setLesson] = useState(null);
     const [loading, setLoading] = useState(true);
     const [fileUrl, setFileUrl] = useState("");
-    const [submitted, setSubmitted] = useState(false);
+    const [submitted, setSubmitted] = useState("false");
 
     useEffect(() => {
         async function fetchData() {
             try {
-                const res = await fetch("/api/cours", {
+                const res = await fetch(`/api/cours/${task}`, {
                     method: "GET",
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
                 if (!res.ok) throw new Error("Ошибка загрузки");
 
-                const json = await res.json();
-                if (!json.success) throw new Error("API вернуло ошибку");
-
-                const found = json.data.find((l) => Number(l.lesson_number) === Number(task));
-                if (found.is_completed == "на рассмотрении" || found.is_completed == "одобрен") {
-                    setSubmitted(true);
+                const data = await res.json();
+                switch (data.data.is_completed) {
+                    case "process":
+                        setSubmitted("process");
+                        break;
+                    case "true":
+                        setSubmitted("true");
+                    default:
+                        break;
                 }
-                setLesson(found || null);
+                setLesson(data.data || null);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -56,8 +59,7 @@ export default function Task() {
             });
 
             if (res.ok) {
-                setSubmitted(true);
-                window.location.reload(); // Перезагрузка страницы после успешной отправки
+                setSubmitted("process");
             }
         } catch (err) {
             console.error("Ошибка отправки:", err);
@@ -120,20 +122,20 @@ export default function Task() {
                         <h3>{lesson.lesson_name}</h3>
                         <p>{lesson.description}</p>
 
-                        {submitted ? (
+                        {submitted == "process" ? (
                             <a className="bg-(--color-gray-plus-50) gap-[0.75rem] p-[0.75rem] rounded-[0.75rem] text-(--color-gray-black) flex flex-row align-center">
                                 <TimeBefore />
                                 Ожидание проверки
                             </a>
+                        ) : submitted == "false" ? (
+                            <div className="flex flex-row gap-[0.75rem] w-full">
+                                <Input type="text" placeholder="Введите ссылку на файл" className="w-full" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
+                                <Button className="!w-fit" inverted disabled={!fileUrl} onClick={handleSubmit}>
+                                    Отправить
+                                </Button>
+                            </div>
                         ) : (
-                            <>
-                                <div className="flex flex-row gap-[0.75rem] w-full">
-                                    <Input type="text" placeholder="Введите ссылку на файл" className="w-full" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
-                                    <Button className="!w-fit" inverted disabled={!fileUrl} onClick={handleSubmit}>
-                                        Отправить
-                                    </Button>
-                                </div>
-                            </>
+                            <a className="bg-(--color-green-plus-50) gap-[0.75rem] p-[0.75rem] rounded-[0.75rem] text-(--color-green-minus-50) flex flex-row align-center">Успешно выполнено</a>
                         )}
                     </div>
                 </div>

@@ -57,9 +57,24 @@ export default function AuthPage() {
 
     const handleForgotPassword = () => setStep(1);
 
+    // Функция для переключения на вход
+    const switchToLogin = () => {
+        setAuthType("login");
+        setStep(0);
+    };
+
     const stages = {
-        register: [<RegStage0 key="reg-0" onContinue={handleNext} pageVariants={pageVariants} custom={getDirection()} />, <RegStage1 key="reg-1" pageVariants={pageVariants} custom={getDirection()} />],
+        register: [
+            <RegStage0 key="reg-0" onContinue={handleNext} pageVariants={pageVariants} custom={getDirection()} />,
+            <RegStage1
+                key="reg-1"
+                pageVariants={pageVariants}
+                custom={getDirection()}
+                onSwitchToLogin={switchToLogin} // Передаем функцию переключения
+            />,
+        ],
         login: [
+            // ДОБАВЛЕНО: определение stages для login
             <LoginStage0 key="login-0" pageVariants={pageVariants} custom={getDirection()} onForgotPassword={handleForgotPassword} />,
             <LoginStage1 key="login-1" onRecover={handleSave} onBack={() => setStep(0)} pageVariants={pageVariants} custom={getDirection()} />,
         ],
