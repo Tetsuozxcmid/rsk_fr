@@ -20,10 +20,29 @@ export default function CategoryPage() {
     const [dataProfile, fetchProfile] = useState({ Organization: 2 });
     const { loading, categories: projects, error, fetchProjects } = useProjects();
     const { category: url } = router.query;
+    const [selectedLevel, setSelectedLevel] = useState(1);
+    const [maxLevel, setMaxLevel] = useState(1);
 
     useEffect(() => {
         fetchProjects(dataProfile.Organization);
     }, [dataProfile.Organization, fetchProjects]);
+
+    useEffect(() => {
+        if (projects.length > 0) {
+            const maxLvl = Math.max(...projects.map(p => p.level_number || 1));
+            setMaxLevel(maxLvl);
+            
+            
+            const projectsInCat = projects.filter(p => p.star_category === url);
+            const incompleteProject = projectsInCat.find(p => 
+                !p.tasks.every(t => t.status === "ACCEPTED")
+            );
+            
+            if (incompleteProject) {
+                setSelectedLevel(incompleteProject.level_number || 1);
+            }
+        }
+    }, [projects, url]);
 
     if (!router.isReady || !url)
         return (
@@ -84,7 +103,18 @@ export default function CategoryPage() {
         );
     }
 
-    const projectsInCategory = projects.filter((p) => p.star_category === url);
+    const projectsInCategory = projects.filter((p) => 
+        p.star_category === url && p.level_number === selectedLevel
+    );
+    
+    
+    const isLevelCompleted = (level) => {
+        const levelProjects = projects.filter(p => 
+            p.star_category === url && p.level_number === level
+        );
+        return levelProjects.length > 0 && 
+               levelProjects.every(p => p.tasks.every(t => t.status === "ACCEPTED"));
+    };
 
     if (projectsInCategory.length === 0) {
         return (
@@ -149,6 +179,26 @@ export default function CategoryPage() {
                             <div className="z-10">Мотивационный текст :)</div>
                         </Card.Footer>
                     </Card>
+                </div>
+
+                
+                <div className="col-span-12 flex gap-[0.5rem] mb-[1rem]">
+                    {Array.from({length: maxLevel}, (_, i) => i + 1).map(level => {
+                        const canAccess = level === 1 || isLevelCompleted(level - 1);
+                        return (
+                            <Button 
+                                key={level}
+                                onClick={() => canAccess && setSelectedLevel(level)}
+                                className={`${
+                                    selectedLevel === level ? "blue" : 
+                                    canAccess ? "inverted" : "inverted"
+                                } ${!canAccess ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={!canAccess}
+                            >
+                                Уровень {level}
+                            </Button>
+                        );
+                    })}
                 </div>
 
                 <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit">
