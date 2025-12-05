@@ -5,23 +5,21 @@ export default async function RegHandler(req, res) {
             return res.status(401).json({ success: false, error: "No token provided" });
         }
 
-        const response = await fetch("https://api.rosdk.ru/teams/teams/register", {
-            method: "POST",
+        const bodyData = req.body;
+        bodyData.direction = "Наука";
+
+        const response = await fetch(`https://api.rosdk.ru/teams/teams/update_team_data/${req.query.id}`, {
+            method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",
             },
-            body: JSON.stringify({
-                name: req.body.name.toString(),
-                direction: "Другое",
-                city: "city",
-                region: req.body.region.toString(),
-                organization_name: req.body.organization_name.toString(),
-            }),
+            body: JSON.stringify(bodyData),
             cache: "no-store",
         });
 
         const data = await response.json();
+        console.log(data);
 
         if (!response.ok) {
             return res.json({ success: false, data });

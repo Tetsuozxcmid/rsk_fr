@@ -14,6 +14,7 @@ import SettsIcon from "@/assets/general/setts.svg";
 
 export default function TeamIndexPage({ goTo, teamData }) {
     const [idUserTeam, setIdUserTeam] = useState(null);
+    const [Lider, setLider] = useState(null);
 
     const team = teamData;
     const router = useRouter();
@@ -30,9 +31,9 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 });
 
                 const data = await response.json();
-                console.log(data)
                 if (data.success) {
                     setIdUserTeam(data.data[0].team.id);
+                    setLider(data.data[0].is_leader);
                 } else {
                     console.error("Invalid orgList data:", data);
                     setIdUserTeam(null);
@@ -88,8 +89,8 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 router.refresh();
                 return true;
             } else {
-                alert("Произошла ошибка: ", data);
-                console.error("Join team error:", data);
+                alert("Произошла ошибка: ", data.error);
+                console.error("Join team error:", data.error);
                 return false;
             }
         } catch (err) {
@@ -108,9 +109,11 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 <Header.Heading>
                     Команды <span className="text-(--color-gray-black)">/</span> {team.team_info.name}
                 </Header.Heading>
-                <Button icon onClick={() => goTo("settings")}>
-                    <SettsIcon />
-                </Button>
+                {idUserTeam === team.team_info.id && Lider && (
+                    <Button icon onClick={() => goTo("settings")}>
+                        <SettsIcon />
+                    </Button>
+                )}
                 <Button icon>
                     <Notify />
                 </Button>
