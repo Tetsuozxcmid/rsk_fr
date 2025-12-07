@@ -254,8 +254,8 @@
         "photo": "35.png"
     },
     {
-        "file": "36.pdf",
-        "instruction": "",
+        "file": "",
+        "instruction": "36.pdf",
         "toolLink1": "https://app.pixverse.ai/",
         "toolName1": "Pixverse",
         "photo": "36.png"
@@ -1317,13 +1317,13 @@
         },
         {
             "file": "217.png",
-            "instruction": "217.png",
+            "instruction": "217.pdf",
             "toolLink1": "https://lmarena.ai//",
             "toolName1": "LMArena"
         },
         {
             "file": "218.png",
-            "instruction": "218.png",
+            "instruction": "218.pdf",
             "toolLink1": "https://lmarena.ai/",
             "toolName1": "LMArena"
         },
