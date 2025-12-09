@@ -254,7 +254,7 @@
         "photo": "35.png"
     },
     {
-        "file": "36.pdf",
+        "file": "",
         "instruction": "36.pdf",
         "toolLink1": "https://app.pixverse.ai/",
         "toolName1": "Pixverse",
@@ -1306,7 +1306,7 @@
         {
             "file": "",
             "instruction": "215.pdf",
-            "toolLink1": "https://www.napkin.io/",
+            "toolLink1": "https://www.napkin.ai/",
             "toolName1": "Napkin"
         },
         {
@@ -1317,20 +1317,20 @@
         },
         {
             "file": "217.png",
-            "instruction": "217.png",
+            "instruction": "217.pdf",
             "toolLink1": "https://lmarena.ai//",
             "toolName1": "LMArena"
         },
         {
             "file": "218.png",
-            "instruction": "218.png",
+            "instruction": "218.pdf",
             "toolLink1": "https://lmarena.ai/",
             "toolName1": "LMArena"
         },
         {
             "file": "",
             "instruction": "219.pdf",
-            "toolLink1": "https://www.napkin.io/",
+            "toolLink1": "https://lmarena.ai/",
             "toolName1": "LMArena"
         },
         {
@@ -1420,7 +1420,7 @@
         {
             "file": "233.mp4",
             "instruction": "233.pdf",
-            "toolLink1": "https://console.anyscale.com/playground/any2text",
+            "toolLink1": "https://any2text.ru/",
             "toolName1": "Any2text"
         },
         {
@@ -1446,7 +1446,7 @@
         {
             "file": "237.wav",
             "instruction": "237.pdf",
-            "toolLink1": "https://console.anyscale.com/playground/any2text",
+            "toolLink1": "https://any2text.ru/",
             "toolName1": "Any2text"
         },
         {
@@ -1510,9 +1510,9 @@
         {
             "file": "247.pdf",
             "instruction": "247.pdf",
-            "toolLink1": "https://www.napkin.io/",
-            "toolName1": "1: Napkin",
-            "toolLink2": "https://www.napkin.io/",
+            "toolLink1": "https://www.perplexity.ai/",
+            "toolName1": "1: Perplexity",
+            "toolLink2": "https://www.napkin.ai/",
             "toolName2": "2: Napkin"
         },
         {
@@ -1683,7 +1683,7 @@
         },
         {
             "file": "280.pdf",
-            "toolLink1": "https://www.napkin.io/",
+            "toolLink1": "https://www.napkin.ai/",
             "toolName1": "Napkin"
         },
         {
@@ -1887,8 +1887,8 @@
 {
 "file": "",
 "instruction": "315.pdf",
-"toolLink1": "https://lmarena.ai/",
-"toolName1": "LMArena"
+"toolLink1": "https://t.me/gigachat_bot",
+"toolName1": "GigaChat"
 },
 {
 "file": "316.pdf",
@@ -1908,8 +1908,8 @@
 {
 "file": "",
 "instruction": "318.pdf",
-"toolLink1": "https://lmarena.ai/",
-"toolName1": "LMArena"
+"toolLink1": "https://t.me/gigachat_bot",
+"toolName1": "GigaChat"
 },
 {
 "file": "319.png",
@@ -2164,10 +2164,8 @@
 },
 {
 "file": "355.pdf",
-"toolLink1": "https://www.perplexity.ai/",
-"toolName1": "1: Perplexity",
-"toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-"toolName2": "2: Gamma",
+"toolLink1": "https://t.me/prezaprobot",
+"toolName1": "Prezapro",
 "sourceLink": "https://m.asninfo.ru/news/113988-v-2024-godu-peterburg-poraduyet-otkrytiyem-36-novykh-shkol-i-38-detskikh-sadov"
 },
 {
@@ -2230,8 +2228,8 @@
 },
 {
 "file": "",
-"toolLink1": "https://lovable.dev/",
-"toolName1": "Lovable",
+"toolLink1": "https://www.perplexity.ai/",
+"toolName1": "Perplexity",
 "sourceLink": "http://newhq.b-edu.ru/deyatelnost/snizhenie-byurokraticheskoj-nagruzki/"
 },
 {

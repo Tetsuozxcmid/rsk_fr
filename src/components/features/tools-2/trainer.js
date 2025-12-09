@@ -339,8 +339,8 @@ const FirstQuestionnairePopup = memo(function FirstQuestionnairePopup({ onClose,
     const toolsList = [
         { category: "Текст", tools: ["ChatGPT", "YandexGPT", "AiStudio", "GigaChat", "Claude", "DeepSeek"] },
         { category: "Аудио", tools: ["Suno", "ElevenLabs", "AiStudio (speech generation)"] },
-        { category: "Визуал Статика", tools: ["Midjourney", "Kandinsky", "Recraft", "Leonardo.Ai", "AiStudio (Imagen 4)"] },
-        { category: "Визуал Динамика", tools: ["PixelVerse", "Pictory AI", "KlingAi", "AiStudio (Veo)"] },
+        { category: "Изображение", tools: ["Midjourney", "Kandinsky", "Recraft", "Leonardo.Ai", "AiStudio (Imagen 4)"] },
+        { category: "Видео", tools: ["PixelVerse", "Pictory AI", "KlingAi", "AiStudio (Veo)"] },
         { category: "Данные", tools: ["Napkin"] },
         { category: "Интерактив", tools: ["Websim", "Genspark", "Lovable"] },
     ];

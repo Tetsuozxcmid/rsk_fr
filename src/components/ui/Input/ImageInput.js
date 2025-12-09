@@ -39,9 +39,9 @@ export default function ImageInput({ value: controlledValue, onChange, onImageCh
     return (
         <>
             <input type="file" ref={fileRef} accept={accept} onChange={handleImageChange} className="hidden" id={`image-upload-${name}`} {...props} />
-            <label htmlFor={`image-upload-${name}`} className="cursor-pointer w-full block">
+            <label htmlFor={`image-upload-${name}`} className="cursor-pointer w-full block aspect-square">
                 {preview ? (
-                    <div className="relative w-full">
+                    <div className="relative w-full h-full">
                         <Image src={preview} alt="Превью изображения" className="object-contain" width={100} height={100} />
                         <div
                             onClick={(e) => {

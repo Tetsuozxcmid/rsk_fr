@@ -295,7 +295,6 @@ meter {
 .image-upload-wrapper {
     gap: 0.625rem;
     display: flex;
-    height: 12.5rem;
     overflow: hidden;
     padding: 0.75rem;
     position: relative;

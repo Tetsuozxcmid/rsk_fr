@@ -13,14 +13,16 @@ export default async function LeaveTeam(req, res) {
             },
         });
 
+        console.log(response_info);
+
         if (!response_info.ok) {
             return res.status(response_info.status).json({
                 success: false,
-                error: "Failed to fetch profile",
+                error: `Failed to fetch profile: ${response_info.statusText}`,
             });
         }
 
-        return res.json({ success: true });
+        return res.json({ success: true, error: response_info.statusText });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
     }
