@@ -7,7 +7,7 @@ export default function Switcher({ big, small, className = "", children, value, 
         React.isValidElement(child)
             ? cloneElement(child, {
                   className: `${value === (child.props.value ?? child.key) ? "active" : ""} ${child.props.className ?? ""}`,
-                  onClick: child.props.disabled ? undefined : child.props.onClick ? child.props.onClick : () => onChange?.(child.props.value ?? child.key),
+                  onClick: child.props.disabled ? (e) => e.preventDefault() : child.props.onClick ? child.props.onClick : () => onChange?.(child.props.value ?? child.key),
               })
             : child
     );
@@ -17,7 +17,14 @@ export default function Switcher({ big, small, className = "", children, value, 
 
 Switcher.Option = function Option({ children, value, className = "", disabled, onClick, ...props }) {
     return (
-        <span value={value} className={`link option ${className} ${disabled ? "disabled" : ""}`} onClick={disabled ? undefined : onClick} aria-disabled={disabled} {...props}>
+        <span 
+            value={value} 
+            className={`link option ${className} ${disabled ? "disabled" : ""}`} 
+            onClick={disabled ? (e) => { e.preventDefault(); e.stopPropagation(); } : onClick} 
+            aria-disabled={disabled}
+            style={disabled ? { pointerEvents: 'none', opacity: 0.5, cursor: 'not-allowed' } : {}}
+            {...props}
+        >
             {children}
         </span>
     );
