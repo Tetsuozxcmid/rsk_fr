@@ -40,11 +40,11 @@ export const STATIC_MAYAK_DATA = {
       },
       {
         "key": "visual-static",
-        "label": "Статика"
+        "label": "Изображение"
       },
       {
         "key": "visual-dynamic",
-        "label": "Динамика"
+        "label": "Видео"
       },
       {
         "key": "interactive",

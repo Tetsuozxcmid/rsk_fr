@@ -310,8 +310,8 @@ export default function TrainerPage({ goTo }) {
     const defaultTypes = [
         { key: "text", label: "Текст" },
         { key: "audio", label: "Аудио" },
-        { key: "visual-static", label: "Статика" },
-        { key: "visual-dynamic", label: "Динамика" },
+        { key: "visual-static", label: "Изображение" },
+        { key: "visual-dynamic", label: "Видео" },
         { key: "interactive", label: "Интерактив" },
         { key: "data", label: "Данные" },
     ];
