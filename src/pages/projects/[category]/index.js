@@ -187,35 +187,35 @@ export default function CategoryPage() {
                 </Button>
             </Header>
             <div className="hero" style={{ gridTemplateRows: "max-content" }}>
-                <div className="col-span-12 pl-[1.5rem] pb-[0.5rem]">
-                    <Switcher 
-                        value={selectedLevel} 
-                        onChange={(level) => {
-                            const canAccess = level === 1 || isLevelCompleted(level - 1);
-                            if (canAccess) setSelectedLevel(level);
-                        }} 
-                        className="flex flex-row justify-center items-center p-[0.25rem] gap-[0.25rem] bg-(--color-gray-plus-50) rounded-[0.625rem] w-fit"
-                    >
-                        {Array.from({length: 5}, (_, i) => i + 1).map(level => {
-                            const canAccess = level <= selectedLevel + 1; // временно: можно только текущий и следующий
-                            return (
-                                <Switcher.Option 
-                                    key={level}
-                                    value={level}
-                                    disabled={!canAccess}
-                                    className="whitespace-nowrap"
-                                >
-                                    Уровень&nbsp;{level}
-                                </Switcher.Option>
-                            );
-                        })}
-                    </Switcher>
-                </div>
-                <div className="col-span-12 flex items-start justify-between pl-[1.5rem]">
-                    <hgroup>
-                        <h3>{staticCategory.name}</h3>
-                        <p className="text-[var(--color-gray-black)]">{staticCategory.desc}</p>
-                    </hgroup>
+                <div className="col-span-12 flex items-start justify-between pl-[1.5rem] mb-[2.5rem]">
+                    <div className="flex flex-col gap-[0.5rem] py-[1.5rem]">
+                        <Switcher 
+                            value={selectedLevel} 
+                            onChange={(level) => {
+                                const canAccess = level === 1 || isLevelCompleted(level - 1);
+                                if (canAccess) setSelectedLevel(level);
+                            }} 
+                            className="flex flex-row justify-center items-center p-[0.25rem] gap-[0.25rem] bg-(--color-gray-plus-50) rounded-[0.625rem] w-fit"
+                        >
+                            {Array.from({length: 5}, (_, i) => i + 1).map(level => {
+                                const canAccess = level === 1;
+                                return (
+                                    <Switcher.Option 
+                                        key={level}
+                                        value={level}
+                                        disabled={!canAccess}
+                                        className={`whitespace-nowrap ${!canAccess ? 'text-[var(--color-gray-white)] cursor-not-allowed pointer-events-none opacity-50' : ''}`}
+                                    >
+                                        Уровень&nbsp;{level}
+                                    </Switcher.Option>
+                                );
+                            })}
+                        </Switcher>
+                        <hgroup>
+                            <h3>{staticCategory.name}</h3>
+                            <p className="text-[var(--color-gray-black)]">{staticCategory.desc}</p>
+                        </hgroup>
+                    </div>
                     <Card>
                         <Card.Heading>
                             <h5>
