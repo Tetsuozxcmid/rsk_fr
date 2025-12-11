@@ -176,7 +176,7 @@ export default function SettingsPage({ goTo }) {
     const handleAdminLogin = async (e) => {
         e.preventDefault();
         // !!! ВАЖНО: Замените 'mayak-power-2024' на свой надежный пароль !!!
-        const CORRECT_ADMIN_PASSWORD = "12345";
+        const CORRECT_ADMIN_PASSWORD = "a12345";
 
         if (adminPassword === CORRECT_ADMIN_PASSWORD) {
             // Устанавливаем "валидный" токен и пользователя в cookie,
@@ -224,7 +224,7 @@ export default function SettingsPage({ goTo }) {
                                 validateToken(value);
 
                                 // Наша новая логика
-                                if (value.trim().toLowerCase() === "12345") {
+                                if (value.trim().toLowerCase() === "fffff") {
                                     setShowAdminLogin(true);
                                 } else {
                                     setShowAdminLogin(false);
