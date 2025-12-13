@@ -188,7 +188,7 @@ export default function CategoryPage() {
             </Header>
             <div className="hero" style={{ gridTemplateRows: "max-content" }}>
                 <div className="col-span-12 flex items-start justify-between pl-[1.5rem] mb-[2.5rem]">
-                    <div className="flex flex-col gap-[0.5rem] py-[1.5rem]">
+                    <div className="flex flex-col gap-[0.5rem] pb-[1.5rem]">
                         <Switcher 
                             value={selectedLevel} 
                             onChange={(level) => {
