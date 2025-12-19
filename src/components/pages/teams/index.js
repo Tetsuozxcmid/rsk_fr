@@ -104,8 +104,11 @@ export default function TeamIndexPage({ goTo, teamData }) {
     const leaderName = leader ? `${(leader.name || "").trim()} ${(leader.surname || "").trim()}`.trim() || "Незаполнено" : "Незаполнено";
 
     const DeleteTeam = async () => {
+        console.log("Frontend Log: Attempting to delete team with ID:", team.team_info.id);
         try {
-            const response = await fetch(`/api/teams/delete_team/${team.team_info.id}`, {
+            const apiUrl = `/api/teams/delete_team/${team.team_info.id}`;
+            console.log("Frontend Log: Calling internal API URL:", apiUrl);
+            const response = await fetch(apiUrl, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -114,21 +117,40 @@ export default function TeamIndexPage({ goTo, teamData }) {
             const data = await response.json();
             if (data.success) {
                 alert("Команда успешно удалена");
-                router.push("/teams");
+                router.push("/teams"); // Перенаправление на страницу команд после успешного удаления
                 return true;
             } else {
-                alert(`Произошла ошибка: ${data.error || "Неизвестная ошибка"}`);
-                console.error("Delete team error:", data.error);
+                console.error("Frontend Log: Error response from internal API:", data);
+                alert(`Произошла ошибка: ${data.error || data.message || "Неизвестная ошибка"}`);
                 return false;
             }
-        } catch (err) {
-            alert(`Произошла ошибка сети: ${err.message || err}`);
-            console.error("Request error:", err);
-            return false;
-        }
-    };
+        const deleteTeam = async () => {
+            try {
+                // ... логика удаления команды ...
+                const response = await fetch(`/api/teams/delete_team`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ team_id: team.team_info.id }),
+                });
 
-    return (
+                const data = await response.json();
+                if (response.ok) {
+                    alert("Команда успешно удалена!");
+                    router.push("/teams"); // Перенаправление на страницу команд после успешного удаления
+                    return true;
+                } else {
+                    console.error("Frontend Log: Error response from internal API:", data);
+                    alert(`Произошла ошибка: ${data.error || data.message || "Неизвестная ошибка"}`);
+                    return false;
+                }
+            } catch (err) {
+                alert(`Произошла ошибка сети: ${err.message || err}`);
+                console.error("Request error:", err);
+                return false;
+            }
+        }; // Закрытие функции deleteTeam
         <>
             <Header>
                 <Header.Heading>
@@ -136,7 +158,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 </Header.Heading>
                 <div className="flex items-center gap-[.75rem]">
                     {idUserTeam === team.team_info.id && Lider && (
-                        <Button small red className="inline-flex w-fit" onClick={DeleteTeam}>
+                        <Button red className={"w-fit! shadow-none!"} onClick={DeleteTeam}>
                             Удалить команду
                         </Button>
                     )}
