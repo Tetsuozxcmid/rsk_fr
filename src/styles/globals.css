@@ -21,6 +21,11 @@ body {
     box-sizing: border-box;
 }
 
+.hero-team-layout {
+    gap: 2.5rem;
+    grid-template-rows: max-content;
+}
+
 input {
     border: none;
     outline: none;

@@ -103,23 +103,54 @@ export default function TeamIndexPage({ goTo, teamData }) {
     const leader = team.members.find((member) => member.is_leader);
     const leaderName = leader ? `${(leader.name || "").trim()} ${(leader.surname || "").trim()}`.trim() || "Незаполнено" : "Незаполнено";
 
+    const DeleteTeam = async () => {
+        try {
+            const response = await fetch(`/api/teams/delete_team/${team.team_info.id}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                alert("Команда успешно удалена");
+                router.push("/teams");
+                return true;
+            } else {
+                alert(`Произошла ошибка: ${data.error || "Неизвестная ошибка"}`);
+                console.error("Delete team error:", data.error);
+                return false;
+            }
+        } catch (err) {
+            alert(`Произошла ошибка сети: ${err.message || err}`);
+            console.error("Request error:", err);
+            return false;
+        }
+    };
+
     return (
         <>
             <Header>
                 <Header.Heading>
                     Команды <span className="text-(--color-gray-black)">/</span> {team.team_info.name}
                 </Header.Heading>
-                {idUserTeam === team.team_info.id && Lider && (
-                    <Button icon onClick={() => goTo("settings")}>
-                        <SettsIcon />
+                <div className="flex items-center gap-[.75rem]">
+                    {idUserTeam === team.team_info.id && Lider && (
+                        <Button small red className="inline-flex w-fit" onClick={DeleteTeam}>
+                            Удалить команду
+                        </Button>
+                    )}
+                    {idUserTeam === team.team_info.id && Lider && (
+                        <Button icon onClick={() => goTo("settings")}>
+                            <SettsIcon />
+                        </Button>
+                    )}
+                    <Button icon>
+                        <Notify />
                     </Button>
-                )}
-                <Button icon>
-                    <Notify />
-                </Button>
-            </Header>
+                </div>            </Header>
 
-            <div className="hero" style={{ gap: "2.5rem", gridTemplateRows: "max-content" }}>
+            <div className="hero hero-team-layout">
                 <div className="grid col-span-12 grid-cols-12 gap-[1.25rem]">
                     <div className="gap-[1rem] bg-(--color-white-gray) col-span-12 h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                         <div className="h-[2rem] aspect-square rounded-full bg-(--color-blue-noise)"></div>
@@ -142,18 +173,18 @@ export default function TeamIndexPage({ goTo, teamData }) {
                                 <Button
                                     onClick={JoinTeam}
                                     small
-                                    disabled={idUserTeam || idUserTeam === team.team_info.id} // если уже в этой команде, кнопка неактивна
+                                    disabled={idUserTeam || idUserTeam === team.team_info.id}
                                 >
                                     Вступить
                                 </Button>
                                 <Button
                                     onClick={LeaveTeam}
                                     small
-                                    disabled={!idUserTeam || idUserTeam !== team.team_info.id} // если нет команды или не в этой команде, кнопка неактивна
-                                >
-                                    Выйти
-                                </Button>
-                            </div>
+                                     disabled={!idUserTeam || idUserTeam !== team.team_info.id}
+                                 >
+                                     Выйти
+                                 </Button>
+                             </div>
                         </div>
                     </div>
 
