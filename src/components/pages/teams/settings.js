@@ -70,6 +70,8 @@ export default function TeamSettsPage({ goTo, teamData }) {
                 setOriginalData(formData);
                 setIsDirty(false);
                 alert("Изменения сохранены!");
+                router.reload();
+                router.push("/teams/my");
             } else {
                 alert("Ошибка: " + JSON.stringify(data));
             }

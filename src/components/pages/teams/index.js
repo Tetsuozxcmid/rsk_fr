@@ -124,33 +124,15 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 alert(`Произошла ошибка: ${data.error || data.message || "Неизвестная ошибка"}`);
                 return false;
             }
-        const deleteTeam = async () => {
-            try {
-                // ... логика удаления команды ...
-                const response = await fetch(`/api/teams/delete_team`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ team_id: team.team_info.id }),
-                });
+        } catch (err) {
+            alert(`Произошла ошибка сети: ${err.message || err}`);
+            console.error("Request error:", err);
+            return false;
+        }
+    };
+    
 
-                const data = await response.json();
-                if (response.ok) {
-                    alert("Команда успешно удалена!");
-                    router.push("/teams"); // Перенаправление на страницу команд после успешного удаления
-                    return true;
-                } else {
-                    console.error("Frontend Log: Error response from internal API:", data);
-                    alert(`Произошла ошибка: ${data.error || data.message || "Неизвестная ошибка"}`);
-                    return false;
-                }
-            } catch (err) {
-                alert(`Произошла ошибка сети: ${err.message || err}`);
-                console.error("Request error:", err);
-                return false;
-            }
-        }; // Закрытие функции deleteTeam
+    return (
         <>
             <Header>
                 <Header.Heading>
