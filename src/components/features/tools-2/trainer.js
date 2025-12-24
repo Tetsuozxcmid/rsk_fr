@@ -870,7 +870,7 @@ const TrainerControls = memo(function TrainerControls({
                         <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex === 0 || isTaskRunning}>
                             ←
                         </Button>
-                        <Input type="text" inputMode="numeric" min="1" max={tasks.length || 1} value={taskInputValue} onChange={onTaskInputChange} className="text-center !w-12.5 !h-10" disabled={isTaskRunning} />
+                        <Input type="text" inputMode="numeric" min="1" max={tasks.length || 1} value={taskInputValue} onChange={onTaskInputChange} className="text-center !w-15 !h-10" disabled={isTaskRunning} />
                         <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= tasks.length - 1 || isTaskRunning}>
                             →
                         </Button>
@@ -958,7 +958,7 @@ const TrainerControls = memo(function TrainerControls({
                         </Button>
                     </span>
                 )}
-                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 300) && who === "im" && (
+                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000) && who === "im" && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
                                 Выбрать роль
