@@ -15488,15 +15488,14 @@
         "file": "3012.pdf",
         "instruction": "3012.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity",
-        "sourceLink": "https://old.severodvinsk.info/docs/2024/09/06/Rasp._N_190-rg_ot_06.09.24.pdf"
+        "toolName1": "Perplexity"
     },
     {
         "file": "",
         "instruction": "3013.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
-        "sourceLink": "https://pravdasevera.ru/2024/03/28/660506b2622ab2757452de82.html"
+        "sourceLink": "https://pravdasevera.ru/2024/07/22/669df173e7b9d2f1ff6b9cf2.html"
     },
     {
         "file": "3014.pdf",
@@ -15592,7 +15591,7 @@
         "sourceLink": "https://erdc.ru/news/rezident-azrf-otkryl-park-virtualnoy-realnosti-dlya-detey-i-vzroslykh-v-severodvinske/"
     },
     {
-        "file": "3027.png",
+        "file": "3027.jpg",
         "instruction": "3027.pdf",
         "toolLink1": "https://lmarena.ai/",
         "toolName1": "LMArena"
@@ -15604,7 +15603,7 @@
         "toolName1": "AiMemeArena"
     },
     {
-        "file": "3029.png",
+        "file": "3029.jpg",
         "instruction": "3029.pdf",
         "toolLink1": "https://lmarena.ai/",
         "toolName1": "LMArena",
@@ -15617,7 +15616,7 @@
         "toolName1": ""
     },
     {
-        "file": "3031.png",
+        "file": "3031.jpg",
         "instruction": "3031.pdf",
         "toolLink1": "https://pixverse.ai/",
         "toolName1": "Pixverse",
@@ -15630,7 +15629,7 @@
         "toolName1": "Pictory"
     },
     {
-        "file": "3033.png",
+        "file": "3033.jpg",
         "instruction": "3033.pdf",
         "toolLink1": "https://pixverse.ai/",
         "toolName1": "Pixverse"
@@ -15686,8 +15685,7 @@
         "file": "",
         "instruction": "3041.pdf",
         "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
-        "sourceLink": "https://old.severodvinsk.info/docs/2024/09/06/Rasp._N_190-rg_ot_06.09.24.pdf"
+        "toolName1": "Lovable"
     },
     {
         "file": "3042.pdf",
