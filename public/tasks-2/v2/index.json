@@ -15546,7 +15546,7 @@
     {
         "file": "3020.MP3",
         "instruction": "3020.pdf",
-        "toolLink1": "https://auphonic.com/",
+        "toolLink1": "https://auphonic.com/landing",
         "toolName1": "Auphonic",
         "sourceLink": "https://pomorland.travel/news/v_arkhangelskoy_oblasti_podveli_itogi_letnego_sezona_2025_goda/"
     },
@@ -15651,7 +15651,7 @@
     {
         "file": "3036.mp4",
         "instruction": "3036.pdf",
-        "toolLink1": "https://auphonic.com/",
+        "toolLink1": "https://auphonic.com/landing",
         "toolName1": "Auphonic",
         "sourceLink": "https://arh.mk.ru/social/2025/08/15/severodvinsk-rasshiryaet-vozmozhnosti-dlya-molodezhi.html"
     },
@@ -15764,12 +15764,8 @@
     {
         "file": "3052.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
-    },
-    {
-        "file": "",
-        "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://pravdasevera.ru/2025/01/21/678fb2be457d1415470aea36.html"
     },
     {
         "file": "",
@@ -15780,13 +15776,21 @@
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
+        "sourceLink": "https://www.comnews.ru/content/235227/2024-09-17/2024-w38/1244/keys-severodvinska-primeneniyu-ii-nominirovan-konkurs-luchshaya-municipalnaya-praktika"
+    },
+    {
+        "file": "",
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity",
         "toolLink2": "https://gamma.app/signup?r=ffdoazwoqvphhy2",
-        "toolName2": "Gamma"
+        "toolName2": "Gamma",
+        "sourceLink": "https://arh.mk.ru/economics/2025/07/01/transportnoy-reforme-v-severodvinske-god-kak-izmenilis-gorodskie-avtobusy.html"
     },
     {
         "file": "3056.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://sudostroenie.info/novosti/43325.html"
     },
     {
         "file": "3057.pdf",
@@ -15804,32 +15808,38 @@
     {
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://tv29.ru/new/index.php/zhkkh/40639-severodvinsk-initsiativnyj-chto-blagoustroyat-v-2024-i-v-2025-godu-zavisit-ot-vas"
     },
     {
         "file": "3060.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "http://nworker.ru/2024/06/28/40005.html"
     },
     {
         "file": "3061.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://sudostroenie.info/novosti/43325.html"
     },
     {
         "file": "3062.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://vk.com/wall-61664488_818523"
     },
     {
         "file": "3063.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://tv29.ru/new/index.php/zhkkh/46570-igor-arsentev-mestnye-podryadchiki-stali-chuvstvovat-sebya-nezamenimymi-v-sfere-gorodskogo-khozyajstva"
     },
     {
         "file": "3064.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://29.ru/text/gorod/2025/01/10/74973950/"
     },
     {
         "file": "",
@@ -15842,12 +15852,14 @@
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
         "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "Napkin"
+        "toolName2": "Napkin",
+        "sourceLink": "https://arh.mk.ru/economics/2025/07/01/transportnoy-reforme-v-severodvinske-god-kak-izmenilis-gorodskie-avtobusy.html"
     },
     {
         "file": "3067.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://vk.com/@ict29-proekty-bgvideo"
     },
     {
         "file": "3068.xlsx",
@@ -15857,7 +15869,8 @@
     {
         "file": "",
         "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolName1": "Lovable",
+        "sourceLink": "https://tv29.ru/new/index.php/zhkkh/40639-severodvinsk-initsiativnyj-chto-blagoustroyat-v-2024-i-v-2025-godu-zavisit-ot-vas"
     },
     {
         "file": "3070.pdf",
@@ -15869,7 +15882,8 @@
     {
         "file": "3071.xlsx",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://bclass.ru/vlast/vlast_i_obshchestvo/dialog-god-spustya-glava-severodvinska-igor-arsentev-otvetil-na-voprosy-zhurnalistov"
     },
     {
         "file": "",
@@ -15880,7 +15894,8 @@
     {
         "file": "3073.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://29.ru/text/gorod/2025/01/10/74973950/"
     },
     {
         "file": "3074.pdf",
@@ -15933,20 +15948,23 @@
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
         "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "Napkin"
+        "toolName2": "Napkin",
+        "sourceLink": "https://pravdasevera.ru/2022/04/23/6263a764c39a7421441ced72.html"
     },
     {
         "file": "3084.xlsx",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://tv29.ru/new/index.php/zhkkh/40639-severodvinsk-initsiativnyj-chto-blagoustroyat-v-2024-i-v-2025-godu-zavisit-ot-vas"
     },
     {
         "file": "3085.xlsx",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "https://29.ru/text/gorod/2025/01/10/74973950/"
     },
     {
-        "file": "",
+        "file": "3086.pdf",
         "instruction": "",
         "toolLink1": "",
         "toolName1": ""
@@ -15954,12 +15972,14 @@
     {
         "file": "",
         "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolName1": "Lovable",
+        "sourceLink": "https://bclass.ru/vlast/vlast_i_obshchestvo/dialog-god-spustya-glava-severodvinska-igor-arsentev-otvetil-na-voprosy-zhurnalistov"
     },
     {
         "file": "3088.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "Perplexity"
+        "toolName1": "Perplexity",
+        "sourceLink": "http://nworker.ru/2025/11/28/43305.html"
     },
     {
         "file": "3089.pdf",
@@ -15976,7 +15996,8 @@
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
         "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "Napkin"
+        "toolName2": "Napkin",
+        "sourceLink": "https://arh.mk.ru/economics/2025/07/01/transportnoy-reforme-v-severodvinske-god-kak-izmenilis-gorodskie-avtobusy.html"
     },
     {
         "file": "3092.pdf",
@@ -30839,7 +30860,7 @@
     },
     {
         "file": "6020.pdf",
-        "toolLink1": "https://auphonic.com/",
+        "toolLink1": "https://auphonic.com/landing",
         "toolName1": "Auphonic"
     },
     {
