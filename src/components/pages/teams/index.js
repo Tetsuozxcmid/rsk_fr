@@ -11,6 +11,7 @@ import Folder from "@/components/other/Folder";
 import LinkIcon from "@/assets/general/link.svg";
 import Notify from "@/assets/general/notify.svg";
 import SettsIcon from "@/assets/general/setts.svg";
+import DeleteIcon from "@/assets/general/delete.svg";
 
 export default function TeamIndexPage({ goTo, teamData }) {
     const [idUserTeam, setIdUserTeam] = useState(null);
@@ -141,7 +142,8 @@ export default function TeamIndexPage({ goTo, teamData }) {
                 <div className="flex items-center gap-[.75rem]">
                     {idUserTeam === team.team_info.id && Lider && (
                         <Button red className={"w-fit! shadow-none!"} onClick={DeleteTeam}>
-                            Удалить команду
+                            <DeleteIcon />
+                            Удалить
                         </Button>
                     )}
                     {idUserTeam === team.team_info.id && Lider && (
