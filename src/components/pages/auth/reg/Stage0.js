@@ -73,7 +73,6 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                 onContinue({ ...formData });
             }
         } catch (err) {
-            setError(err.message || "Произошла ошибка при регистрации");
             console.error("Registration error:", err);
         }
     };
@@ -98,12 +97,6 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                 <Button type="submit" className="w-full justify-center" form="registration">
                     Зарегистрироваться
                 </Button>
-<<<<<<< HEAD
-                {/* <div className="flex gap-[0.75rem] w-full">
-                    <Button inverted>Яндекс ID <Yandex /></Button>
-                    <Button inverted>ВК ID <VK /></Button>
-                </div> */}
-=======
                 <div className="flex gap-[0.75rem] w-full">
                     <Button
                         inverted
@@ -121,7 +114,6 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                         ВК ID <VK />
                     </Button>
                 </div>
->>>>>>> 562c438 (puiiiok asana jobs yandex id)
             </div>
             <div className="flex flex-col gap-[.5rem]">
                 <Input type="checkbox" form="registration" small required autoComplete="off" name="POPD" id="POPD">
@@ -135,7 +127,6 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                         </a>
                     </span>
                 </Input>
-                {/* <Input type="checkbox" form="registration" small required autoComplete='off' name="TOTUA" id="TOTUA"><span className='text'>Я принимаю <a className='link'>условия пользовательского соглашения</a></span></Input> */}
             </div>
         </motion.div>
     );

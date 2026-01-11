@@ -1,8 +1,4 @@
 import "@/styles/globals.css";
-<<<<<<< HEAD
-
-export default function App({ Component, pageProps }) {
-=======
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 import { isAuthorized, saveUserData } from "@/utils/auth";
@@ -51,7 +47,6 @@ export default function App({ Component, pageProps }) {
         syncOAuthSession();
     }, [router]);
 
->>>>>>> 562c438 (puiiiok asana jobs yandex id)
     return (
         <>
             <Component {...pageProps} />
