@@ -6,6 +6,12 @@ import { saveUserData } from "@/utils/auth";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
 
+<<<<<<< HEAD
+=======
+import Yandex from "@/assets/general/yandex.svg";
+import VK from "@/assets/general/vk.svg";
+
+>>>>>>> 562c438 (puiiiok asana jobs yandex id)
 export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1 }) {
     const router = useRouter();
     const [formData, setFormData] = useState({ login: "", password: "" });
@@ -93,6 +99,26 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 <Button type="submit" form="login" className="w-full justify-center">
                     Войти
                 </Button>
+<<<<<<< HEAD
+=======
+                <div className="flex gap-[0.75rem] w-full">
+                    <Button
+                        inverted
+                        onClick={() => {
+                            window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
+                        }}>
+                        Яндекс ID <Yandex />
+                    </Button>
+                    <Button
+                        inverted
+                        onClick={() => {
+                            // TODO: Ждем URL от бэкендеров для ВК
+                            window.location.href = "VK_OAUTH_URL";
+                        }}>
+                        ВК ID <VK />
+                    </Button>
+                </div>
+>>>>>>> 562c438 (puiiiok asana jobs yandex id)
             </div>
         </motion.div>
     );

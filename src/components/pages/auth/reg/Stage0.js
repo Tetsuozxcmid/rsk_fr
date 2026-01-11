@@ -98,10 +98,30 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                 <Button type="submit" className="w-full justify-center" form="registration">
                     Зарегистрироваться
                 </Button>
+<<<<<<< HEAD
                 {/* <div className="flex gap-[0.75rem] w-full">
                     <Button inverted>Яндекс ID <Yandex /></Button>
                     <Button inverted>ВК ID <VK /></Button>
                 </div> */}
+=======
+                <div className="flex gap-[0.75rem] w-full">
+                    <Button
+                        inverted
+                        onClick={() => {
+                            window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
+                        }}>
+                        Яндекс ID <Yandex />
+                    </Button>
+                    <Button
+                        inverted
+                        onClick={() => {
+                            // TODO: Ждем URL от бэкендеров для ВК
+                            window.location.href = "VK_OAUTH_URL";
+                        }}>
+                        ВК ID <VK />
+                    </Button>
+                </div>
+>>>>>>> 562c438 (puiiiok asana jobs yandex id)
             </div>
             <div className="flex flex-col gap-[.5rem]">
                 <Input type="checkbox" form="registration" small required autoComplete="off" name="POPD" id="POPD">
