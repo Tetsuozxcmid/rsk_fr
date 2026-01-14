@@ -230,11 +230,18 @@
                 "order": 2
             },
             {
+                "name": "Replit",
+                "url": "https://replit.com/",
+                "iconType": "standard",
+                "description": "Платформа для создания веб-приложений и сайтов",
+                "order": 3
+            },
+            {
                 "name": "Lovable",
                 "url": "https://lovable.dev",
                 "iconType": "standard",
                 "description": "Платформа для создания веб-приложений и сайтов",
-                "order": 3
+                "order": 4
             }
         ],
         "data": [
