@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input/Input";
 
 import Yandex from "@/assets/general/yandex.svg";
 import VK from "@/assets/general/vk.svg";
+import VKWidget from "@/components/features/auth/VKWidget";
 
 export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1 }) {
     const router = useRouter();
@@ -96,22 +97,18 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 <Button type="submit" form="login" className="w-full justify-center">
                     Войти
                 </Button>
-                <div className="flex gap-[0.75rem] w-full">
+                <div className="flex gap-[0.75rem] w-full items-center">
                     <Button
                         inverted
+                        className="flex-1"
                         onClick={() => {
                             window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
                         }}>
                         Яндекс ID <Yandex />
                     </Button>
-                    <Button
-                        inverted
-                        onClick={() => {
-                            // TODO: Ждем URL от бэкендеров для ВК
-                            window.location.href = "VK_OAUTH_URL";
-                        }}>
-                        ВК ID <VK />
-                    </Button>
+                    <div className="flex-1 overflow-hidden h-[46px] flex items-center justify-center">
+                        <VKWidget />
+                    </div>
                 </div>
             </div>
         </motion.div>
