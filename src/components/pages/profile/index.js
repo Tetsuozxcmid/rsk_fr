@@ -61,15 +61,25 @@ export default function ProfileIndexPage({ goTo }) {
         fetchProfile();
     }, [router]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         const confirmed = window.confirm("Вы уверены, что хотите выйти?");
         if (!confirmed) return;
 
-        // Удаляем все cookie
+        try {
+            // Вызываем серверный logout для очистки HttpOnly кук
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+        } catch (error) {
+            console.error("Logout API error:", error);
+        }
+
+        // Удаляем клиентские cookie (на всякий случай)
         const cookies = document.cookie.split(";");
         for (let cookie of cookies) {
             const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
             document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
         }
 
