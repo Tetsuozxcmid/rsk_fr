@@ -32,8 +32,40 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
+        //проверка длины пароля
         if (formData.password.length < 8) {
             alert("Пароль должен содержать минимум 8 символов");
+            return;
+        }
+
+        // Проверка на наличие хотя бы одной строчной буквы
+        if (!/[a-zа-я]/.test(formData.password)) {
+            alert("Пароль должен содержать хотя бы одну строчную букву");
+            return;
+        }
+
+        // Проверка что пароль не состоит только из цифр
+        if (/^\d+$/.test(formData.password)) {
+            alert("Пароль не может состоять только из цифр");
+            return;
+        }
+
+        // Проверка что пароль не состоит только из символов
+        if (/^[^a-zA-Zа-яА-Я0-9]+$/.test(formData.password)) {
+            alert("Пароль не может состоять только из специальных символов");
+            return;
+        }
+
+        // Валидация email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            setError("Введите корректный email адрес");
+            return;
+        }
+
+        // Валидация имени
+        if (formData.name.trim().length < 2) {
+            setError("Имя должно содержать минимум 2 символа");
             return;
         }
 
@@ -53,19 +85,34 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             const data = await response.json();
 
             if (!response.ok) {
-                switch (response.status) {
-                    case 422:
-                        return alert("Неверные данные: " + JSON.stringify(data));
-                    case 400:
-                        return alert("Пользователь с таким именем уже существует");
-                    case 401:
+                 // Обработка ошибок через errorCode
+                switch (data.errorCode) {
+                    case "EMAIL_NOT_CONFIRMED":
+                        return alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
+                    
+                    
+                    
+                    case "VALIDATION_ERROR":
+                        return alert("Неверные данные: " + data.error);
+                    
+                    case "BAD_REQUEST":
+                        return alert("Пользователь с таким email уже существует");
+                    
+                    case "UNAUTHORIZED":
                         return alert("Неавторизованный запрос");
-                    case 403:
+                    
+                    case "FORBIDDEN":
                         return alert("Доступ запрещён");
-                    case 404:
+                    
+                    case "NOT_FOUND":
                         return alert("Ресурс не найден");
+                    
+                    case "SERVER_ERROR":
+                        return alert("Ошибка сервера. Попробуйте позже");
+                    
+                    case "UNKNOWN_ERROR":
                     default:
-                        return alert("Незвестная какая-то ошибка, я хз ващ");
+                        return alert("Произошла неизвестная ошибка");
                 }
             } else {
                 delete formData.password;
@@ -74,7 +121,8 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             }
         } catch (err) {
             console.error("Registration error:", err);
-        }
+            alert("Ошибка соединения с сервером. Проверьте интернет-соединение");
+        } 
     };
 
     return (

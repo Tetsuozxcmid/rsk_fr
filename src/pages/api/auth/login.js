@@ -24,13 +24,13 @@ export default async function RegHandler(req, res) {
                 case 422:
                     return res.status(422).json({ success: false, error: JSON.stringify(data) });
                 case 400:
-                    return res.status(400).json({ success: false, error: "Пользователь с таким именем уже существует" });
+                    return res.status(400).json({ success: false, error: "Неверный запрос" });
                 case 401:
-                    return res.status(401).json({ success: false, error: "Пользователь не найден" });
+                    return res.status(401).json({ success: false, error: "Неверный логин или пароль" });
                 case 403:
-                    return res.status(403).json({ success: false, error: "Доступ запрещён" });
+                    return res.status(403).json({ success: false, error: "Доступ запрещён.Проверьте почту и перейдите по ссылке подтверждения" });
                 case 404:
-                    return res.status(404).json({ success: false, error: "Ресурс не найден" });
+                    return res.status(404).json({ success: false, error: "Пользователь не найден" });
                 default:
                     return res.status(response.status).json({ success: false, error: data });
             }

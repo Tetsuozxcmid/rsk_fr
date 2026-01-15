@@ -61,9 +61,20 @@ export default function ProfileIndexPage({ goTo }) {
         fetchProfile();
     }, [router]);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         const confirmed = window.confirm("Вы уверены, что хотите выйти?");
         if (!confirmed) return;
+
+    //    try {
+    //         // Отправляем запрос на сервер для завершения сессии
+    //         await fetch("/api/auth/logout", {
+    //             method: "POST",
+    //             headers: { "Content-Type": "application/json" },
+    //             credentials: "include",
+    //         });
+    //     } catch (err) {
+    //         console.error("Logout error:", err);
+    //     } finally {
 
         // Удаляем все cookie
         const cookies = document.cookie.split(";");

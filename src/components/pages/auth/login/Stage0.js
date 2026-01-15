@@ -59,10 +59,14 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 switch (response.status) {
                     case 422:
                         return alert("Неверные данные: " + JSON.stringify(data));
+                    case 400:
+                        return alert("Неверный запрос");
                     case 401:
                         return alert("Неверный логин или пароль");
                     case 403:
                         return alert("Вы не подтвердили email");
+                    case 404:
+                        return alert = ("Пользователь с таким логином или почтой не существует");
                     default:
                         return alert("Произошла ошибка: " + response.status);
                 }
@@ -72,7 +76,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
             }
         } catch (err) {
             console.error("Login error:", err);
-            alert("Ошибка при входе");
+            alert("Ошибка подключения. Проверьте интернет-соединение");
         }
     };
 
