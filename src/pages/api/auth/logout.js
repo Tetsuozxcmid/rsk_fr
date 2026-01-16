@@ -3,7 +3,7 @@
 export async function logout() {
   try {
     // 1. Отправляем POST на Node-прокси (удаляет куки rosdk)
-    const response = await fetch('/api/logout', {
+    const response = await fetch('https://api.rosdk.ru/auth/users_interaction/logout/', {
       method: 'POST',
       credentials: 'include', // обязательно для куки rosdk
       headers: {
