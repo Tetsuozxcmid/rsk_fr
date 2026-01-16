@@ -1,10 +1,10 @@
-
-
 export default async function LogoutHandler(req, res) {
     // Проверяем метод запроса
     if (req.method !== 'POST') {
         return res.status(405).json({ success: false, message: 'Method not allowed' });
     }
+
+    console.log('Logout API called - clearing all cookies');
 
     // Устанавливаем CORS заголовки
     res.setHeader('Access-Control-Allow-Credentials', 'true');

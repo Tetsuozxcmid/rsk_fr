@@ -14,6 +14,12 @@ export default async function RegHandler(req, res) {
             cache: "no-store",
         });
 
+        const setCookie = response.headers.get("set-cookie");
+
+        if (setCookie) {
+            res.setHeader("Set-Cookie", setCookie);
+        }
+
         const data = await response.json();
 
         if (!response.ok) {
