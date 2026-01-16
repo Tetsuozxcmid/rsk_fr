@@ -24,7 +24,7 @@ export default function VKWidget() {
         redirectUrl: "https://api.rosdk.ru/auth/users_interaction/auth/vk/callback",
         responseMode: window.VKIDSDK.ConfigResponseMode.Redirect,
         source: window.VKIDSDK.ConfigSource.LOWCODE,
-        scope: "",
+        scope: "email",
         mode: window.VKIDSDK.ConfigAuthMode.InNewWindow,
       });
     };
