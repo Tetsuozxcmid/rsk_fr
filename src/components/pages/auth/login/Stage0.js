@@ -8,6 +8,7 @@ import Input from "@/components/ui/Input/Input";
 
 import Yandex from "@/assets/general/yandex.svg";
 import VK from "@/assets/general/vk.svg";
+import VKWidget from "@/components/features/auth/VKWidget";
 
 export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1 }) {
     const router = useRouter();
@@ -26,8 +27,24 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
             });
-            if (!response.ok) throw new Error("Failed to fetch profile");
-            const data = await response.json();
+
+            const data = await response.json(); 
+
+            if (!response.ok) { 
+                switch (data.errorCode) {
+                    case "EMAIL_NOT_CONFIRMED":
+                        return alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
+
+                    case "FORBIDDEN":
+                        return alert("Доступ запрещён");
+
+                    case "NOT_FOUND":
+                        return alert("Профиль не найден");
+
+                    default:
+                        return alert("Не удалось получить данные профиля: подтвердите почту");
+                }
+            }
 
             // Сохраняем email и name в localStorage
             const userInfo = {
@@ -38,14 +55,14 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
 
             console.log("Profile loaded:", userInfo);
 
-            router.push("/profile"); // Переходим на страницу профиля
+            router.push("/profile");
         } catch (err) {
             console.error("Profile fetch error:", err);
-            alert("Не удалось получить данные профиля");
+            alert("Ошибка соединения с сервером. Проверьте интернет-соединение");
         }
     };
 
-    const onLogin = async (formData) => {
+        const onLogin = async (formData) => {
         try {
             const response = await fetch("/api/auth/login", {
                 method: "POST",
@@ -53,27 +70,37 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 body: JSON.stringify(formData),
                 credentials: "include",
             });
+
             const data = await response.json();
 
             if (!response.ok) {
-                switch (response.status) {
-                    case 422:
-                        return alert("Неверные данные: " + JSON.stringify(data));
-                    case 400:
-                        return alert("Неверный запрос");
-                    case 401:
+                // Обработка ошибок через errorCode
+                switch (data.errorCode) { 
+                    case "EMAIL_NOT_CONFIRMED":
+                        return alert("Вы не подтвердили email. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
+
+                    case "INVALID_CREDENTIALS":
                         return alert("Неверный логин или пароль");
-                    case 403:
-                        return alert("Вы не подтвердили email");
-                    case 404:
-                        return alert = ("Пользователь с таким логином или почтой не существует");
+
+                    case "USER_NOT_FOUND":
+                        return alert("Пользователь с таким логином или почтой не существует"); 
+
+                    case "VALIDATION_ERROR":
+                        return alert("Неверные данные: " + data.error);
+
+                    case "BAD_REQUEST":
+                        return alert("Неверный запрос");
+
+                    case "FORBIDDEN":
+                        return alert("Доступ запрещён");
+
                     default:
-                        return alert("Произошла ошибка: " + response.status);
+                        return alert("Произошла ошибка при входе: " + (data.error || "Неизвестная ошибка"));
                 }
-            } else {
-                // После успешного логина получаем профиль
-                await fetchProfile();
             }
+
+            // После успешного логина получаем профиль
+            await fetchProfile();
         } catch (err) {
             console.error("Login error:", err);
             alert("Ошибка подключения. Проверьте интернет-соединение");
@@ -100,22 +127,18 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 <Button type="submit" form="login" className="w-full justify-center">
                     Войти
                 </Button>
-                <div className="flex gap-[0.75rem] w-full">
+                <div className="flex gap-[0.75rem] w-full items-center">
                     <Button
                         inverted
+                        className="flex-1"
                         onClick={() => {
                             window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
                         }}>
                         Яндекс ID <Yandex />
                     </Button>
-                    <Button
-                        inverted
-                        onClick={() => {
-                            // TODO: Ждем URL от бэкендеров для ВК
-                            window.location.href = "VK_OAUTH_URL";
-                        }}>
-                        ВК ID <VK />
-                    </Button>
+                    <div className="flex-1 overflow-hidden h-[46px] flex items-center justify-center">
+                        <VKWidget />
+                    </div>
                 </div>
             </div>
         </motion.div>

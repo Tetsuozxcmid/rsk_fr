@@ -40,6 +40,9 @@ export default function ProfileIndexPage({ goTo }) {
                     headers: { "Content-Type": "application/json" },
                     credentials: "include",
                 });
+                
+                const data = await response.json();
+                
                 if (!response.ok) {
                     // если сессия устарела — чистим куки и редиректим
                     if (response.status === 401 || response.status === 403) {
@@ -47,9 +50,29 @@ export default function ProfileIndexPage({ goTo }) {
                         router.push("/auth");
                         return;
                     }
-                    throw new Error("Failed to fetch profile");
+                    
+                    // Обработка других ошибок через errorCode
+                    switch (data.errorCode) {
+                        case "EMAIL_NOT_CONFIRMED":
+                            alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
+                            clearCookies();
+                            router.push("/auth");
+                            return;
+                        
+                        case "UNAUTHORIZED":
+                            clearCookies();
+                            router.push("/auth");
+                            return;
+                        
+                        case "NOT_FOUND":
+                            alert("Профиль не найден");
+                            return;
+                        
+                        default:
+                            console.error("Profile fetch error:", data.error);
+                            return;
+                    }
                 }
-                const data = await response.json();
                 setUserData(data);
                 console.log(data);
                 setHydrated(true);
@@ -65,22 +88,24 @@ export default function ProfileIndexPage({ goTo }) {
         const confirmed = window.confirm("Вы уверены, что хотите выйти?");
         if (!confirmed) return;
 
-    //    try {
-    //         // Отправляем запрос на сервер для завершения сессии
-    //         await fetch("/api/auth/logout", {
-    //             method: "POST",
-    //             headers: { "Content-Type": "application/json" },
-    //             credentials: "include",
-    //         });
-    //     } catch (err) {
-    //         console.error("Logout error:", err);
-    //     } finally {
 
-        // Удаляем все cookie
+
+        try {
+            // Вызываем серверный logout для очистки HttpOnly кук
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+        } catch (error) {
+            console.error("Logout API error:", error);
+        }
+
+        // Удаляем клиентские cookie (на всякий случай)
+
         const cookies = document.cookie.split(";");
         for (let cookie of cookies) {
             const eqPos = cookie.indexOf("=");
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
             document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
         }
 

@@ -4029,8 +4029,10 @@
     {
         "file": "719.pdf",
         "instruction": "719.pdf",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "Suno"
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "Perplexity",
+        "toolLink2": "https://suno.com/",
+        "toolName2": "Suno"
     },
     {
         "file": "720.MP3",
@@ -4117,14 +4119,14 @@
     {
         "file": "",
         "instruction": "733.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://replit.com/",
+        "toolName1": "Replit"
     },
     {
         "file": "",
         "instruction": "734.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://replit.com/",
+        "toolName1": "Replit"
     },
     {
         "file": "735.pdf",
@@ -4169,8 +4171,8 @@
     {
         "file": "",
         "instruction": "741.pdf",
-        "toolLink1": "https://pictory.ai/",
-        "toolName1": "Pictory"
+        "toolLink1": "https://t.me/AIMemeArenaBot",
+        "toolName1": "AiMemeArena"
     },
     {
         "file": "",
@@ -4327,8 +4329,8 @@
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
-        "toolLink2": "https://lovable.dev/",
-        "toolName2": "Lovable"
+        "toolLink2": "https://replit.com/",
+        "toolName2": "Replit"
     },
     {
         "file": "770.pdf",
@@ -4426,8 +4428,8 @@
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "Perplexity",
-        "toolLink2": "https://lovable.dev/",
-        "toolName2": "Lovable"
+        "toolLink2": "https://replit.com/",
+        "toolName2": "Replit"
     },
     {
         "file": "788.pdf",
