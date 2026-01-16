@@ -21,7 +21,7 @@ export default function VKWidget() {
 
       window.VKIDSDK.Config.init({
         app: 54409000,
-        redirectUrl: "https://api.rosdk.ru/auth/vk/callback",
+        redirectUrl: "https://api.rosdk.ru/auth/users_interaction/auth/vk/callback",
         responseMode: window.VKIDSDK.ConfigResponseMode.Redirect,
         source: window.VKIDSDK.ConfigSource.LOWCODE,
         scope: "",
