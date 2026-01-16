@@ -1,46 +1,41 @@
-// logout.js
+// src/pages/api/auth/logout.js
+export default async function handler(req, res) {
+  console.log('Logout API called', req.method, req.headers.cookie);
 
-export async function logout() {
+  if (req.method !== 'POST') {
+    console.log('Method not allowed');
+    return res.status(405).json({ success: false, message: 'Method not allowed' });
+  }
+
   try {
-    // 1. Отправляем POST на Node-прокси (удаляет куки rosdk)
-    const response = await fetch('https://api.rosdk.ru/auth/users_interaction/logout/', {
-      method: 'POST',
-      credentials: 'include', // обязательно для куки rosdk
-      headers: {
-        'Content-Type': 'application/json'
+    console.log('Sending logout request to ROSDK...');
+
+    const response = await fetch(
+      'https://api.rosdk.ru/auth/users_interaction/logout/',
+      {
+        method: 'POST',
+        headers: {
+          cookie: req.headers.cookie || '',
+        },
+        credentials: 'include',
       }
-    });
+    );
+
+    console.log('Rosdk response status:', response.status);
+
+    const text = await response.text(); // читаем тело для логов
+    console.log('Rosdk response body:', text);
 
     if (!response.ok) {
-      console.error('Logout failed on server', response.status);
-      return;
+      console.error('Rosdk logout failed', response.status, text);
+      return res.status(500).json({ success: false, error: 'Rosdk logout failed', body: text });
     }
 
-    // 2. После успешного ответа удаляем локальные куки
-    const localCookies = [
-      "users_access_token",
-      "access_token",
-      "token",
-      "refresh_token",
-      "session",
-      "userData",
-      "role",
-      "learn",
-      "organization"
-    ];
+    console.log('Rosdk logout successful');
 
-    localCookies.forEach(name => {
-      document.cookie = `${name}=; Max-Age=0; path=/;`;
-    });
-
-    // 3. Жёсткая очистка хранилищ
-    localStorage.clear();
-    sessionStorage.clear();
-
-    // 4. Перенаправление на страницу логина
-    window.location.href = '/login';
-
-  } catch (error) {
-    console.error('Logout error:', error);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('Rosdk logout error:', err);
+    res.status(500).json({ success: false, error: 'Server logout failed', details: err.toString() });
   }
 }
