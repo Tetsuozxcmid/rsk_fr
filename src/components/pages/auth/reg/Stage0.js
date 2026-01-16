@@ -156,6 +156,14 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                     <div className="flex-1 overflow-hidden h-[46px] flex items-center justify-center">
                         <VKWidget />
                     </div>
+                    <Button
+                        inverted
+                        className="flex-1"
+                        onClick={() => {
+                            window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/vk/start";
+                        }}>
+                        ВК ID <VK />
+                    </Button>
                 </div>
             </div>
             <div className="flex flex-col gap-[.5rem]">

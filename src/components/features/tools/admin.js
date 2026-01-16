@@ -229,10 +229,10 @@ export default function AdminPanel() {
                                 spacing: { after: 100 },
                             }),
                             userQuestionnaires.First.aiTasks &&
-                                new Paragraph({
-                                    text: `3. Задачи, решаемые с помощью ИИ: ${userQuestionnaires.First.aiTasks}`,
-                                    spacing: { after: 100 },
-                                }),
+                            new Paragraph({
+                                text: `3. Задачи, решаемые с помощью ИИ: ${userQuestionnaires.First.aiTasks}`,
+                                spacing: { after: 100 },
+                            }),
                             new Paragraph({
                                 text: `4. Используемые инструменты: ${userQuestionnaires.First.selectedTools.join(", ")}`,
                                 spacing: { after: 100 },
@@ -306,41 +306,41 @@ export default function AdminPanel() {
                             // Таблица с результатами дельта-тестов
                             deltaTestResults
                                 ? new Table({
-                                      rows: [
-                                          // Заголовок таблицы
-                                          new TableRow({
-                                              children: [
-                                                  new TableCell({ children: [new Paragraph("Уровень")] }),
-                                                  new TableCell({ children: [new Paragraph("Первое измерение")] }),
-                                                  new TableCell({ children: [new Paragraph("Второе измерение")] }),
-                                                  new TableCell({ children: [new Paragraph("Дельта")] }),
-                                              ],
-                                          }),
-                                          // Строки с данными
-                                          ...Object.entries(deltaTestResults.results).map(
-                                              ([level, data]) =>
-                                                  new TableRow({
-                                                      children: [
-                                                          new TableCell({ children: [new Paragraph(level.replace("level", "Уровень "))] }),
-                                                          new TableCell({ children: [new Paragraph(data.first !== null ? data.first.toString() : "-")] }),
-                                                          new TableCell({ children: [new Paragraph(data.second !== null ? data.second.toString() : "-")] }),
-                                                          new TableCell({
-                                                              children: [
-                                                                  new Paragraph({
-                                                                      text: data.delta !== null ? data.delta.toString() : "-",
-                                                                      color: data.delta > 0 ? "00FF00" : data.delta < 0 ? "FF0000" : undefined,
-                                                                  }),
-                                                              ],
-                                                          }),
-                                                      ],
-                                                  })
-                                          ),
-                                      ],
-                                  })
+                                    rows: [
+                                        // Заголовок таблицы
+                                        new TableRow({
+                                            children: [
+                                                new TableCell({ children: [new Paragraph("Уровень")] }),
+                                                new TableCell({ children: [new Paragraph("Первое измерение")] }),
+                                                new TableCell({ children: [new Paragraph("Второе измерение")] }),
+                                                new TableCell({ children: [new Paragraph("Дельта")] }),
+                                            ],
+                                        }),
+                                        // Строки с данными
+                                        ...Object.entries(deltaTestResults.results).map(
+                                            ([level, data]) =>
+                                                new TableRow({
+                                                    children: [
+                                                        new TableCell({ children: [new Paragraph(level.replace("level", "Уровень "))] }),
+                                                        new TableCell({ children: [new Paragraph(data.first !== null ? data.first.toString() : "-")] }),
+                                                        new TableCell({ children: [new Paragraph(data.second !== null ? data.second.toString() : "-")] }),
+                                                        new TableCell({
+                                                            children: [
+                                                                new Paragraph({
+                                                                    text: data.delta !== null ? data.delta.toString() : "-",
+                                                                    color: data.delta > 0 ? "00FF00" : data.delta < 0 ? "FF0000" : undefined,
+                                                                }),
+                                                            ],
+                                                        }),
+                                                    ],
+                                                })
+                                        ),
+                                    ],
+                                })
                                 : new Paragraph({
-                                      text: "Данные дельта-тестов отсутствуют",
-                                      italics: true,
-                                  }),
+                                    text: "Данные дельта-тестов отсутствуют",
+                                    italics: true,
+                                }),
 
                             // Задания
                             new Paragraph({
@@ -350,52 +350,52 @@ export default function AdminPanel() {
                             }),
                             userTasks.length > 0
                                 ? new Table({
-                                      rows: [
-                                          // Заголовок таблицы
-                                          new TableRow({
-                                              children: [
-                                                  new TableCell({ children: [new Paragraph("Название")] }),
-                                                  new TableCell({ children: [new Paragraph("Тип")] }),
-                                                  new TableCell({ children: [new Paragraph("Этап")] }),
-                                                  new TableCell({ children: [new Paragraph("Роль")] }),
-                                                  new TableCell({ children: [new Paragraph("Статус")] }),
-                                                  new TableCell({ children: [new Paragraph("Время")] }),
-                                                  new TableCell({ children: [new Paragraph("Дата")] }),
-                                              ],
-                                          }),
-                                          // Строки с заданиями
-                                          ...userTasks.map(
-                                              (task) =>
-                                                  new TableRow({
-                                                      children: [
-                                                          new TableCell({ children: [new Paragraph(task.name)] }),
-                                                          new TableCell({ children: [new Paragraph(task.type)] }),
-                                                          new TableCell({ children: [new Paragraph(task.stage)] }),
-                                                          new TableCell({ children: [new Paragraph(task.userType === "teacher" ? "Преподаватель" : "Студент")] }),
-                                                          new TableCell({
-                                                              children: [
-                                                                  new Paragraph({
-                                                                      text: task.completed ? "Выполнено" : "Не выполнено",
-                                                                      color: task.completed ? "00FF00" : "FF0000",
-                                                                  }),
-                                                              ],
-                                                          }),
-                                                          new TableCell({ children: [new Paragraph(`${task.timeSpent} сек.`)] }),
-                                                          new TableCell({ children: [new Paragraph(task.timestamp)] }),
-                                                      ],
-                                                  })
-                                          ),
-                                      ],
-                                      width: {
-                                          size: 100,
-                                          type: WidthType.PERCENTAGE,
-                                      },
-                                      columnWidths: [20, 10, 10, 15, 10, 10, 25],
-                                  })
+                                    rows: [
+                                        // Заголовок таблицы
+                                        new TableRow({
+                                            children: [
+                                                new TableCell({ children: [new Paragraph("Название")] }),
+                                                new TableCell({ children: [new Paragraph("Тип")] }),
+                                                new TableCell({ children: [new Paragraph("Этап")] }),
+                                                new TableCell({ children: [new Paragraph("Роль")] }),
+                                                new TableCell({ children: [new Paragraph("Статус")] }),
+                                                new TableCell({ children: [new Paragraph("Время")] }),
+                                                new TableCell({ children: [new Paragraph("Дата")] }),
+                                            ],
+                                        }),
+                                        // Строки с заданиями
+                                        ...userTasks.map(
+                                            (task) =>
+                                                new TableRow({
+                                                    children: [
+                                                        new TableCell({ children: [new Paragraph(task.name)] }),
+                                                        new TableCell({ children: [new Paragraph(task.type)] }),
+                                                        new TableCell({ children: [new Paragraph(task.stage)] }),
+                                                        new TableCell({ children: [new Paragraph(task.userType === "teacher" ? "Преподаватель" : "Студент")] }),
+                                                        new TableCell({
+                                                            children: [
+                                                                new Paragraph({
+                                                                    text: task.completed ? "Выполнено" : "Не выполнено",
+                                                                    color: task.completed ? "00FF00" : "FF0000",
+                                                                }),
+                                                            ],
+                                                        }),
+                                                        new TableCell({ children: [new Paragraph(`${task.timeSpent} сек.`)] }),
+                                                        new TableCell({ children: [new Paragraph(task.timestamp)] }),
+                                                    ],
+                                                })
+                                        ),
+                                    ],
+                                    width: {
+                                        size: 100,
+                                        type: WidthType.PERCENTAGE,
+                                    },
+                                    columnWidths: [20, 10, 10, 15, 10, 10, 25],
+                                })
                                 : new Paragraph({
-                                      text: "Нет данных о выполненных заданиях",
-                                      italics: true,
-                                  }),
+                                    text: "Нет данных о выполненных заданиях",
+                                    italics: true,
+                                }),
 
                             // ... остальные разделы отчета ...
                         ],
@@ -462,6 +462,15 @@ export default function AdminPanel() {
     const handleLogout = () => {
         setIsAuthenticated(false);
         localStorage.removeItem("admin-authenticated");
+
+        // Удаляем все cookies
+        const cookies = document.cookie.split(";");
+        for (let cookie of cookies) {
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+        }
+
         router.push("/");
     };
 

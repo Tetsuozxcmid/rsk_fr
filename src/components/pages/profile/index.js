@@ -95,6 +95,7 @@ export default function ProfileIndexPage({ goTo }) {
             await fetch("/api/auth/logout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
+                credentials: "include", // Важно! Отправляем куки на сервер
             });
         } catch (error) {
             console.error("Logout API error:", error);
