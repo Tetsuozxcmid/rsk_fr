@@ -96,6 +96,7 @@ export default function ProfileIndexPage({ goTo }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include", // Важно! Отправляем куки на сервер
+                cache: "no-store",
             });
         } catch (error) {
             console.error("Logout API error:", error);

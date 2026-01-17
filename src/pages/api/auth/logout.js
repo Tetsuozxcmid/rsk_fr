@@ -1,9 +1,7 @@
-// src/pages/api/auth/logout.js
 export default async function handler(req, res) {
   console.log('Logout API called', req.method, req.headers.cookie);
 
   if (req.method !== 'POST') {
-    console.log('Method not allowed');
     return res.status(405).json({ success: false, message: 'Method not allowed' });
   }
 
@@ -15,27 +13,44 @@ export default async function handler(req, res) {
       {
         method: 'POST',
         headers: {
-          cookie: req.headers.cookie || '',
+          'Cookie': req.headers.cookie || '',
+          'Content-Type': 'application/json',
         },
         credentials: 'include',
+        cache: "no-store",
       }
     );
 
     console.log('Rosdk response status:', response.status);
-
-    const text = await response.text(); // читаем тело для логов
-    console.log('Rosdk response body:', text);
-
-    if (!response.ok) {
-      console.error('Rosdk logout failed', response.status, text);
-      return res.status(500).json({ success: false, error: 'Rosdk logout failed', body: text });
+    
+    // Получаем куки из ответа ROSDK API
+    const setCookieHeader = response.headers.get('set-cookie');
+    
+    // Устанавливаем все куки из ответа ROSDK в ответ нашего API
+    if (setCookieHeader) {
+      // Разделяем multiple Set-Cookie headers
+      const cookies = setCookieHeader.split(', ');
+      cookies.forEach(cookie => {
+        res.setHeader('Set-Cookie', cookie);
+      });
+    } else {
+      // Если ROSDK не вернул куки, устанавливаем свои для удаления
+      res.setHeader('Set-Cookie', [
+        'users_access_token=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None',
+        'userData=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=None'
+      ]);
     }
 
-    console.log('Rosdk logout successful');
+    const text = await response.text();
+    console.log('Rosdk response body:', text);
 
-    res.status(200).json({ success: true });
+    res.status(response.status).json({ 
+      success: response.ok,
+      message: response.ok ? 'Successfully logged out' : 'Logout failed'
+    });
+    
   } catch (err) {
     console.error('Rosdk logout error:', err);
-    res.status(500).json({ success: false, error: 'Server logout failed', details: err.toString() });
+    res.status(500).json({ success: false, error: 'Server logout failed' });
   }
 }
