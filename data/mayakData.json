@@ -260,25 +260,32 @@
                 "order": 1
             },
             {
+                "name": "Z.ai",
+                "url": "https://chat.z.ai/",
+                "iconType": "standard",
+                "description": "Платформа для создания веб-приложений и сайтов",
+                "order": 2
+            },
+            {
                 "name": "Lovable",
                 "url": "https://lovable.dev",
                 "iconType": "standard",
                 "description": "Платформа для создания веб-приложений и сайтов",
-                "order": 2
+                "order": 3
             },
             {
                 "name": "AiStudio",
                 "url": "https://aistudio.google.com",
                 "iconType": "standard",
                 "description": "Анализ данных, работа с таблицами и кодом.",
-                "order": 3
+                "order": 4
             },
             {
                 "name": "NotebookLM",
                 "url": "https://notebooklm.google/",
                 "iconType": "standard",
                 "description": "Анализ и структурирование данных",
-                "order": 4
+                "order": 5
             }
         ],
         "audio-to-text": [

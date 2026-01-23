@@ -958,7 +958,7 @@ const TrainerControls = memo(function TrainerControls({
                         </Button>
                     </span>
                 )}
-                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000|| currentTaskIndex === 3000|| currentTaskIndex === 700|| currentTaskIndex === 300) && who === "im" && (
+                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000|| currentTaskIndex === 3000|| currentTaskIndex === 700|| currentTaskIndex === 300|| currentTaskIndex === 500) && who === "im" && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
                                 Выбрать роль
