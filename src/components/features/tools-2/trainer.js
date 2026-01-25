@@ -14,7 +14,11 @@ import TelegramIcon from "@/assets/general/TelegramIcon.svg";
 import TopIcon from "@/assets/general/TopIcon.svg";
 import HotIcon from "@/assets/general/HotIcon.svg";
 
-import { getKeyFromCookies } from "./actions";
+// Добавляем getUserFromCookies
+import { getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
+// Добавляем эти две строки для работы сертификата
+import { pdf } from "@react-pdf/renderer";
+import Certificate from "./Certificate";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import TextareaAutosize from "react-textarea-autosize";
 import Input from "@/components/ui/Input/Input";
@@ -1224,18 +1228,35 @@ export default function TrainerPage({ goTo }) {
         setPrompt("");
     };
 
-    useEffect(() => {
-        const savedTasks = localStorage.getItem(getStorageKey("completedTasks"));
-        if (savedTasks) {
-            setCompletedTasks(JSON.parse(savedTasks));
-        }
-    }, []);
+    const handleDownloadCertificate = async () => {
+        try {
+            // Используем getUserFromCookies для получения имени
+            const userData = getUserFromCookies();
+            const userName = userData?.name || "Участник";
+            const dateStr = new Date().toLocaleDateString("ru-RU");
 
-    const removeKeyCookie = () => {
-        document.cookie = "activated_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            // Генерация PDF
+            const blobCert = await pdf(<Certificate userName={userName} date={dateStr} />).toBlob();
+            
+            // Скачивание файла
+            const urlCert = URL.createObjectURL(blobCert);
+            const linkCert = document.createElement('a');
+            linkCert.href = urlCert;
+            linkCert.download = `Certificate_Mayak_${userName.replace(/\s+/g, '_')}.pdf`;
+            document.body.appendChild(linkCert);
+            linkCert.click();
+            document.body.removeChild(linkCert);
+            
+            URL.revokeObjectURL(urlCert);
+        } catch (error) {
+            console.error("Ошибка при генерации сертификата:", error);
+        }
     };
 
     const handleSaveSessionCompletion = async (levels) => {
+        // Открываем окно формы Яндекса сразу
+        const yandexWindow = window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
+
         try {
             const activeUser =
                 document.cookie
@@ -1264,37 +1285,44 @@ export default function TrainerPage({ goTo }) {
                 },
             };
 
-            const response = await fetch("/api/mayak/saveDeltaTest", {
+            // ЗАПУСКАЕМ ОБА ПРОЦЕССА ПАРАЛЛЕЛЬНО
+            const savePromise = fetch("/api/mayak/saveDeltaTest", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
+
+            // Начинаем генерировать сертификат, пока данные сохраняются
+            const certPromise = handleDownloadCertificate();
+
+            // Ждем завершения обоих процессов
+            const [response] = await Promise.all([savePromise, certPromise]);
 
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
-            // Закрываем все модальные окна, связанные с завершением
+            // Маленькая пауза для гарантии старта скачивания (достаточно 100-200мс)
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Закрываем все модальные окна
             setShowSessionCompletionPopup(false);
             setShowThirdQuestionnaire(false);
 
-            // 1. Открываем Яндекс.Форму в новом окне
-            window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
-
-            // 2. Выходим из сессии: удаляем роль и токен
+            // Выходим из сессии
             localStorage.removeItem(getStorageKey("userRole"));
             setSelectedRole(null);
-            removeKeyCookie();
+            
+            // Используем импортированную функцию из actions
+            removeKeyCookie(); 
 
-			localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
+            localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
             goTo("index");
 
-            // 3. Возвращаемся на главную страницу
             window.location.href = "/";
         } catch (error) {
-            console.error("Ошибка при сохранении измерений:", error);
+            console.error("Ошибка при сохранении:", error);
+            if (yandexWindow) yandexWindow.close();
             alert("Произошла ошибка при сохранении измерений");
         }
     };
