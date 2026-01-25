@@ -1285,45 +1285,51 @@ export default function TrainerPage({ goTo }) {
                 },
             };
 
-            // ЗАПУСКАЕМ ОБА ПРОЦЕССА ПАРАЛЛЕЛЬНО
+            // 1. Сначала генерируем и скачиваем сертификат.
+            // Ждем выполнения этой функции, чтобы убедиться, что "клик" по ссылке произошел.
+            await handleDownloadCertificate();
+
+            // 2. Параллельно сохраняем данные на сервер
             const savePromise = fetch("/api/mayak/saveDeltaTest", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
-            // Начинаем генерировать сертификат, пока данные сохраняются
-            const certPromise = handleDownloadCertificate();
+            // 3. ГЛАВНОЕ ИЗМЕНЕНИЕ: Жесткая задержка 3000 мс (3 секунды).
+            // Это время нужно браузеру, чтобы переварить Blob и начать скачивание файла 
+            // ДО того, как window.location.href убьет страницу.
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Ждем завершения обоих процессов
-            const [response] = await Promise.all([savePromise, certPromise]);
+            // Дожидаемся ответа от сервера (хотя за 3 сек он скорее всего уже пришел)
+            await savePromise;
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // Маленькая пауза для гарантии старта скачивания (достаточно 100-200мс)
-            await new Promise(resolve => setTimeout(resolve, 200));
-
-            // Закрываем все модальные окна
+            // Закрываем модальные окна
             setShowSessionCompletionPopup(false);
             setShowThirdQuestionnaire(false);
 
-            // Выходим из сессии
+            // Очищаем данные сессии
             localStorage.removeItem(getStorageKey("userRole"));
             setSelectedRole(null);
             
-            // Используем импортированную функцию из actions
             removeKeyCookie(); 
 
             localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
-            goTo("index");
+            
+            // Если нужно, для плавности в React:
+            // goTo("index"); 
 
+            // 4. Жесткая перезагрузка (как ты и просил)
             window.location.href = "/";
+
         } catch (error) {
             console.error("Ошибка при сохранении:", error);
-            if (yandexWindow) yandexWindow.close();
-            alert("Произошла ошибка при сохранении измерений");
+            if (yandexWindow) {
+                // yandexWindow.close(); // Можно закрыть, если была ошибка, но лучше оставить
+            }
+            alert("Произошла ошибка. Если сертификат не скачался, проверьте настройки браузера.");
+            // Даже при ошибке делаем редирект, чтобы не оставлять пользователя в зависшем состоянии
+            window.location.href = "/";
         }
     };
 
