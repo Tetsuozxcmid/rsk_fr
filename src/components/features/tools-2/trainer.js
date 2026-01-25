@@ -1254,10 +1254,11 @@ export default function TrainerPage({ goTo }) {
     };
 
     const handleSaveSessionCompletion = async (levels) => {
-        // Открываем окно формы Яндекса сразу
+        // 1. Сразу открываем Яндекс.Форму, чтобы пользователь переключил внимание
         const yandexWindow = window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
 
         try {
+            // --- Подготовка данных ---
             const activeUser =
                 document.cookie
                     .split("; ")
@@ -1285,50 +1286,50 @@ export default function TrainerPage({ goTo }) {
                 },
             };
 
-            // 1. Сначала генерируем и скачиваем сертификат.
-            // Ждем выполнения этой функции, чтобы убедиться, что "клик" по ссылке произошел.
-            await handleDownloadCertificate();
-
-            // 2. Параллельно сохраняем данные на сервер
+            // 2. Запускаем сохранение данных (фоном)
             const savePromise = fetch("/api/mayak/saveDeltaTest", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
             });
 
-            // 3. ГЛАВНОЕ ИЗМЕНЕНИЕ: Жесткая задержка 3000 мс (3 секунды).
-            // Это время нужно браузеру, чтобы переварить Blob и начать скачивание файла 
-            // ДО того, как window.location.href убьет страницу.
-            await new Promise(resolve => setTimeout(resolve, 3000));
+            // 3. Генерируем и "кликаем" сертификат
+            // Важно использовать await, чтобы убедиться, что процесс генерации прошел
+            await handleDownloadCertificate();
 
-            // Дожидаемся ответа от сервера (хотя за 3 сек он скорее всего уже пришел)
-            await savePromise;
+            // 4. ПАУЗА 10 СЕКУНД
+            // Мы просто держим страницу живой.
+            // За это время браузер успеет обработать клик по ссылке и начать загрузку файла.
+            await new Promise((resolve) => setTimeout(resolve, 10000));
 
-            // Закрываем модальные окна
+            // (Опционально) Дожидаемся сохранения, хотя за 10 сек оно точно прошло
+            try {
+                await savePromise;
+            } catch (e) {
+                console.error("Ошибка сохранения (не критично):", e);
+            }
+
+            // 5. Очистка состояния
             setShowSessionCompletionPopup(false);
             setShowThirdQuestionnaire(false);
-
-            // Очищаем данные сессии
             localStorage.removeItem(getStorageKey("userRole"));
             setSelectedRole(null);
             
-            removeKeyCookie(); 
+            removeKeyCookie();
 
             localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
-            
-            // Если нужно, для плавности в React:
-            // goTo("index"); 
 
-            // 4. Жесткая перезагрузка (как ты и просил)
+            // 6. ПЕРЕЗАГРУЗКА
+            // Срабатывает только через 10 секунд после начала процесса
             window.location.href = "/";
 
         } catch (error) {
-            console.error("Ошибка при сохранении:", error);
+            console.error("Ошибка в процессе завершения:", error);
             if (yandexWindow) {
-                // yandexWindow.close(); // Можно закрыть, если была ошибка, но лучше оставить
+                // yandexWindow.close(); 
             }
-            alert("Произошла ошибка. Если сертификат не скачался, проверьте настройки браузера.");
-            // Даже при ошибке делаем редирект, чтобы не оставлять пользователя в зависшем состоянии
+            alert("Произошла ошибка. Если сертификат не скачался, проверьте папку загрузок.");
+            // Даже при ошибке обновляем страницу, чтобы сбросить состояние
             window.location.href = "/";
         }
     };
