@@ -43,8 +43,11 @@ const styles = StyleSheet.create({
   // Блок для даты
   dateWrapper: {
     position: 'absolute',
-    bottom: 40,
-    right: 50,
+    bottom: 40,           // Оставляем тот же уровень по вертикали
+    left: 0,              // Добавляем
+    right: 0,             // Добавляем
+    textAlign: 'center',  // Центрируем текст
+    width: '100%',        // Растягиваем на всю ширину
   },
   dateText: {
     fontSize: 12,
