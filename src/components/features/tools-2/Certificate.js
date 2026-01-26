@@ -11,66 +11,75 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: 'Roboto',
     position: 'relative',
-    padding: 0, // ВАЖНО: Убираем стандартные отступы, чтобы не было 2 страниц
+    padding: 0,
     margin: 0,
   },
-  // Картинка на весь фон
   backgroundImage: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: '100%', // Растягиваем на всю ширину
-    height: '100%', // Растягиваем на всю высоту
+    width: '100%',
+    height: '100%',
     zIndex: -1,
   },
-  // Блок для имени
   textWrapper: {
     position: 'absolute',
     left: 0,
     right: 0,
-    // --- НАСТРОЙКИ ПОЛОЖЕНИЯ ---
-    top: 280,            // Регулируйте высоту здесь (повыше/пониже)
-    textAlign: 'center', // Центрирование по горизонтали
+    top: 225, // Позиция имени
+    textAlign: 'center',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
   },
   nameText: {
-    fontSize: 30,        
+    fontSize: 30,
     fontWeight: 'bold',
-    color: '#000000',    
+    color: '#000000',
   },
-  // Блок для даты
   dateWrapper: {
     position: 'absolute',
-    bottom: 40,           // Оставляем тот же уровень по вертикали
-    left: 0,              // Добавляем
-    right: 0,             // Добавляем
-    textAlign: 'center',  // Центрируем текст
-    width: '100%',        // Растягиваем на всю ширину
+    top: 280, // Позиция даты (под именем)
+    left: 0,
+    right: 0,
+    textAlign: 'center',
+    width: '100%',
   },
   dateText: {
-    fontSize: 12,
-    color: '#333333',
+    fontSize: 20, // УВЕЛИЧИЛ ШРИФТ (было 14, стало 20)
+    color: '#000000',
+    fontWeight: 'bold', // Жирный шрифт для даты
   }
 });
 
-const Certificate = ({ userName, date }) => {
-  // Вычисляем полный путь к картинке, чтобы PDF точно ее нашел
-  // Если мы в браузере, берем текущий адрес сайта
+const Certificate = ({ userName }) => {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const imageSrc = `${origin}/certificat.png`;
 
+  // --- ИСПРАВЛЕННАЯ ЛОГИКА ДАТЫ ---
+  const getCurrentDateString = () => {
+    const today = new Date();
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    
+    // Получаем дату (например: "25 января 2026 г." или "25 января 2026")
+    let dateStr = today.toLocaleDateString('ru-RU', options);
+    
+    // Удаляем "г." или " г." с конца строки, если они там есть, чтобы не дублировать
+    dateStr = dateStr.replace(/ г\.?$/, '').trim();
+
+    // Теперь сами добавляем концовку
+    return `${dateStr} г. - 12 академических часов`;
+  };
+
+  const fullDateString = getCurrentDateString();
+
   return (
     <Document>
-      {/* Убедитесь, что orientation соответствует вашей картинке (landscape - горизонтально) */}
       <Page size="A4" orientation="landscape" style={styles.page}>
-        
-        {/* Фоновая картинка с полным путем */}
         <Image 
           src={imageSrc} 
           style={styles.backgroundImage} 
-          fixed // Помогает зафиксировать изображение
+          fixed 
         />
 
         <View style={styles.textWrapper}>
@@ -78,7 +87,7 @@ const Certificate = ({ userName, date }) => {
         </View>
 
         <View style={styles.dateWrapper}>
-           <Text style={styles.dateText}>{date}</Text>
+           <Text style={styles.dateText}>{fullDateString}</Text>
         </View>
 
       </Page>
