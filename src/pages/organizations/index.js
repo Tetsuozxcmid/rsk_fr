@@ -28,22 +28,42 @@ export default function OrganIndexPage() {
 
     const [organs, setOrgans] = useState([]);
     const [currentPage, setCurrentPage] = useState(0);
-    const [totalCount, setTotalCount] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);    
     const limit = 20; // фиксированное количество на страницу
     const [searchQuery, setSearchQuery] = useState("");
+    const [region, setRegion] = useState(""); //состояние для региона
 
     const loadOrgs = useCallback(
         async (page = 0) => {
-            const skip = searchQuery ? 0 : page * limit;
+            const offset = page * limit;
 
             try {
-                const res = await fetch(`/api/org/getOrg?skip=${skip}&limit=${limit}&search=${encodeURIComponent(searchQuery)}`);
-                const data = await res.json();
-                if (data.success && Array.isArray(data.organizations)) {
-                    setOrgans(data.organizations);
+                const params = new URLSearchParams({
+                    sort_by: sortBy,
+                    order: sortWay,
+                    limit: limit.toString(),
+                    offset: offset.toString()
+                });
 
-                    if (searchQuery && page !== 0) {
-                        setCurrentPage(0);
+                if (searchQuery) params.append('name', searchQuery);
+                if (region) params.append('region', region);
+
+                const res = await fetch(`/api/org/all?${params.toString()}`, {
+                    method: "GET",
+                    credentials: "include",
+                });
+                
+                
+
+                const data = await res.json();
+                console.log("ORG ALL RESPONSE:", data);
+
+                
+                if (data.success && Array.isArray(data.data)) {
+                    setOrgans(data.data);
+                    // Если API возвращает total count, обновляем его
+                    if (data.total) {
+                        setTotalCount(data.total);
                     }
                 } else {
                     setOrgans([]);
@@ -53,20 +73,20 @@ export default function OrganIndexPage() {
                 setOrgans([]);
             }
         },
-        [searchQuery, limit]
+        [searchQuery, region, sortBy, sortWay, limit]
     );
 
     const getTotalCount = async () => {
-        const res = await fetch(`/api/org/count`, {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-        });
+    const res = await fetch(`/api/org/count`, {
+        method: "GET",
+        credentials: "include",
+    });
 
-        const data = await res.json();
+    const data = await res.json();
+    console.log("COUNT RESPONSE:", data);
 
-        setTotalCount(data.data.count);
-    };
+    setTotalCount(data?.data?.count ?? 0);
+};
 
     useEffect(() => {
         getTotalCount();
@@ -122,6 +142,10 @@ export default function OrganIndexPage() {
                             <Button inverted icon onClick={handleSearch}>
                                 <Search />
                             </Button>
+
+                            <Button onClick={() => setSearch(!search)}>Параметры поиска
+                            </Button>
+
                         </div>
                         {search ? (
                             ""
@@ -156,22 +180,26 @@ export default function OrganIndexPage() {
                                     <div className="flex gap-[.75rem] items-center">
                                         {/* Пока убмраем логотип - а именно кружочек */}
                                         {/* <div className="size-[2rem] rounded-full bg-(--color-red-noise)"></div> */}
-                                        <span className="link big group-hover:text-(--color-blue)">{organ.name}</span>
+                                        <span className="link big group-hover:text-(--color-blue)"> {organ.short_name || organ.full_name}</span>
                                     </div>
                                     <span className="link big text-(--color-gray-black)">#{idx + 1 + currentPage * limit}</span>
                                 </div>
                                 <div className="flex gap-[1.5rem] items-center">
                                     <div className="flex gap-[.25rem] items-center group-hover:text-(--color-blue)">
                                         <Index />
-                                        <span className="link small">{organ.index || "Нет данных"} индексов</span>
+                                        <span className="link small">{organ.index ?? "Нет данных"} индексов</span>
                                     </div>
                                     <div className="flex gap-[.25rem] items-center text-(--color-gray-black) group-hover:text-(--color-black)">
                                         <Persons />
-                                        <span className="link small">{organ.members || "Нет данных"} участников</span>
+                                        <span className="link small">{organ.members ?? "Нет данных"} участников</span>
                                     </div>
                                     <div className="flex gap-[.25rem] items-center text-(--color-gray-black) group-hover:text-(--color-black)">
                                         <Persons />
-                                        <span className="link small">{organ.teams || "Нет данных"} команд</span>
+                                        <span className="link small">{organ.teams ?? "Нет данных"} команд</span>
+                                    </div>
+                                    <div className="flex gap-[1.5rem] items-center">
+                                        <span className="link small">{organ.region}</span>
+                                        {/* <span className="link small">ИНН: {organ.inn}</span> */}
                                     </div>
                                 </div>
                             </Link>
@@ -210,7 +238,7 @@ export default function OrganIndexPage() {
                         </div>
                         <div className="flex flex-col gap-[.5rem]">
                             <span className="link big">Регион</span>
-                            <Input placeholder="Введите регион" id="sortByReg" name="sortByReg" autoComplete="off" />
+                            <Input placeholder="Введите регион" id="sortByReg" name="sortByReg" autoComplete="off" value={region} onChange={(e) => setRegion(e.target.value)} />
                         </div>
                         {/* <div className="flex flex-col gap-[.5rem]">
                             <span className="link big">Лимиты</span>

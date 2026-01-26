@@ -7,7 +7,7 @@ export default async function getIdOrg(req, res) {
 
         const { id } = req.query;
 
-        const response_info = await fetch(`https://api.rosdk.ru/orgs/organizations/org-id/${id}`, {
+        const response_info = await fetch(`https://api.rosdk.ru/orgs/organizations/org/${id}`, {
             headers: {
                 Accept: "application/json",
                 Cookie: req.headers.cookie || "",

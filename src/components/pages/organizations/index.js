@@ -18,7 +18,14 @@ export default function OrganIndexPage({ goTo, organ }) {
         if (!organ) return;
         const getOrganInfo = async () => {
             try {
-                const res = await fetch(`/api/org/${organ}`);
+
+                const res = await fetch(`/api/org/${organ}`, {
+                     headers: {
+                        Accept: "application/json",
+                     },
+                     credentials: "include",
+                });
+                
                 const data = await res.json();
 
                 if (!data.success || !data.data) {
