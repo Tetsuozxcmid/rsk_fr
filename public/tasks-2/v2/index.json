@@ -3330,10 +3330,7 @@
     {
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1:Perplexity",
-        "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "2:Napkin",
-        "sourceLink": "https://bankstoday.net/last-articles/primaries-edinoy-rossii-2024"
+        "toolName1": "Perplexity"
     },
     {
         "file": "567.pdf",
@@ -3369,8 +3366,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://suno.com/",
-        "toolName1": "Suno"
+        "toolLink1": "",
+        "toolName1": ""
     },
     {
         "file": "573.pdf",
@@ -3422,10 +3419,7 @@
     {
         "file": "581.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1:Perplexity",
-        "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "2:Napkin",
-        "sourceLink": "https://arkhangelsk.er.ru/activity/news/dekada-priemov-grazhdan-edinoj-rossii-rezultaty-i-itogi"
+        "toolName1": "1:Perplexity"
     },
     {
         "file": "582.pdf",
@@ -3454,7 +3448,7 @@
         "sourceLink": "https://arkhangelsk.er.ru/activity/news/dekada-priemov-grazhdan-edinoj-rossii-rezultaty-i-itogi"
     },
     {
-        "file": "",
+        "file": "586.pdf",
         "toolLink1": "",
         "toolName1": "Сомнения/ИИ не требуется"
     },
@@ -3487,10 +3481,7 @@
     {
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1:Perplexity",
-        "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "2:Napkin",
-        "sourceLink": "https://media73.ru/2024/edinaya-rossiya-vypolnila-godovoy-plan-po-narodnoy-programme-na-96"
+        "toolName1": "Perplexity"
     },
     {
         "file": "592.pdf",
