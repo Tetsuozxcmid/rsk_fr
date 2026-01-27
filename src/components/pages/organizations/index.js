@@ -28,6 +28,8 @@ export default function OrganIndexPage({ goTo, organ }) {
                 
                 const data = await res.json();
 
+                console.log(data)
+
                 if (!data.success || !data.data) {
                     setNotFound(true);
                     return;
@@ -46,7 +48,14 @@ export default function OrganIndexPage({ goTo, organ }) {
     if (notFound) return <OrganNotFound goTo={goTo} />;
     if (!organInfo) return <div className="loading">Загрузка...</div>;
 
-    const index = organInfo.index || {};
+    const index = { 
+        'automatization': organInfo.automation_a,
+        'vzaim': organInfo.knowledge_skills_v,
+        'sreda': organInfo.knowledge_skills_z,
+        'zashita':organInfo.data_protection_z,
+        'dannie': organInfo.data_analytics_d,
+        'znaniya':organInfo.digital_env_e,
+    }
 
     const renderStat = (label, key) => (
         <div className="w-full flex items-center gap-[1.25rem]">
@@ -59,7 +68,7 @@ export default function OrganIndexPage({ goTo, organ }) {
                     className="flex items-center justify-center link
                     w-[5rem] px-[.875rem] py-[.5rem] rounded-[.625rem]
                     bg-(--color-gray-plus-50) text-(--color-black) small">
-                    {index[key] ?? "⌛"}
+                    {index[key]}
                 </div>
             </div>
         </div>
@@ -69,7 +78,7 @@ export default function OrganIndexPage({ goTo, organ }) {
         <>
             <Header>
                 <Header.Heading>
-                    Организации <span className="text-(--color-gray-black)">/</span> {organInfo.name}
+                    Организации <span className="text-(--color-gray-black)">/</span> {organInfo.short_name}
                 </Header.Heading>
             </Header>
 
@@ -78,7 +87,7 @@ export default function OrganIndexPage({ goTo, organ }) {
                     <div className="gap-[1rem] bg-(--color-white-gray) col-span-12 h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                         {/* Убираем аватарку - кружочек */}
                         {/* <div className="h-[2rem] aspect-square rounded-full bg-(--color-blue-noise)" /> */}
-                        <h6>{organInfo.name}</h6>
+                        <h6>{organInfo.full_name}</h6>
                     </div>
 
                     <div className="flex gap-[1.25rem]">
@@ -87,14 +96,28 @@ export default function OrganIndexPage({ goTo, organ }) {
                             <h6>{organInfo.members ? organInfo.members : "Нет данных"} участников</h6>
                         </div>
 
-                        <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                        {/* <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <DelIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6 className="text-(--color-gray-white)">Мастерская (скоро)</h6>
-                        </div>
+                        </div> */}
 
                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6>{organInfo.teams ? organInfo.teams : "Нет данных"} команд</h6>
+                        </div>
+
+                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                            <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
+                            <h6>ИНН:{organInfo.inn}</h6>
+                        </div>
+
+                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                            <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
+                            <h6>Регион: {organInfo.region}</h6>
+                        </div>
+
+                         <div className="w-1/3 gap-[1rem] bg-(--color-blue-noise) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                            <h6 className="text-(--color-blue)">Индекс {organInfo.star}</h6>
                         </div>
                     </div>
                 </div>
@@ -108,7 +131,7 @@ export default function OrganIndexPage({ goTo, organ }) {
                             {renderStat("Среда", "sreda")}
                             {renderStat("Защита", "zashita")}
                             {renderStat("Данные", "dannie")}
-                            {renderStat("Автоматизация", "auto")}
+                            {renderStat("Автоматизация", "automatization")}
                         </div>
                     </div>
                 </div>

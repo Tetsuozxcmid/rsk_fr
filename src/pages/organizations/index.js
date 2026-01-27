@@ -17,11 +17,12 @@ import Persons from "@/assets/general/persons.svg";
 import SortDown from "@/assets/general/sortDown.svg";
 import SortCoins from "@/assets/general/sortCoins.svg";
 import SortNames from "@/assets/general/sortNames.svg";
+import DropdownInput from "@/components/ui/Input/DropdownInput";
 
 export default function OrganIndexPage() {
     const [sortBy, setSortBy] = useState("coins"); // names, members
     const [sortLetter, setSortLetter] = useState("a"); // e, z, d
-    const [sortWay, setSortWay] = useState("up"); // down
+    const [sortWay, setSortWay] = useState("asc"); // desc
 
     const [caseType, setCaseType] = useState("all");
     const [search, setSearch] = useState(false);
@@ -198,7 +199,7 @@ export default function OrganIndexPage() {
                                         <span className="link small">{organ.teams ?? "Нет данных"} команд</span>
                                     </div>
                                     <div className="flex gap-[1.5rem] items-center">
-                                        <span className="link small">{organ.region}</span>
+                                        {/* <span className="link small">{organ.region}</span> */}
                                         {/* <span className="link small">ИНН: {organ.inn}</span> */}
                                     </div>
                                 </div>
@@ -210,8 +211,7 @@ export default function OrganIndexPage() {
                 <div
                     className={`
                         ${search ? "flex" : "hidden"} flex-col col-span-6
-                        bg-(--color-white-gray) mb-[1.5rem] justify-between rounded-[1rem] p-[1rem]
-                    `}>
+                        bg-(--color-white-gray) mb-[1.5rem] rounded-[1rem] p-[1rem] w-[90vh] h-[85vh] sticky top-[1.5rem] overflow-y-auto`}>
                     <div className="flex flex-col gap-[1.25rem]">
                         <h6>Настройки поиска</h6>
                         <div className="flex flex-col gap-[.5rem]">
@@ -228,17 +228,17 @@ export default function OrganIndexPage() {
                                 </Switcher.Option>
                             </Switcher>
                             <Switcher value={sortWay} onChange={setSortWay} className="!w-full">
-                                <Switcher.Option value="down">
+                                <Switcher.Option value="desc">
                                     <SortDown /> По убыванию
                                 </Switcher.Option>
-                                <Switcher.Option value="up">
+                                <Switcher.Option value="asc">
                                     <SortUp /> По возрастанию
                                 </Switcher.Option>
                             </Switcher>
                         </div>
                         <div className="flex flex-col gap-[.5rem]">
                             <span className="link big">Регион</span>
-                            <Input placeholder="Введите регион" id="sortByReg" name="sortByReg" autoComplete="off" value={region} onChange={(e) => setRegion(e.target.value)} />
+                            <DropdownInput id="sortByReg" name="sortByReg" placeholder="Введите регион" value={region}  onChange={(e) => setRegion(e.target.value)} />
                         </div>
                         {/* <div className="flex flex-col gap-[.5rem]">
                             <span className="link big">Лимиты</span>
@@ -255,6 +255,9 @@ export default function OrganIndexPage() {
                                 <Button inverted className="!w-fit">{`+`}</Button>
                             </div>
                         </div> */}
+                    </div>
+                    <div className="h-full">
+
                     </div>
                     <Button onClick={handleSearch}>Найти организацию</Button>
                 </div>
