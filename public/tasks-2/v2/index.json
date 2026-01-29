@@ -5415,16 +5415,12 @@
     {
         "file": "",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1:Perplexity",
-        "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "2:Napkin"
+        "toolName1": "Perplexity"
     },
     {
         "file": "891.pdf",
         "toolLink1": "https://www.perplexity.ai/",
-        "toolName1": "1:Perplexity",
-        "toolLink2": "https://www.napkin.ai/",
-        "toolName2": "2:Napkin"
+        "toolName1": "Perplexity"
     },
     {
         "file": "892.pdf",
