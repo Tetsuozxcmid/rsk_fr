@@ -12,11 +12,10 @@ export default async function RegHandler(req, res) {
                 Cookie: req.headers.cookie || "",
             },
             body: JSON.stringify({
-                name: req.body.name.toString(),
+                name: req.body.name,
                 direction: "Другое",
-                city: "city",
-                region: req.body.region.toString(),
-                organization_name: req.body.organization_name.toString(),
+                region: req.body.region,
+                organization_name: req.body.organization_name,
             }),
             cache: "no-store",
         });

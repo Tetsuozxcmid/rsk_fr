@@ -93,7 +93,7 @@ export default function OrganIndexPage({ goTo, organ }) {
                     <div className="flex gap-[1.25rem]">
                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
-                            <h6>{organInfo.members ? organInfo.members : "Нет данных"} участников</h6>
+                            <h6>{organInfo.members_count} участников</h6>
                         </div>
 
                         {/* <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
@@ -103,7 +103,7 @@ export default function OrganIndexPage({ goTo, organ }) {
 
                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
-                            <h6>{organInfo.teams ? organInfo.teams : "Нет данных"} команд</h6>
+                            <h6>{organInfo.teams_count} команд</h6>
                         </div>
 
                          <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
