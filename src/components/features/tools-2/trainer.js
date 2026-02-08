@@ -129,6 +129,19 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
     const taskFileUrl = currentTask?.file ? `${basePath}/Files/${currentTask.file}` : "";
     const currentImage = currentTask?.photo ? `${basePath}/${currentTask.photo}` : "";
 
+    // --- НОВАЯ ЛОГИКА: ССЫЛКА ИЛИ ФАЙЛ В ПАПКЕ SOURCE ---
+    let sourceUrl = "";
+    if (currentTask?.sourceLink) {
+        if (currentTask.sourceLink.startsWith("http") || currentTask.sourceLink.startsWith("www")) {
+            // Это внешняя ссылка
+            sourceUrl = currentTask.sourceLink;
+        } else {
+            // Это файл, ищем его в папке 'source' (как на скриншоте)
+            sourceUrl = `${basePath}/source/${currentTask.sourceLink}`; 
+        }
+    }
+    // ---------------------------------------------------
+
     useEffect(() => {
         const loadTasks = async () => {
             if (!isTokenValid) return;
@@ -204,6 +217,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
         instructionFileUrl,
         taskFileUrl,
         currentImage,
+        sourceUrl,
         basePath,
         tasksTexts,
         setError,
@@ -816,6 +830,7 @@ const TrainerControls = memo(function TrainerControls({
     taskElapsedTime,
     instructionFileUrl,
     taskFileUrl,
+    sourceUrl,
     currentTask,
     levels,
     showLevelsInput,
@@ -940,29 +955,32 @@ const TrainerControls = memo(function TrainerControls({
                             </Button>
                         </span>
                     )}
-                   {currentTask?.sourceLink && (
-                    <span title={!isTaskRunning ? "Сначала начните задание" : "Источник"}>
+                    {sourceUrl && (
+                    <span title={!isTaskRunning ? "Сначала начните задание" : "Источник / Доп. материал"}>
                         <Button
-                            icon
-                            as="a"
-                            href={currentTask.sourceLink}
+                            icon // Оставляем стиль иконки
+                            as="a" // Для семантики
+                            href={sourceUrl} // Чтобы при наведении виден был путь
                             target="_blank"
                             disabled={!isTaskRunning}
                             className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
                             onClick={(e) => {
+                                // 1. Всегда предотвращаем стандартное поведение, так как Button может вести себя непредсказуемо
                                 e.preventDefault();
+                                
+                                // 2. Если таймер запущен - открываем ссылку/файл принудительно
                                 if (isTaskRunning) {
-                                    window.open(currentTask.sourceLink, "_blank");
+                                    window.open(sourceUrl, "_blank");
                                 }
                             }}
-                            >
+                        >
                             <div className="w-full h-full flex items-center justify-center">
-                            <InfoIcon className="w-4 h-4 relative translate-x-[0.25px] -translate-y-[0.25px]" />
+                                <InfoIcon className="w-4 h-4 relative translate-x-[0.25px] -translate-y-[0.25px]" />
                             </div>
                         </Button>
                     </span>
                 )}
-                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000|| currentTaskIndex === 3000|| currentTaskIndex === 700|| currentTaskIndex === 300|| currentTaskIndex === 500|| currentTaskIndex === 600|| currentTaskIndex === 900|| currentTaskIndex === 800|| currentTaskIndex === 6100) && who === "im" && (
+                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000|| currentTaskIndex === 3000|| currentTaskIndex === 700|| currentTaskIndex === 300|| currentTaskIndex === 500|| currentTaskIndex === 600|| currentTaskIndex === 900|| currentTaskIndex === 800|| currentTaskIndex === 6100|| currentTaskIndex === 8000) && who === "im" && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
                                 Выбрать роль
@@ -1054,7 +1072,7 @@ export default function TrainerPage({ goTo }) {
     const [isMiscAccordionOpen, setIsMiscAccordionOpen] = useState(false);
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl, currentImage, tasksTexts } = useTaskManager({
+    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts } = useTaskManager({
         userType,
         who,
         taskVersion,
@@ -1695,6 +1713,7 @@ export default function TrainerPage({ goTo }) {
         taskElapsedTime: timerState.elapsedTime,
         instructionFileUrl,
         taskFileUrl,
+        sourceUrl,
         currentTask,
         levels,
         showLevelsInput,
