@@ -81,9 +81,10 @@ const TaskPage = () => {
 
         const getTaskInfo = async () => {
             try {
-                const res = await fetch(`/api/projects/task/${id_task}`);
+                const res = await fetch(`/api/projects/task/${id_project}`);
                 const json = await res.json();
-                setData(json.data);
+                const need_task_id = json.data.find(task => task.id == id_task);
+                setData(need_task_id);
             } catch (err) {
                 console.error("Ошибка получения задания:", err);
                 setData({ success: false });

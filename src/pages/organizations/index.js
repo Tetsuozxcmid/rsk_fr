@@ -188,15 +188,15 @@ export default function OrganIndexPage() {
                                 <div className="flex gap-[1.5rem] items-center">
                                     <div className="flex gap-[.25rem] items-center group-hover:text-(--color-blue)">
                                         <Index />
-                                        <span className="link small">{organ.index ?? "Нет данных"} индексов</span>
+                                        <span className="link small">{organ.star ?? "Нет данных"} индексов</span>
                                     </div>
                                     <div className="flex gap-[.25rem] items-center text-(--color-gray-black) group-hover:text-(--color-black)">
                                         <Persons />
-                                        <span className="link small">{organ.members ?? "Нет данных"} участников</span>
+                                        <span className="link small">{organ.members_count ?? "Нет данных"} участников</span>
                                     </div>
                                     <div className="flex gap-[.25rem] items-center text-(--color-gray-black) group-hover:text-(--color-black)">
                                         <Persons />
-                                        <span className="link small">{organ.teams ?? "Нет данных"} команд</span>
+                                        <span className="link small">{organ.teams_count ?? "Нет данных"} команд</span>
                                     </div>
                                     <div className="flex gap-[1.5rem] items-center">
                                         {/* <span className="link small">{organ.region}</span> */}
