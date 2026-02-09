@@ -59,7 +59,7 @@ const BASE_NAV_LINKS = [
         href: "#",
         icon: dynamic(() => import("@/assets/nav/king.svg")),
         submenu: [
-            // { label: 'Проекты', href: '/admin/projects' },
+            { label: "Проекты", href: "/admin/projects" },
             // { label: 'Преподаватели', href: '/admin/teachers' },
             { label: "Обучение", href: "/admin/cours" },
         ],

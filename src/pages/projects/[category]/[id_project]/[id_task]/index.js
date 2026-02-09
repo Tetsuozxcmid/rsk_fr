@@ -155,7 +155,7 @@ const TaskPage = () => {
 
     const goToSubmit = () => {
         if (!category || !id_project) return; // защита
-        router.push(`/projects/${category}/${id_project}/submit`);
+        router.push(`/projects/${category}/${id_project}/${id_task}/submit`);
     };
 
     return (
@@ -193,10 +193,6 @@ const TaskPage = () => {
                                     <Button className="blue roundeful small" onClick={goToSubmit}>
                                         <p className="whitespace-nowrap">Сдать задание</p>
                                         <SubmitTask />
-                                    </Button>
-                                    <Button onClick={endTask} className="inverted roundeful small">
-                                        <p className="whitespace-nowrap">Завершить</p>
-                                        <StartWork />
                                     </Button>
                                 </>
                             ) : data.status == "SUCCESS" ? (

@@ -10,13 +10,14 @@ export default async function endProjectTask(req, res) {
             method: "POST",
             headers: {
                 Accept: "application/json",
+                "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",
             },
             body: JSON.stringify(bodyData),
         });
 
         const data = await response_info.json();
-        console.log(data);
+        console.log("End: ", data);
 
         return res.json({ success: true, data });
     } catch (err) {
