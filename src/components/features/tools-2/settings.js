@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 import Header from "@/components/layout/Header";
 import { addKeyToCookies, addUserToCookies, getKeyFromCookies } from "./actions";
@@ -13,19 +13,46 @@ import CloseIcon from "@/assets/general/close.svg";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
 
-const CORRECT_TOKENS = [
-    "MA8YQ-OKO2V-P3XZM-LR9QD-K7N4E",
-    "JX3FQ-7B2WK-9PL8D-M4R6T-VN5YH",
-    "KL9ZD-4WX7M-P2Q8R-T6H3Y-F5V1E",
-    "QZ4R7-M8N3K-L2P9D-X6Y1T-VB5WU",
-    "D9F2K-5T7XJ-R3M8P-Y4N6Q-W1VHZ",
-    "T3Y8H-P6K2M-9D4R7-Q1X5W-LN9VZ",
-    "R7W4E-K2N5D-M8P3Q-Y1T6X-V9BZJ",
-    "H5L9M-3X2P8-Q6R4T-K1Y7W-N9VZD",
-    "F2K8J-4D7N3-P5Q9R-M1W6X-T3YVH",
-    "B6N9Q-1M4K7-R3T8P-Y2X5W-Z7VHD",
-    "W4P7Z-2K9N5-D3R8M-Q1Y6T-X5VHB",
-];
+// Функция для проверки токена через API
+async function validateTokenAPI(tokenValue) {
+    try {
+        const response = await fetch(`/api/mayak/validate-token?token=${encodeURIComponent(tokenValue)}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+        });
+        const data = await response.json();
+        return {
+            valid: data.valid || false,
+            remainingAttempts: data.remainingAttempts || 0,
+            usageLimit: data.usageLimit || 0,
+            usedCount: data.usedCount || 0,
+            error: data.error || null,
+        };
+    } catch (error) {
+        console.error("Ошибка проверки токена:", error);
+        return { valid: false, remainingAttempts: 0, usageLimit: 0, usedCount: 0, error: "Ошибка сервера" };
+    }
+}
+
+// Функция для использования токена (увеличение счетчика)
+async function useTokenAPI(tokenValue) {
+    try {
+        const response = await fetch("/api/mayak/validate-token", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: tokenValue }),
+        });
+        const data = await response.json();
+        return {
+            success: data.success || false,
+            remainingAttempts: data.remainingAttempts || 0,
+            error: data.error || null,
+        };
+    } catch (error) {
+        console.error("Ошибка использования токена:", error);
+        return { success: false, remainingAttempts: 0, error: "Ошибка сервера" };
+    }
+}
 
 export default function SettingsPage({ goTo }) {
     // Токен и его валидация
@@ -47,9 +74,8 @@ export default function SettingsPage({ goTo }) {
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
-    // Токен usage
-    //const tokenUsageFromBackend = 70
-    const max = 180;
+    // Токен usage - теперь динамические значения
+    const [max, setMax] = useState(180);
     const [value, setValue] = useState(0);
 
     // Получаем токен из cookies при монтировании компонента
@@ -69,39 +95,73 @@ export default function SettingsPage({ goTo }) {
         }
     }
 
+    // Состояние для отображения оставшихся попыток токена
+    const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
+    const [tokenError, setTokenError] = useState("");
+    const [isValidating, setIsValidating] = useState(false);
+
     const getRangeClass = (val) => {
         if (val < 30) return "range-low";
         if (val < 80) return "range-mid";
         return "range-high";
     };
 
-    const validateToken = useCallback(
-        (tokenToValidate = token) => {
-            const isValid = CORRECT_TOKENS.includes(tokenToValidate);
-            setIsTokenValid(isValid);
+    // Асинхронная функция валидации токена через API
+    const validateToken = async (tokenToValidate) => {
+        if (!tokenToValidate || tokenToValidate.trim() === "") {
+            setIsTokenValid(false);
+            setShowNotification(false);
+            setTokenError("");
+            return;
+        }
 
-            if (isValid) {
-                setShowNotification(true);
-            }
-        },
-        [token]
-    );
+        setIsValidating(true);
+        setTokenError("");
+
+        const result = await validateTokenAPI(tokenToValidate);
+
+        setIsTokenValid(result.valid);
+        setTokenRemainingAttempts(result.remainingAttempts);
+
+        // Устанавливаем значения для шкалы на основе данных токена
+        if (result.usageLimit > 0) {
+            setMax(result.usageLimit);
+            setValue(result.remainingAttempts);
+        }
+
+        if (result.valid) {
+            setShowNotification(true);
+            // ВАЖНО: Сразу сохраняем валидный токен в cookies, чтобы он использовался при переходе в тренажер
+            await addKeyToCookies(tokenToValidate);
+        } else {
+            setTokenError(result.error || "Токен недействителен");
+            setShowNotification(false);
+        }
+
+        setIsValidating(false);
+    };
 
     useEffect(() => {
         async function fetchTokenAndUsage() {
             const KeyInCookies = await getKeyFromCookies();
-            if (KeyInCookies) {
+            if (KeyInCookies && KeyInCookies.text) {
                 setToken(KeyInCookies.text);
-                validateToken(KeyInCookies.text);
                 setTokenExists(true);
+                // Валидируем токен напрямую
+                const result = await validateTokenAPI(KeyInCookies.text);
+                setIsTokenValid(result.valid);
+                setTokenRemainingAttempts(result.remainingAttempts);
+                if (result.usageLimit > 0) {
+                    setMax(result.usageLimit);
+                    setValue(result.remainingAttempts);
+                }
+                if (result.valid) {
+                    setShowNotification(true);
+                }
             }
-
-            const recordsCount = await getRecordsCount();
-            // console.log(recordsCount)
-            setValue(max - recordsCount);
         }
         fetchTokenAndUsage();
-    }, [validateToken]);
+    }, []);
 
     const handleUserDataChange = (e) => {
         const { name, value } = e.target;
@@ -125,6 +185,14 @@ export default function SettingsPage({ goTo }) {
         setIsLoading(true);
 
         try {
+            // Используем токен (увеличиваем счётчик использований)
+            const useResult = await useTokenAPI(token);
+            if (!useResult.success) {
+                alert(useResult.error || "Ошибка при использовании токена");
+                setIsLoading(false);
+                return;
+            }
+
             const userId = uuidv4();
 
             const userRecord = {
@@ -179,11 +247,10 @@ export default function SettingsPage({ goTo }) {
         const CORRECT_ADMIN_PASSWORD = "a12345";
 
         if (adminPassword === CORRECT_ADMIN_PASSWORD) {
-            // Устанавливаем "валидный" токен и пользователя в cookie,
-            // чтобы тренажер вас пропустил
-            const DUMMY_VALID_TOKEN = "MA8YQ-OKO2V-P3XZM-LR9QD-K7N4E"; // Любой из списка правильных
+            // Используем специальный админ-токен для обхода проверки
+            const ADMIN_BYPASS_TOKEN = "ADMIN-BYPASS-TOKEN";
 
-            await addKeyToCookies(DUMMY_VALID_TOKEN);
+            await addKeyToCookies(ADMIN_BYPASS_TOKEN);
             await addUserToCookies("admin-id", "Администратор");
 
             goTo("trainer"); // Переходим в тренажер
@@ -232,9 +299,30 @@ export default function SettingsPage({ goTo }) {
                             }}
                         />
 
-                        {showNotification && tokenExists && <span className="big p-3 bg-green-100 text-green-700 rounded-md">Тренажер активирован</span>}
+                        {showNotification && tokenExists && (
+                            <div className="flex flex-col gap-[1rem] items-center">
+                                <span className="big p-3 bg-green-100 text-green-700 rounded-md">Тренажер активирован</span>
+                                <span className="small text-(--color-gray-black)">
+                                    Осталось попыток: {tokenRemainingAttempts}
+                                </span>
+                                <Button
+                                    onClick={() => goTo("trainer")}
+                                    className="w-full"
+                                >
+                                    Войти в тренажер
+                                </Button>
+                            </div>
+                        )}
 
                         {showNotification && !tokenExists && <span className="big p-3 bg-yellow-100 text-yellow-700 rounded-md">Токен подходит. Заполните форму ниже для активации тренажера.</span>}
+
+                        {tokenError && !showNotification && (
+                            <span className="big p-3 bg-red-100 text-red-700 rounded-md">{tokenError}</span>
+                        )}
+
+                        {isValidating && (
+                            <span className="big p-3 bg-blue-100 text-blue-700 rounded-md">Проверка токена...</span>
+                        )}
 
                         <div className="flex flex-col gap-[0.25rem]">
                             <span className={getRangeClass(value)}>

@@ -1,0 +1,14 @@
+{
+  "tokens": [
+    {
+      "id": "45a5c4b1-75dd-4469-b250-9904f635282b",
+      "name": "12312",
+      "token": "2496473267af53822aa05ed2336f566e45f393958177aacef2daa683ba43749a",
+      "usageLimit": 130,
+      "usedCount": 0,
+      "createdAt": "2026-02-10T10:40:47.125Z",
+      "updatedAt": "2026-02-10T10:40:58.005Z",
+      "isActive": true
+    }
+  ]
+}

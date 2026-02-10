@@ -1689,11 +1689,43 @@ export default function TrainerPage({ goTo }) {
         async function checkToken() {
             const KeyInCookies = await getKeyFromCookies();
             const token = KeyInCookies?.text;
-            // Используем CORRECT_TOKENS из глобальных констант
-            if (token && CONSTANTS.CORRECT_TOKENS.includes(token)) {
+
+            if (!token) {
+                goTo("settings");
+                return;
+            }
+
+            // 1. Проверка админского токена
+            if (token === "ADMIN-BYPASS-TOKEN") {
                 setIsTokenValid(true);
-            } else {
-                goTo("settings"); // Если токена нет, отправляем на настройки
+                return;
+            }
+
+            // 2. Проверка старых жестко заданных токенов
+            if (CONSTANTS.CORRECT_TOKENS.includes(token)) {
+                setIsTokenValid(true);
+                return;
+            }
+
+            // 3. Проверка динамических токенов через API
+            try {
+                const response = await fetch(`/api/mayak/validate-token?token=${encodeURIComponent(token)}`);
+                const data = await response.json();
+
+                // ВАЖНО: Если токен валиден, пускаем.
+                // Если ошибка "Лимит исчерпан", но токен есть в куках, это может быть проблемой для одноразовых токенов.
+                // Но пока следуем логике: если API говорит valid: true, то пускаем.
+                if (data.valid) {
+                    setIsTokenValid(true);
+                } else {
+                    console.warn("Токен недействителен:", data.error);
+                    // Можно добавить логику: если лимит исчерпан, но пользователь уже внутри...
+                    // Пока просто отправляем на настройки
+                    goTo("settings");
+                }
+            } catch (error) {
+                console.error("Ошибка проверки токена:", error);
+                goTo("settings");
             }
         }
         checkToken();
