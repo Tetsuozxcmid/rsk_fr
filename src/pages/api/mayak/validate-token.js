@@ -38,6 +38,7 @@ export default async function handler(req, res) {
                 remainingAttempts: result.remainingAttempts || 0,
                 usageLimit: result.token?.usageLimit || 0,
                 usedCount: result.token?.usedCount || 0,
+                taskRange: result.token?.taskRange || null, // Возвращаем диапазон заданий
             });
         } catch (error) {
             console.error("Error validating token:", error);

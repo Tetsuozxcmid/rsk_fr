@@ -108,7 +108,7 @@ const usePopups = () => {
 /**
  * Хук для управления задачами тренажера
  */
-const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
+const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange }) => {
     const [tasks, setTasks] = useState([]);
     const [tasksTexts, setTasksTexts] = useState([]);
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -123,6 +123,29 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
     const timerRef = useRef(null);
 
     const currentTask = tasks[currentTaskIndex] || null;
+
+    // Проверка, доступно ли текущее задание по токену
+    const isCurrentTaskAllowed = (() => {
+        if (!tokenTaskRange) return true;
+
+        // Получаем номер текущего задания
+        // Пытаемся взять из currentTask.number, иначе используем индекс + 1
+        let taskNum;
+        if (currentTask && currentTask.number) {
+            taskNum = parseInt(currentTask.number, 10);
+        } else {
+            taskNum = currentTaskIndex + 1;
+        }
+
+        const [startStr, endStr] = tokenTaskRange.split("-");
+        const start = parseInt(startStr, 10);
+        const end = parseInt(endStr, 10);
+
+        if (isNaN(start) || isNaN(end)) return true;
+
+        return taskNum >= start && taskNum <= end;
+    })();
+
     const basePath = taskVersion === "v2" ? `/tasks-2/${taskVersion}` : `/tasks-2/${taskVersion}/${userType}/${who}`;
 
     const instructionFileUrl = currentTask?.instruction ? `${basePath}/Instructions/${currentTask.instruction}` : "";
@@ -151,9 +174,27 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
                 // Загружаем основной список заданий
                 const tasksResponse = await fetch(`${basePath}/index.json`);
                 if (!tasksResponse.ok) throw new Error(`Не удалось загрузить задания: ${tasksResponse.status}`);
-                const tasksData = await tasksResponse.json();
+                let tasksData = await tasksResponse.json();
+
+                // Убрали фильтрацию, теперь просто находим нужный индекс для старта
                 setTasks(tasksData);
-                setCurrentTaskIndex(0);
+
+                // Если диапазон задан, попробуем найти первое задание из диапазона и встать на него
+                if (tokenTaskRange) {
+                    const [startStr, endStr] = tokenTaskRange.split("-");
+                    const start = parseInt(startStr, 10);
+                    if (!isNaN(start)) {
+                        const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
+                        if (startIndex !== -1) {
+                            setCurrentTaskIndex(startIndex);
+                        } else {
+                            setCurrentTaskIndex(0);
+                        }
+                    }
+                } else {
+                    setCurrentTaskIndex(0);
+                }
+
                 if (tasksData.length === 0) {
                     setError("Нет доступных заданий");
                 }
@@ -221,6 +262,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
         basePath,
         tasksTexts,
         setError,
+        isCurrentTaskAllowed,
     };
 };
 
@@ -832,6 +874,7 @@ const TrainerControls = memo(function TrainerControls({
     taskFileUrl,
     sourceUrl,
     currentTask,
+    isCurrentTaskAllowed,
     levels,
     showLevelsInput,
     selectedRole,
@@ -896,9 +939,11 @@ const TrainerControls = memo(function TrainerControls({
                     </div>
                 </div>
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
-                    <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
-                        {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
-                    </Button>
+                    {isCurrentTaskAllowed && (
+                        <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
+                            {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
+                        </Button>
+                    )}
                     {instructionFileUrl && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button
@@ -1069,14 +1114,16 @@ export default function TrainerPage({ goTo }) {
     const [userType, setUserType] = useState("teacher");
     const [who, setWho] = useState("im");
     const [isTokenValid, setIsTokenValid] = useState(false);
+    const [tokenTaskRange, setTokenTaskRange] = useState(null); // Состояние для диапазона
     const [isMiscAccordionOpen, setIsMiscAccordionOpen] = useState(false);
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts } = useTaskManager({
+    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts, isCurrentTaskAllowed } = useTaskManager({
         userType,
         who,
         taskVersion,
         isTokenValid,
+        tokenTaskRange, // Передаем в хук
     });
 
     useEffect(() => {
@@ -1713,14 +1760,13 @@ export default function TrainerPage({ goTo }) {
                 const data = await response.json();
 
                 // ВАЖНО: Если токен валиден, пускаем.
-                // Если ошибка "Лимит исчерпан", но токен есть в куках, это может быть проблемой для одноразовых токенов.
-                // Но пока следуем логике: если API говорит valid: true, то пускаем.
                 if (data.valid) {
                     setIsTokenValid(true);
+                    if (data.taskRange) {
+                        setTokenTaskRange(data.taskRange); // Сохраняем диапазон
+                    }
                 } else {
                     console.warn("Токен недействителен:", data.error);
-                    // Можно добавить логику: если лимит исчерпан, но пользователь уже внутри...
-                    // Пока просто отправляем на настройки
                     goTo("settings");
                 }
             } catch (error) {
@@ -1747,6 +1793,7 @@ export default function TrainerPage({ goTo }) {
         taskFileUrl,
         sourceUrl,
         currentTask,
+        isCurrentTaskAllowed,
         levels,
         showLevelsInput,
         selectedRole,

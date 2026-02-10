@@ -45,7 +45,7 @@ export function generateId() {
 }
 
 // Создание нового токена
-export function createToken(name, usageLimit) {
+export function createToken(name, usageLimit, taskRange = null) {
     const tokens = readTokens();
     const now = new Date().toISOString();
 
@@ -55,6 +55,7 @@ export function createToken(name, usageLimit) {
         token: generateToken(),
         usageLimit: parseInt(usageLimit, 10),
         usedCount: 0,
+        taskRange: taskRange, // Диапазон заданий (например, "1-100")
         createdAt: now,
         updatedAt: now,
         isActive: true,

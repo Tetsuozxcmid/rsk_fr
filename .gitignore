@@ -11,6 +11,10 @@
 !.yarn/versions
 /data/taskAttempts.json
 
+data/mayakTokens.json
+data/mayakTaskAttempts.json
+data/sessionLogs.json
+
 # testing
 /coverage
 

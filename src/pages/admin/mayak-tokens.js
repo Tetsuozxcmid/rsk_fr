@@ -23,6 +23,7 @@ export default function AdminMayakTokens() {
     // Форма создания токена
     const [newTokenName, setNewTokenName] = useState("");
     const [newTokenLimit, setNewTokenLimit] = useState("");
+    const [newTokenRange, setNewTokenRange] = useState(""); // Новый стейт для диапазона
     const [creating, setCreating] = useState(false);
 
     // Добавление попыток
@@ -108,6 +109,7 @@ export default function AdminMayakTokens() {
                 body: JSON.stringify({
                     name: newTokenName.trim(),
                     usageLimit: parseInt(newTokenLimit, 10),
+                    taskRange: newTokenRange.trim() || null, // Отправляем диапазон
                     password: ADMIN_PASSWORD,
                 }),
             });
@@ -119,6 +121,7 @@ export default function AdminMayakTokens() {
 
             setNewTokenName("");
             setNewTokenLimit("");
+            setNewTokenRange(""); // Очищаем поле
             await fetchTokens();
         } catch (err) {
             console.error("Ошибка создания:", err);
@@ -345,6 +348,17 @@ export default function AdminMayakTokens() {
                                     onChange={(e) => setNewTokenLimit(e.target.value)}
                                 />
                             </div>
+                            <div className="w-[200px]">
+                                <label className="link small text-(--color-gray-black) block mb-[.5rem]">
+                                    Диапазон (опц.)
+                                </label>
+                                <Input
+                                    type="text"
+                                    placeholder="1-100"
+                                    value={newTokenRange}
+                                    onChange={(e) => setNewTokenRange(e.target.value)}
+                                />
+                            </div>
                             <Button type="submit" disabled={creating} className="!w-fit">
                                 {creating ? "Создание..." : "Создать токен"}
                             </Button>
@@ -366,6 +380,7 @@ export default function AdminMayakTokens() {
                                         <tr className="border-b border-(--color-gray-plus-50)">
                                             <th className="text-left p-[.75rem] link small">Название</th>
                                             <th className="text-left p-[.75rem] link small">Токен</th>
+                                            <th className="text-center p-[.75rem] link small">Диапазон</th>
                                             <th className="text-center p-[.75rem] link small">Использований</th>
                                             <th className="text-center p-[.75rem] link small">Статус</th>
                                             <th className="text-left p-[.75rem] link small">Создан</th>
@@ -395,6 +410,9 @@ export default function AdminMayakTokens() {
                                                                 Копировать
                                                             </Button>
                                                         </div>
+                                                    </td>
+                                                    <td className="p-[.75rem] text-center">
+                                                        {token.taskRange || "—"}
                                                     </td>
                                                     <td className="p-[.75rem] text-center">
                                                         <span className={token.isExhausted ? "text-[var(--color-red)]" : ""}>

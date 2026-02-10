@@ -9,6 +9,39 @@
       "createdAt": "2026-02-10T10:40:47.125Z",
       "updatedAt": "2026-02-10T10:40:58.005Z",
       "isActive": true
+    },
+    {
+      "id": "8893ae3f-a7d6-4f43-8f5a-032e618a40e4",
+      "name": "Колледжи",
+      "token": "4fd85dedf02223b0b3074dd353a09f2beb5970177de18d62fae987b63b762543",
+      "usageLimit": 180,
+      "usedCount": 1,
+      "taskRange": "100-200",
+      "createdAt": "2026-02-10T11:50:58.181Z",
+      "updatedAt": "2026-02-10T11:52:07.415Z",
+      "isActive": true
+    },
+    {
+      "id": "4ca9c2f0-fd14-475d-a10e-891e07272f96",
+      "name": "dsadas",
+      "token": "d073c02cb9b0eb2d45b898d8ccc9926eef9ae3d5d33c9a075162a189aa2effa4",
+      "usageLimit": 13,
+      "usedCount": 1,
+      "taskRange": "1-200",
+      "createdAt": "2026-02-10T11:59:10.118Z",
+      "updatedAt": "2026-02-10T11:59:41.983Z",
+      "isActive": true
+    },
+    {
+      "id": "5ffb5202-9f33-4fc4-9323-c56fb28ffe65",
+      "name": "dsadas",
+      "token": "ef41ac15994c2bab38443f86b167842c54fd64ccd53db182e2752a0a5c961881",
+      "usageLimit": 100,
+      "usedCount": 1,
+      "taskRange": "300-400",
+      "createdAt": "2026-02-10T12:08:29.199Z",
+      "updatedAt": "2026-02-10T12:09:02.524Z",
+      "isActive": true
     }
   ]
 }
