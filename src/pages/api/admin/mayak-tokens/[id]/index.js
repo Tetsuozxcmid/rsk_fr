@@ -1,4 +1,4 @@
-import { deactivateToken, getTokenById } from "@/utils/mayakTokens";
+import { deleteToken, getTokenById } from "@/utils/mayakTokens";
 
 const ADMIN_PASSWORD = "a12345";
 
@@ -44,7 +44,7 @@ export default async function handler(req, res) {
         }
     }
 
-    // DELETE - деактивировать токен
+    // DELETE - удалить токен
     if (req.method === "DELETE") {
         try {
             const existingToken = getTokenById(id);
@@ -52,19 +52,19 @@ export default async function handler(req, res) {
                 return res.status(404).json({ success: false, error: "Токен не найден" });
             }
 
-            const deactivatedToken = deactivateToken(id);
+            const deletedToken = deleteToken(id);
 
-            if (!deactivatedToken) {
-                return res.status(500).json({ success: false, error: "Ошибка деактивации токена" });
+            if (!deletedToken) {
+                return res.status(500).json({ success: false, error: "Ошибка удаления токена" });
             }
 
             return res.status(200).json({
                 success: true,
-                message: "Токен деактивирован",
-                data: deactivatedToken,
+                message: "Токен удален",
+                data: deletedToken,
             });
         } catch (error) {
-            console.error("Error deactivating token:", error);
+            console.error("Error deleting token:", error);
             return res.status(500).json({ success: false, error: "Ошибка сервера" });
         }
     }

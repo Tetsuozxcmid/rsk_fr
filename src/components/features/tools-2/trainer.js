@@ -1760,7 +1760,8 @@ export default function TrainerPage({ goTo }) {
                 const data = await response.json();
 
                 // ВАЖНО: Если токен валиден, пускаем.
-                if (data.valid) {
+                // Если токен исчерпан (isExhausted), но активен (isActive), и мы уже здесь (с кукой) — тоже пускаем.
+                if (data.valid || (data.isExhausted && data.isActive)) {
                     setIsTokenValid(true);
                     if (data.taskRange) {
                         setTokenTaskRange(data.taskRange); // Сохраняем диапазон

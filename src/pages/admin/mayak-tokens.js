@@ -159,9 +159,9 @@ export default function AdminMayakTokens() {
         }
     };
 
-    // Деактивация токена
-    const handleDeactivate = async (tokenId, tokenName) => {
-        if (!window.confirm(`Вы уверены, что хотите деактивировать токен "${tokenName}"?`)) {
+    // Удаление токена
+    const handleDelete = async (tokenId, tokenName) => {
+        if (!window.confirm(`Вы уверены, что хотите УДАЛИТЬ токен "${tokenName}"? Это действие нельзя отменить.`)) {
             return;
         }
 
@@ -174,7 +174,7 @@ export default function AdminMayakTokens() {
 
             if (!res.ok) {
                 const errorData = await res.json();
-                throw new Error(errorData.error || "Ошибка деактивации токена");
+                throw new Error(errorData.error || "Ошибка удаления токена");
             }
 
             await fetchTokens();
@@ -482,9 +482,9 @@ export default function AdminMayakTokens() {
                                                                             roundeful
                                                                             red
                                                                             className="!w-fit reject-button"
-                                                                            onClick={() => handleDeactivate(token.id, token.name)}
+                                                                            onClick={() => handleDelete(token.id, token.name)}
                                                                         >
-                                                                            Деактивировать
+                                                                            Удалить
                                                                         </Button>
                                                                     )}
                                                                 </>

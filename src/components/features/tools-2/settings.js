@@ -78,7 +78,10 @@ export default function SettingsPage({ goTo }) {
     const [max, setMax] = useState(180);
     const [value, setValue] = useState(0);
 
-    // Получаем токен из cookies при монтировании компонента
+    // Состояние для отображения оставшихся попыток токена
+    const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
+    const [tokenError, setTokenError] = useState("");
+    const [isValidating, setIsValidating] = useState(false);
 
     async function getRecordsCount() {
         try {
@@ -94,11 +97,6 @@ export default function SettingsPage({ goTo }) {
             return 0;
         }
     }
-
-    // Состояние для отображения оставшихся попыток токена
-    const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
-    const [tokenError, setTokenError] = useState("");
-    const [isValidating, setIsValidating] = useState(false);
 
     const getRangeClass = (val) => {
         if (val < 30) return "range-low";
@@ -116,7 +114,7 @@ export default function SettingsPage({ goTo }) {
         }
 
         setIsValidating(true);
-        setTokenError("");
+        // Не сбрасываем ошибку здесь, мы уже сбросили её при вводе (onChange)
 
         const result = await validateTokenAPI(tokenToValidate);
 
@@ -131,8 +129,8 @@ export default function SettingsPage({ goTo }) {
 
         if (result.valid) {
             setShowNotification(true);
-            // ВАЖНО: Сразу сохраняем валидный токен в cookies, чтобы он использовался при переходе в тренажер
-            await addKeyToCookies(tokenToValidate);
+            // Если токен валиден, очищаем ошибку
+            setTokenError("");
         } else {
             setTokenError(result.error || "Токен недействителен");
             setShowNotification(false);
@@ -141,6 +139,7 @@ export default function SettingsPage({ goTo }) {
         setIsValidating(false);
     };
 
+    // Получаем токен из cookies при монтировании компонента
     useEffect(() => {
         async function fetchTokenAndUsage() {
             const KeyInCookies = await getKeyFromCookies();
@@ -163,6 +162,20 @@ export default function SettingsPage({ goTo }) {
         fetchTokenAndUsage();
     }, []);
 
+    // Реализация Debounce (задержки) для ввода токена
+    useEffect(() => {
+        // Если токена нет или это админский код, не запускаем валидацию
+        if (!token || token.trim() === "" || token.trim().toLowerCase() === "fffff") {
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(() => {
+            validateToken(token);
+        }, 500); // Ждем 800мс после последнего ввода символа
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [token]);
+
     const handleUserDataChange = (e) => {
         const { name, value } = e.target;
         setUserData((prev) => ({
@@ -178,7 +191,7 @@ export default function SettingsPage({ goTo }) {
         }
 
         if (!userData.lastName || !userData.firstName || !userData.college) {
-            alert("Пожалуйста, заполните обязательные поля: Фамилия, Имя и Колледж");
+            alert("Пожалуйста, заполните обязательные поля: Фамилия, Имя и Организация");
             return;
         }
 
@@ -241,6 +254,7 @@ export default function SettingsPage({ goTo }) {
             goTo("trainer");
         }
     };
+    
     const handleAdminLogin = async (e) => {
         e.preventDefault();
         // !!! ВАЖНО: Замените 'mayak-power-2024' на свой надежный пароль !!!
@@ -288,7 +302,11 @@ export default function SettingsPage({ goTo }) {
                             onChange={(e) => {
                                 const value = e.target.value;
                                 setToken(value);
-                                validateToken(value);
+                                
+                                // Сбрасываем состояния ошибок и успеха ПРИ ВВОДЕ, чтобы не мигало
+                                setTokenError("");
+                                setShowNotification(false);
+                                setIsTokenValid(false);
 
                                 // Наша новая логика
                                 if (value.trim().toLowerCase() === "fffff") {
@@ -298,6 +316,8 @@ export default function SettingsPage({ goTo }) {
                                 }
                             }}
                         />
+
+                        {isValidating && <span className="small text-blue-600 block text-center">Проверка токена...</span>}
 
                         {showNotification && tokenExists && (
                             <div className="flex flex-col gap-[1rem] items-center">
@@ -314,22 +334,27 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && !tokenExists && <span className="big p-3 bg-yellow-100 text-yellow-700 rounded-md">Токен подходит. Заполните форму ниже для активации тренажера.</span>}
+                        {showNotification && !tokenExists && 
+                          <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">
+                            Токен подходит. Заполните форму ниже для активации тренажера.
+                          </span>
+                        }
 
-                        {tokenError && !showNotification && (
-                            <span className="big p-3 bg-red-100 text-red-700 rounded-md">{tokenError}</span>
-                        )}
-
-                        {isValidating && (
-                            <span className="big p-3 bg-blue-100 text-blue-700 rounded-md">Проверка токена...</span>
-                        )}
-
-                        <div className="flex flex-col gap-[0.25rem]">
-                            <span className={getRangeClass(value)}>
-                                {value}/{max}
+                        {tokenError && !showNotification && !isValidating && (
+                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">
+                                {tokenError}
                             </span>
-                            <meter id="meter-my" min="0" max={max} low="30" high="80" optimum="100" value={value} className={getRangeClass(value)}></meter>
-                        </div>
+                        )}
+
+                        {/* Шкала показывается если токен валиден */}
+                        {isTokenValid && (
+                            <div className="flex flex-col gap-[0.25rem]">
+                                <span className={getRangeClass(value)}>
+                                    {value}/{max}
+                                </span>
+                                <meter id="meter-my" min="0" max={max} low="30" high="80" optimum="100" value={value} className={getRangeClass(value)}></meter>
+                            </div>
+                        )}
                     </div>
 
                     {showAdminLogin ? (

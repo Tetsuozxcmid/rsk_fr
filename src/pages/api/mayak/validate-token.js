@@ -38,7 +38,9 @@ export default async function handler(req, res) {
                 remainingAttempts: result.remainingAttempts || 0,
                 usageLimit: result.token?.usageLimit || 0,
                 usedCount: result.token?.usedCount || 0,
-                taskRange: result.token?.taskRange || null, // Возвращаем диапазон заданий
+                taskRange: result.token?.taskRange || null,
+                isExhausted: result.token ? result.token.usedCount >= result.token.usageLimit : false, // Флаг исчерпанности
+                isActive: result.token?.isActive ?? false, // Флаг активности
             });
         } catch (error) {
             console.error("Error validating token:", error);

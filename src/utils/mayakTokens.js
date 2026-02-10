@@ -110,9 +110,23 @@ export function addAttemptsToToken(id, attempts) {
     return tokens[index];
 }
 
-// Деактивация токена
-export function deactivateToken(id) {
-    return updateToken(id, { isActive: false });
+// Деактивация токена (УДАЛЕНО - теперь удаляем полностью)
+// export function deactivateToken(id) {
+//     return updateToken(id, { isActive: false });
+// }
+
+// Полное удаление токена
+export function deleteToken(id) {
+    const tokens = readTokens();
+    const index = tokens.findIndex((t) => t.id === id);
+
+    if (index === -1) return null;
+
+    const deletedToken = tokens[index];
+    tokens.splice(index, 1); // Удаляем элемент из массива
+
+    saveTokens(tokens);
+    return deletedToken;
 }
 
 // Использование токена (увеличение счетчика)
@@ -159,7 +173,12 @@ export function validateToken(tokenValue) {
     }
 
     if (token.usedCount >= token.usageLimit) {
-        return { valid: false, error: "Лимит использований исчерпан" };
+        return {
+            valid: false,
+            error: "Лимит использований исчерпан",
+            token, // Возвращаем токен, чтобы API мог видеть его статус
+            remainingAttempts: 0
+        };
     }
 
     return {
