@@ -76,6 +76,7 @@ export default function IndexPage({ goTo }) {
 
     const [isTokenValid, setIsTokenValid] = useState(false);
     const [showAdminLogin, setShowAdminLogin] = useState(false);
+    const [savedField, setSavedField] = useState(null);
 
     const isMobile = useMediaQuery("(max-width: 1023px)");
 
@@ -240,6 +241,8 @@ export default function IndexPage({ goTo }) {
             setBuffer(newBuffer);
             setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
         }
+        setSavedField(code);
+        setTimeout(() => setSavedField(null), 1000);
     }
 
     const handleResetFields = () => {
@@ -262,18 +265,18 @@ export default function IndexPage({ goTo }) {
         const mappedKey = fieldMapping[code];
         if (mappedKey && contentTypeOptions[type] && contentTypeOptions[type][mappedKey]) {
             const options = contentTypeOptions[type][mappedKey];
-            const currentBufferForField = buffer[code] || [];
+            const currentBufferForField = buffer[code];
 
-            if (currentBufferForField.length < 6) {
+            // ИЗМЕНЕНИЕ: Заполняем буфер только если он undefined (первый раз),
+            // если он пустой массив (пользователь все удалил), то не заполняем.
+            if (!currentBufferForField) {
                 const shuffled = [...options].sort(() => 0.5 - Math.random());
                 const additionalValues = [];
                 for (const value of shuffled) {
-                    if (additionalValues.length >= 6 - currentBufferForField.length) break;
-                    if (!currentBufferForField.includes(value)) {
-                        additionalValues.push(value);
-                    }
+                    if (additionalValues.length >= 6) break;
+                    additionalValues.push(value);
                 }
-                const newBuffer = { ...buffer, [code]: [...currentBufferForField, ...additionalValues] };
+                const newBuffer = { ...buffer, [code]: additionalValues };
                 setBuffer(newBuffer);
                 setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
             }
@@ -435,37 +438,73 @@ export default function IndexPage({ goTo }) {
                                             <div className="group flex-1 flex w-full items-start gap-2">
                                                 {isMobile ? (
                                                     <>
-                                                        <div className="flex-1 min-w-0">
-                                                            <TextareaAutosize
-                                                                minRows={1}
-                                                                className="w-full resize-none rounded-lg border border-gray-300 bg-white p-2"
-                                                                placeholder={f.label.split(" - ")[1]}
-                                                                value={fields[f.code]}
-                                                                onChange={(e) => handleChange(f.code, e.target.value)}
-                                                            />
+                                                        <div className="flex-1 min-w-0 flex flex-col">
+                                                            <div className="input-wrapper w-full">
+                                                                <TextareaAutosize
+                                                                    minRows={1}
+                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    placeholder={f.label.split(" - ")[1]}
+                                                                    value={fields[f.code]}
+                                                                    onChange={(e) => handleChange(f.code, e.target.value)}
+                                                                />
+                                                                {fields[f.code] && (
+                                                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                                                        {f.label}
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <div className="flex flex-shrink-0 items-center gap-2">
-                                                            <Button icon onClick={() => handleShowBufferForField(f.code)}>
+                                                            <Button icon onClick={() => handleShowBufferForField(f.code)} title="Сохраненные варианты">
                                                                 <CopyIcon />
                                                             </Button>
-                                                            <Button icon onClick={() => handleAddToBuffer(f.code)}>
-                                                                <Plusicon />
-                                                            </Button>
-                                                            <Button icon onClick={() => handleRandom(f.code)}>
+                                                            <div className="relative">
+                                                                <Button icon onClick={() => handleAddToBuffer(f.code)} title="Сохранить">
+                                                                    <Plusicon />
+                                                                </Button>
+                                                                {savedField === f.code && (
+                                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                                                        Сохранено
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <Button icon onClick={() => handleRandom(f.code)} title="Случайный вариант">
                                                                 <RandomIcon />
                                                             </Button>
                                                         </div>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Input className="w-full" placeholder={f.label.split(" - ")[1]} value={fields[f.code]} onChange={(e) => handleChange(f.code, e.target.value)} />
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleShowBufferForField(f.code)}>
+                                                        <div className="flex-1 min-w-0 flex flex-col">
+                                                            <div className="input-wrapper w-full">
+                                                                <TextareaAutosize
+                                                                    minRows={1}
+                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    placeholder={f.label.split(" - ")[1]}
+                                                                    value={fields[f.code]}
+                                                                    onChange={(e) => handleChange(f.code, e.target.value)}
+                                                                />
+                                                                {fields[f.code] && (
+                                                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                                                        {f.label}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleShowBufferForField(f.code)} title="Сохраненные варианты">
                                                             <CopyIcon />
                                                         </Button>
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleAddToBuffer(f.code)}>
-                                                            <Plusicon />
-                                                        </Button>
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleRandom(f.code)}>
+                                                        <div className="relative !flex lg:!hidden lg:group-hover:!flex">
+                                                            <Button icon onClick={() => handleAddToBuffer(f.code)} title="Сохранить">
+                                                                <Plusicon />
+                                                            </Button>
+                                                            {savedField === f.code && (
+                                                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                                                    Сохранено
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleRandom(f.code)} title="Случайный вариант">
                                                             <RandomIcon />
                                                         </Button>
                                                     </>
@@ -484,37 +523,73 @@ export default function IndexPage({ goTo }) {
                                             <div className="group flex-1 flex w-full items-start gap-2">
                                                 {isMobile ? (
                                                     <>
-                                                        <div className="flex-1 min-w-0">
-                                                            <TextareaAutosize
-                                                                minRows={1}
-                                                                className="w-full resize-none rounded-lg border border-gray-300 bg-white p-2"
-                                                                placeholder={f.label.split(" - ")[1]}
-                                                                value={fields[f.code]}
-                                                                onChange={(e) => handleChange(f.code, e.target.value)}
-                                                            />
+                                                        <div className="flex-1 min-w-0 flex flex-col">
+                                                            <div className="input-wrapper w-full">
+                                                                <TextareaAutosize
+                                                                    minRows={1}
+                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    placeholder={f.label.split(" - ")[1]}
+                                                                    value={fields[f.code]}
+                                                                    onChange={(e) => handleChange(f.code, e.target.value)}
+                                                                />
+                                                                {fields[f.code] && (
+                                                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                                                        {f.label}
+                                                                    </p>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <div className="flex flex-shrink-0 items-center gap-2">
-                                                            <Button icon onClick={() => handleShowBufferForField(f.code)}>
+                                                            <Button icon onClick={() => handleShowBufferForField(f.code)} title="Сохраненные варианты">
                                                                 <CopyIcon />
                                                             </Button>
-                                                            <Button icon onClick={() => handleAddToBuffer(f.code)}>
-                                                                <Plusicon />
-                                                            </Button>
-                                                            <Button icon onClick={() => handleRandom(f.code)}>
+                                                            <div className="relative">
+                                                                <Button icon onClick={() => handleAddToBuffer(f.code)} title="Сохранить">
+                                                                    <Plusicon />
+                                                                </Button>
+                                                                {savedField === f.code && (
+                                                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                                                        Сохранено
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <Button icon onClick={() => handleRandom(f.code)} title="Случайный вариант">
                                                                 <RandomIcon />
                                                             </Button>
                                                         </div>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <Input className="w-full" placeholder={f.label.split(" - ")[1]} value={fields[f.code]} onChange={(e) => handleChange(f.code, e.target.value)} />
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleShowBufferForField(f.code)}>
+                                                        <div className="flex-1 min-w-0 flex flex-col">
+                                                            <div className="input-wrapper w-full">
+                                                                <TextareaAutosize
+                                                                    minRows={1}
+                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    placeholder={f.label.split(" - ")[1]}
+                                                                    value={fields[f.code]}
+                                                                    onChange={(e) => handleChange(f.code, e.target.value)}
+                                                                />
+                                                                {fields[f.code] && (
+                                                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                                                        {f.label}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleShowBufferForField(f.code)} title="Сохраненные варианты">
                                                             <CopyIcon />
                                                         </Button>
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleAddToBuffer(f.code)}>
-                                                            <Plusicon />
-                                                        </Button>
-                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleRandom(f.code)}>
+                                                        <div className="relative !flex lg:!hidden lg:group-hover:!flex">
+                                                            <Button icon onClick={() => handleAddToBuffer(f.code)} title="Сохранить">
+                                                                <Plusicon />
+                                                            </Button>
+                                                            {savedField === f.code && (
+                                                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                                                    Сохранено
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={() => handleRandom(f.code)} title="Случайный вариант">
                                                             <RandomIcon />
                                                         </Button>
                                                     </>

@@ -812,7 +812,7 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
     );
 });
 
-const MayakField = memo(function MayakField({ field, value, isMobile, disabled, onChange, onShowBuffer, onAddToBuffer, onRandom }) {
+const MayakField = memo(function MayakField({ field, value, isMobile, disabled, onChange, onShowBuffer, onAddToBuffer, onRandom, savedField }) {
     const { code, label } = field;
     const placeholder = label.split(" - ")[1];
 
@@ -827,31 +827,75 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
             <div className="group flex-1 flex w-full items-start gap-2">
                 {isMobile ? (
                     <>
-                        <div className="flex-1 min-w-0">
-                            <TextareaAutosize minRows={1} className="w-full resize-none rounded-lg border border-gray-300 bg-white p-2" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
+                        <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="input-wrapper w-full">
+                                <TextareaAutosize
+                                    minRows={1}
+                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                    placeholder={placeholder}
+                                    value={value}
+                                    onChange={handleChange}
+                                    disabled={disabled}
+                                />
+                                {value && (
+                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                        {label}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="flex flex-shrink-0 items-center gap-2">
-                            <Button icon type="button" onClick={handleShowBuffer} disabled={disabled}>
+                            <Button icon type="button" onClick={handleShowBuffer} disabled={disabled} title="Сохраненные варианты">
                                 <CopyIcon />
                             </Button>
-                            <Button icon type="button" onClick={handleAddToBuffer} disabled={disabled}>
-                                <Plusicon />
-                            </Button>
-                            <Button icon type="button" onClick={handleRandom} disabled={disabled}>
+                            <div className="relative">
+                                <Button icon type="button" onClick={handleAddToBuffer} disabled={disabled} title="Сохранить">
+                                    <Plusicon />
+                                </Button>
+                                {savedField === code && (
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                        Сохранено
+                                    </span>
+                                )}
+                            </div>
+                            <Button icon type="button" onClick={handleRandom} disabled={disabled} title="Случайный вариант">
                                 <RandomIcon />
                             </Button>
                         </div>
                     </>
                 ) : (
                     <>
-                        <Input className="w-full" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleShowBuffer} type="button" disabled={disabled}>
+                        <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="input-wrapper w-full">
+                                <TextareaAutosize
+                                    minRows={1}
+                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                    placeholder={placeholder}
+                                    value={value}
+                                    onChange={handleChange}
+                                    disabled={disabled}
+                                />
+                                {value && (
+                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                        {label}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={handleShowBuffer} type="button" disabled={disabled} title="Сохраненные варианты">
                             <CopyIcon />
                         </Button>
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleAddToBuffer} type="button" disabled={disabled}>
-                            <Plusicon />
-                        </Button>
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleRandom} type="button" disabled={disabled}>
+                        <div className="relative !flex lg:!hidden lg:group-hover:!flex">
+                            <Button icon className="!flex" onClick={handleAddToBuffer} type="button" disabled={disabled} title="Сохранить">
+                                <Plusicon />
+                            </Button>
+                            {savedField === code && (
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-50 transition-opacity duration-300 pointer-events-none">
+                                    Сохранено
+                                </span>
+                            )}
+                        </div>
+                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={handleRandom} type="button" disabled={disabled} title="Случайный вариант">
                             <RandomIcon />
                         </Button>
                     </>
@@ -1054,6 +1098,8 @@ const TrainerControls = memo(function TrainerControls({
 });
 
 export default function TrainerPage({ goTo }) {
+    const [savedField, setSavedField] = useState(null);
+
     const isMobile = useMediaQuery("(max-width: 1023px)");
 
     const [taskInputValue, setTaskInputValue] = useState("");
@@ -1558,6 +1604,11 @@ export default function TrainerPage({ goTo }) {
         setCurrentField(null);
     };
 
+    const handleUpdateBuffer = (newBuffer) => {
+        setBuffer(newBuffer);
+        setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
+    };
+
     const handleAddToBuffer = (code) => {
         const fieldValue = fields[code];
         if (!fieldValue || fieldValue.trim() === "") return;
@@ -1575,6 +1626,8 @@ export default function TrainerPage({ goTo }) {
             setBuffer(newBuffer);
             setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
         }
+        setSavedField(code);
+        setTimeout(() => setSavedField(null), 1000);
     };
 
     const handleInsertFromBuffer = (text) => {
@@ -1962,13 +2015,33 @@ export default function TrainerPage({ goTo }) {
                                     </Button>
                                 </div>
                                 {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
-                                    <MayakField key={f.code} field={f} value={fields[f.code]} isMobile={isMobile} onChange={handleChange} onShowBuffer={handleShowBufferForField} onAddToBuffer={handleAddToBuffer} onRandom={handleRandom} />
+                                    <MayakField
+                                        key={f.code}
+                                        field={f}
+                                        value={fields[f.code]}
+                                        isMobile={isMobile}
+                                        onChange={handleChange}
+                                        onShowBuffer={handleShowBufferForField}
+                                        onAddToBuffer={handleAddToBuffer}
+                                        onRandom={handleRandom}
+                                        savedField={savedField}
+                                    />
                                 ))}
                             </div>
                             <div className="flex flex-col gap-[0.5rem]">
                                 <span className="big">Условия реализации и параметры оформления</span>
                                 {(mayakData.fieldsList || []).slice(4).map((f) => (
-                                    <MayakField key={f.code} field={f} value={fields[f.code]} isMobile={isMobile} onChange={handleChange} onShowBuffer={handleShowBufferForField} onAddToBuffer={handleAddToBuffer} onRandom={handleRandom} />
+                                    <MayakField
+                                        key={f.code}
+                                        field={f}
+                                        value={fields[f.code]}
+                                        isMobile={isMobile}
+                                        onChange={handleChange}
+                                        onShowBuffer={handleShowBufferForField}
+                                        onAddToBuffer={handleAddToBuffer}
+                                        onRandom={handleRandom}
+                                        savedField={savedField}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -2071,7 +2144,7 @@ export default function TrainerPage({ goTo }) {
                     </div>
                 </div>
 
-                {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} buffer={buffer} currentField={currentField} />}
+                {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
             </div>
             {showCompletionPopup && (
                 <TaskCompletionPopup
