@@ -65,6 +65,23 @@ export default function IndexPage({ goTo }) {
         o2: "",
     });
 
+    // Восстанавливаем поля из sessionStorage при загрузке
+    useEffect(() => {
+        const savedFields = sessionStorage.getItem(getStorageKey("fields"));
+        if (savedFields) {
+            try {
+                setFields(JSON.parse(savedFields));
+            } catch (e) {
+                console.error("Error parsing saved fields", e);
+            }
+        }
+    }, []);
+
+    // Сохраняем поля в sessionStorage при изменении
+    useEffect(() => {
+        sessionStorage.setItem(getStorageKey("fields"), JSON.stringify(fields));
+    }, [fields]);
+
     const [prompt, setPrompt] = useState("");
     const [buffer, setBuffer] = useState({});
     const [history, setHistory] = useState([]);
@@ -261,26 +278,29 @@ export default function IndexPage({ goTo }) {
 
     function handleShowBufferForField(code) {
         setCurrentField(code);
-        const fieldMapping = { m: "mission", a: "audience", y: "role", k: "criteria", o1: "limitations", k2: "context", o2: "format" };
-        const mappedKey = fieldMapping[code];
-        if (mappedKey && contentTypeOptions[type] && contentTypeOptions[type][mappedKey]) {
-            const options = contentTypeOptions[type][mappedKey];
-            const currentBufferForField = buffer[code];
 
-            // ИЗМЕНЕНИЕ: Заполняем буфер только если он undefined (первый раз),
-            // если он пустой массив (пользователь все удалил), то не заполняем.
-            if (!currentBufferForField) {
-                const shuffled = [...options].sort(() => 0.5 - Math.random());
-                const additionalValues = [];
-                for (const value of shuffled) {
-                    if (additionalValues.length >= 6) break;
-                    additionalValues.push(value);
+        // Исправленная логика: заполняем только если буфер undefined (никогда не трогали)
+        if (buffer[code] === undefined) {
+            const fieldMapping = { m: "mission", a: "audience", y: "role", k: "criteria", o1: "limitations", k2: "context", o2: "format" };
+            const mappedKey = fieldMapping[code];
+            if (mappedKey && contentTypeOptions[type] && contentTypeOptions[type][mappedKey]) {
+                const options = contentTypeOptions[type][mappedKey];
+
+                // Если опции есть, берем 6 случайных
+                if (Array.isArray(options) && options.length > 0) {
+                    const shuffled = [...options].sort(() => 0.5 - Math.random());
+                    const additionalValues = [];
+                    for (const value of shuffled) {
+                        if (additionalValues.length >= 6) break;
+                        additionalValues.push(value);
+                    }
+                    const newBuffer = { ...buffer, [code]: additionalValues };
+                    setBuffer(newBuffer);
+                    setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
                 }
-                const newBuffer = { ...buffer, [code]: additionalValues };
-                setBuffer(newBuffer);
-                setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
             }
         }
+
         setShowBuffer(true);
     }
 
@@ -393,18 +413,13 @@ export default function IndexPage({ goTo }) {
                                             // Устанавливаем тип 'misc', чтобы поля МАЯК обновились
                                             if (newType !== type) {
                                                 setType(newType);
-                                                // И сбрасываем буфер, чтобы подтянулись новые варианты
-                                                const clearedBuffer = {};
-                                                setBuffer(clearedBuffer);
-                                                setCookie("buffer", JSON.stringify(clearedBuffer));
+                                                // УБРАНА ОЧИСТКА БУФЕРА
                                             }
                                         } else {
                                             // Логика для всех остальных кнопок
                                             if (newType !== type) {
                                                 setType(newType);
-                                                const clearedBuffer = {};
-                                                setBuffer(clearedBuffer);
-                                                setCookie("buffer", JSON.stringify(clearedBuffer));
+                                                // УБРАНА ОЧИСТКА БУФЕРА
                                             }
                                             setIsMiscAccordionOpen(false);
                                         }
@@ -442,7 +457,7 @@ export default function IndexPage({ goTo }) {
                                                             <div className="input-wrapper w-full">
                                                                 <TextareaAutosize
                                                                     minRows={1}
-                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    className="w-full resize-none bg-transparent outline-none text-black overflow-hidden"
                                                                     placeholder={f.label.split(" - ")[1]}
                                                                     value={fields[f.code]}
                                                                     onChange={(e) => handleChange(f.code, e.target.value)}
@@ -479,7 +494,7 @@ export default function IndexPage({ goTo }) {
                                                             <div className="input-wrapper w-full">
                                                                 <TextareaAutosize
                                                                     minRows={1}
-                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    className="w-full resize-none bg-transparent outline-none text-black overflow-hidden"
                                                                     placeholder={f.label.split(" - ")[1]}
                                                                     value={fields[f.code]}
                                                                     onChange={(e) => handleChange(f.code, e.target.value)}
@@ -527,7 +542,7 @@ export default function IndexPage({ goTo }) {
                                                             <div className="input-wrapper w-full">
                                                                 <TextareaAutosize
                                                                     minRows={1}
-                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    className="w-full resize-none bg-transparent outline-none text-black overflow-hidden"
                                                                     placeholder={f.label.split(" - ")[1]}
                                                                     value={fields[f.code]}
                                                                     onChange={(e) => handleChange(f.code, e.target.value)}
@@ -564,7 +579,7 @@ export default function IndexPage({ goTo }) {
                                                             <div className="input-wrapper w-full">
                                                                 <TextareaAutosize
                                                                     minRows={1}
-                                                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                                                    className="w-full resize-none bg-transparent outline-none text-black overflow-hidden"
                                                                     placeholder={f.label.split(" - ")[1]}
                                                                     value={fields[f.code]}
                                                                     onChange={(e) => handleChange(f.code, e.target.value)}

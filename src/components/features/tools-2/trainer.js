@@ -1205,6 +1205,17 @@ export default function TrainerPage({ goTo }) {
     const [currentField, setCurrentField] = useState(null);
 
     useEffect(() => {
+        const buf = getCookie(getStorageKey("buffer"));
+        if (buf) {
+            try {
+                setBuffer(JSON.parse(buf));
+            } catch {
+                setBuffer({});
+            }
+        }
+    }, []);
+
+    useEffect(() => {
         // Проверяем, есть ли наш одноразовый флаг
         const isCompletionPending = localStorage.getItem(getStorageKey("sessionCompletionPending")) === "true";
 
@@ -1640,7 +1651,9 @@ export default function TrainerPage({ goTo }) {
     const handleShowBufferForField = (code) => {
         setCurrentField(code);
 
-        if (!buffer[code] || buffer[code].length === 0) {
+        // Изменено: заполняем только если буфер для этого поля undefined (никогда не инициализировался).
+        // Если там пустой массив (пользователь все удалил) или есть элементы - не вмешиваемся.
+        if (buffer[code] === undefined) {
             const fieldMapping = {
                 m: "mission",
                 a: "audience",
@@ -1668,46 +1681,6 @@ export default function TrainerPage({ goTo }) {
                         newBuffer[code] = randomValues;
                         setBuffer(newBuffer);
                         setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
-                    }
-                }
-            }
-        } else {
-            const fieldMapping = {
-                m: "mission",
-                a: "audience",
-                y: "role",
-                k: "criteria",
-                o1: "limitations",
-                k2: "context",
-                o2: "format",
-            };
-
-            const mappedKey = fieldMapping[code];
-            if (mappedKey) {
-                const typeOptions = mayakData.contentTypeOptions[type];
-                if (typeOptions && typeOptions[mappedKey]) {
-                    const options = typeOptions[mappedKey];
-                    if (Array.isArray(options) && options.length > 0) {
-                        const currentBuffer = buffer[code] || [];
-                        const userItemsCount = currentBuffer.length;
-                        const remainingSlots = 6 - userItemsCount;
-
-                        if (remainingSlots > 0) {
-                            const shuffled = [...options].sort(() => 0.5 - Math.random());
-                            const additionalValues = [];
-
-                            for (let i = 0; i < Math.min(remainingSlots, shuffled.length); i++) {
-                                if (!currentBuffer.includes(shuffled[i])) {
-                                    additionalValues.push(shuffled[i]);
-                                }
-                            }
-
-                            const combinedBuffer = [...currentBuffer, ...additionalValues];
-                            const newBuffer = { ...buffer };
-                            newBuffer[code] = combinedBuffer;
-                            setBuffer(newBuffer);
-                            setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
-                        }
                     }
                 }
             }
@@ -1769,12 +1742,12 @@ export default function TrainerPage({ goTo }) {
         setHistory(newHist);
     };
 
-    const getCookie = (name) => {
+    function getCookie(name) {
         const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
         return match ? decodeURIComponent(match[2]) : null;
-    };
+    }
 
-    const setCookie = (name, value, days = 365) => {
+    function setCookie(name, value, days = 365) {
         try {
             const expires = new Date(Date.now() + days * 864e5).toUTCString();
             const stringValue = value;
@@ -1921,15 +1894,6 @@ export default function TrainerPage({ goTo }) {
         <>
             <Header>
                 <Header.Heading>МАЯК ОКО</Header.Heading>
-                <select
-					value={taskVersion}
-					onChange={e => setTaskVersion(e.target.value)}
-					disabled={timerState.isRunning}
-					className="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-				>
-					<option value="v1">v1</option>
-					<option value="v2">v2</option>
-				</select> 
                 <Button
                     icon
                     onClick={() => {
@@ -1939,9 +1903,6 @@ export default function TrainerPage({ goTo }) {
                     disabled={timerState.isRunning}
                     title={timerState.isRunning ? "Завершите задание, чтобы посмотреть историю" : "История запросов"}>
                     <TimeIcon />
-                </Button>
-                <Button icon onClick={() => goTo("admin")} title="Админ-панель">
-                    <AdminIcon />
                 </Button>
             </Header>
 
@@ -1985,16 +1946,13 @@ export default function TrainerPage({ goTo }) {
                                             setIsMiscAccordionOpen((prev) => !prev);
                                             if (newType !== type) {
                                                 setType(newType);
-                                                // Очищаем буфер, чтобы подтянулись новые варианты для полей
-                                                setBuffer({});
-                                                setCookie(getStorageKey("buffer"), JSON.stringify({}));
+                                                // Убрали очистку буфера, чтобы сохранения пользователя не пропадали
                                             }
                                         } else {
                                             // Логика для всех остальных кнопок
                                             if (newType !== type) {
                                                 setType(newType);
-                                                setBuffer({});
-                                                setCookie(getStorageKey("buffer"), JSON.stringify({}));
+                                                // Убрали очистку буфера, чтобы сохранения пользователя не пропадали
                                             }
                                             setIsMiscAccordionOpen(false); // Закрываем аккордеон, если он был открыт
                                         }
