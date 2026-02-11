@@ -108,7 +108,7 @@ const usePopups = () => {
 /**
  * Хук для управления задачами тренажера
  */
-const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
+const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange }) => {
     const [tasks, setTasks] = useState([]);
     const [tasksTexts, setTasksTexts] = useState([]);
     const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
@@ -123,6 +123,29 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
     const timerRef = useRef(null);
 
     const currentTask = tasks[currentTaskIndex] || null;
+
+    // Проверка, доступно ли текущее задание по токену
+    const isCurrentTaskAllowed = (() => {
+        if (!tokenTaskRange) return true;
+
+        // Получаем номер текущего задания
+        // Пытаемся взять из currentTask.number, иначе используем индекс + 1
+        let taskNum;
+        if (currentTask && currentTask.number) {
+            taskNum = parseInt(currentTask.number, 10);
+        } else {
+            taskNum = currentTaskIndex + 1;
+        }
+
+        const [startStr, endStr] = tokenTaskRange.split("-");
+        const start = parseInt(startStr, 10);
+        const end = parseInt(endStr, 10);
+
+        if (isNaN(start) || isNaN(end)) return true;
+
+        return taskNum >= start && taskNum <= end;
+    })();
+
     const basePath = taskVersion === "v2" ? `/tasks-2/${taskVersion}` : `/tasks-2/${taskVersion}/${userType}/${who}`;
 
     const instructionFileUrl = currentTask?.instruction ? `${basePath}/Instructions/${currentTask.instruction}` : "";
@@ -151,9 +174,27 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
                 // Загружаем основной список заданий
                 const tasksResponse = await fetch(`${basePath}/index.json`);
                 if (!tasksResponse.ok) throw new Error(`Не удалось загрузить задания: ${tasksResponse.status}`);
-                const tasksData = await tasksResponse.json();
+                let tasksData = await tasksResponse.json();
+
+                // Убрали фильтрацию, теперь просто находим нужный индекс для старта
                 setTasks(tasksData);
-                setCurrentTaskIndex(0);
+
+                // Если диапазон задан, попробуем найти первое задание из диапазона и встать на него
+                if (tokenTaskRange) {
+                    const [startStr, endStr] = tokenTaskRange.split("-");
+                    const start = parseInt(startStr, 10);
+                    if (!isNaN(start)) {
+                        const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
+                        if (startIndex !== -1) {
+                            setCurrentTaskIndex(startIndex);
+                        } else {
+                            setCurrentTaskIndex(0);
+                        }
+                    }
+                } else {
+                    setCurrentTaskIndex(0);
+                }
+
                 if (tasksData.length === 0) {
                     setError("Нет доступных заданий");
                 }
@@ -221,6 +262,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid }) => {
         basePath,
         tasksTexts,
         setError,
+        isCurrentTaskAllowed,
     };
 };
 
@@ -770,7 +812,7 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
     );
 });
 
-const MayakField = memo(function MayakField({ field, value, isMobile, disabled, onChange, onShowBuffer, onAddToBuffer, onRandom }) {
+const MayakField = memo(function MayakField({ field, value, isMobile, disabled, onChange, onShowBuffer, onAddToBuffer, onRandom, savedField }) {
     const { code, label } = field;
     const placeholder = label.split(" - ")[1];
 
@@ -785,31 +827,75 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
             <div className="group flex-1 flex w-full items-start gap-2">
                 {isMobile ? (
                     <>
-                        <div className="flex-1 min-w-0">
-                            <TextareaAutosize minRows={1} className="w-full resize-none rounded-lg border border-gray-300 bg-white p-2" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
+                        <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="input-wrapper w-full">
+                                <TextareaAutosize
+                                    minRows={1}
+                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                    placeholder={placeholder}
+                                    value={value}
+                                    onChange={handleChange}
+                                    disabled={disabled}
+                                />
+                                {value && (
+                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                        {label}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                         <div className="flex flex-shrink-0 items-center gap-2">
-                            <Button icon type="button" onClick={handleShowBuffer} disabled={disabled}>
+                            <Button icon type="button" onClick={handleShowBuffer} disabled={disabled} title="Сохраненные варианты">
                                 <CopyIcon />
                             </Button>
-                            <Button icon type="button" onClick={handleAddToBuffer} disabled={disabled}>
-                                <Plusicon />
-                            </Button>
-                            <Button icon type="button" onClick={handleRandom} disabled={disabled}>
+                            <div className="relative">
+                                <Button icon type="button" onClick={handleAddToBuffer} disabled={disabled} title="Сохранить">
+                                    <Plusicon />
+                                </Button>
+                                {savedField === code && (
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
+                                        Сохранено
+                                    </span>
+                                )}
+                            </div>
+                            <Button icon type="button" onClick={handleRandom} disabled={disabled} title="Случайный вариант">
                                 <RandomIcon />
                             </Button>
                         </div>
                     </>
                 ) : (
                     <>
-                        <Input className="w-full" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleShowBuffer} type="button" disabled={disabled}>
+                        <div className="flex-1 min-w-0 flex flex-col">
+                            <div className="input-wrapper w-full">
+                                <TextareaAutosize
+                                    minRows={1}
+                                    className="w-full resize-none bg-transparent outline-none text-black"
+                                    placeholder={placeholder}
+                                    value={value}
+                                    onChange={handleChange}
+                                    disabled={disabled}
+                                />
+                                {value && (
+                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
+                                        {label}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={handleShowBuffer} type="button" disabled={disabled} title="Сохраненные варианты">
                             <CopyIcon />
                         </Button>
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleAddToBuffer} type="button" disabled={disabled}>
-                            <Plusicon />
-                        </Button>
-                        <Button icon className="!hidden group-hover:!flex" onClick={handleRandom} type="button" disabled={disabled}>
+                        <div className="relative !flex lg:!hidden lg:group-hover:!flex">
+                            <Button icon className="!flex" onClick={handleAddToBuffer} type="button" disabled={disabled} title="Сохранить">
+                                <Plusicon />
+                            </Button>
+                            {savedField === code && (
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-50 transition-opacity duration-300 pointer-events-none">
+                                    Сохранено
+                                </span>
+                            )}
+                        </div>
+                        <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={handleRandom} type="button" disabled={disabled} title="Случайный вариант">
                             <RandomIcon />
                         </Button>
                     </>
@@ -832,6 +918,7 @@ const TrainerControls = memo(function TrainerControls({
     taskFileUrl,
     sourceUrl,
     currentTask,
+    isCurrentTaskAllowed,
     levels,
     showLevelsInput,
     selectedRole,
@@ -896,9 +983,11 @@ const TrainerControls = memo(function TrainerControls({
                     </div>
                 </div>
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
-                    <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
-                        {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
-                    </Button>
+                    {isCurrentTaskAllowed && (
+                        <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
+                            {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
+                        </Button>
+                    )}
                     {instructionFileUrl && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button
@@ -1009,6 +1098,8 @@ const TrainerControls = memo(function TrainerControls({
 });
 
 export default function TrainerPage({ goTo }) {
+    const [savedField, setSavedField] = useState(null);
+
     const isMobile = useMediaQuery("(max-width: 1023px)");
 
     const [taskInputValue, setTaskInputValue] = useState("");
@@ -1069,14 +1160,16 @@ export default function TrainerPage({ goTo }) {
     const [userType, setUserType] = useState("teacher");
     const [who, setWho] = useState("im");
     const [isTokenValid, setIsTokenValid] = useState(false);
+    const [tokenTaskRange, setTokenTaskRange] = useState(null); // Состояние для диапазона
     const [isMiscAccordionOpen, setIsMiscAccordionOpen] = useState(false);
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts } = useTaskManager({
+    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts, isCurrentTaskAllowed } = useTaskManager({
         userType,
         who,
         taskVersion,
         isTokenValid,
+        tokenTaskRange, // Передаем в хук
     });
 
     useEffect(() => {
@@ -1511,6 +1604,11 @@ export default function TrainerPage({ goTo }) {
         setCurrentField(null);
     };
 
+    const handleUpdateBuffer = (newBuffer) => {
+        setBuffer(newBuffer);
+        setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
+    };
+
     const handleAddToBuffer = (code) => {
         const fieldValue = fields[code];
         if (!fieldValue || fieldValue.trim() === "") return;
@@ -1528,6 +1626,8 @@ export default function TrainerPage({ goTo }) {
             setBuffer(newBuffer);
             setCookie(getStorageKey("buffer"), JSON.stringify(newBuffer));
         }
+        setSavedField(code);
+        setTimeout(() => setSavedField(null), 1000);
     };
 
     const handleInsertFromBuffer = (text) => {
@@ -1689,11 +1789,43 @@ export default function TrainerPage({ goTo }) {
         async function checkToken() {
             const KeyInCookies = await getKeyFromCookies();
             const token = KeyInCookies?.text;
-            // Используем CORRECT_TOKENS из глобальных констант
-            if (token && CONSTANTS.CORRECT_TOKENS.includes(token)) {
+
+            if (!token) {
+                goTo("settings");
+                return;
+            }
+
+            // 1. Проверка админского токена
+            if (token === "ADMIN-BYPASS-TOKEN") {
                 setIsTokenValid(true);
-            } else {
-                goTo("settings"); // Если токена нет, отправляем на настройки
+                return;
+            }
+
+            // 2. Проверка старых жестко заданных токенов
+            if (CONSTANTS.CORRECT_TOKENS.includes(token)) {
+                setIsTokenValid(true);
+                return;
+            }
+
+            // 3. Проверка динамических токенов через API
+            try {
+                const response = await fetch(`/api/mayak/validate-token?token=${encodeURIComponent(token)}`);
+                const data = await response.json();
+
+                // ВАЖНО: Если токен валиден, пускаем.
+                // Если токен исчерпан (isExhausted), но активен (isActive), и мы уже здесь (с кукой) — тоже пускаем.
+                if (data.valid || (data.isExhausted && data.isActive)) {
+                    setIsTokenValid(true);
+                    if (data.taskRange) {
+                        setTokenTaskRange(data.taskRange); // Сохраняем диапазон
+                    }
+                } else {
+                    console.warn("Токен недействителен:", data.error);
+                    goTo("settings");
+                }
+            } catch (error) {
+                console.error("Ошибка проверки токена:", error);
+                goTo("settings");
             }
         }
         checkToken();
@@ -1715,6 +1847,7 @@ export default function TrainerPage({ goTo }) {
         taskFileUrl,
         sourceUrl,
         currentTask,
+        isCurrentTaskAllowed,
         levels,
         showLevelsInput,
         selectedRole,
@@ -1882,13 +2015,33 @@ export default function TrainerPage({ goTo }) {
                                     </Button>
                                 </div>
                                 {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
-                                    <MayakField key={f.code} field={f} value={fields[f.code]} isMobile={isMobile} onChange={handleChange} onShowBuffer={handleShowBufferForField} onAddToBuffer={handleAddToBuffer} onRandom={handleRandom} />
+                                    <MayakField
+                                        key={f.code}
+                                        field={f}
+                                        value={fields[f.code]}
+                                        isMobile={isMobile}
+                                        onChange={handleChange}
+                                        onShowBuffer={handleShowBufferForField}
+                                        onAddToBuffer={handleAddToBuffer}
+                                        onRandom={handleRandom}
+                                        savedField={savedField}
+                                    />
                                 ))}
                             </div>
                             <div className="flex flex-col gap-[0.5rem]">
                                 <span className="big">Условия реализации и параметры оформления</span>
                                 {(mayakData.fieldsList || []).slice(4).map((f) => (
-                                    <MayakField key={f.code} field={f} value={fields[f.code]} isMobile={isMobile} onChange={handleChange} onShowBuffer={handleShowBufferForField} onAddToBuffer={handleAddToBuffer} onRandom={handleRandom} />
+                                    <MayakField
+                                        key={f.code}
+                                        field={f}
+                                        value={fields[f.code]}
+                                        isMobile={isMobile}
+                                        onChange={handleChange}
+                                        onShowBuffer={handleShowBufferForField}
+                                        onAddToBuffer={handleAddToBuffer}
+                                        onRandom={handleRandom}
+                                        savedField={savedField}
+                                    />
                                 ))}
                             </div>
                         </div>
@@ -1991,7 +2144,7 @@ export default function TrainerPage({ goTo }) {
                     </div>
                 </div>
 
-                {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} buffer={buffer} currentField={currentField} />}
+                {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
             </div>
             {showCompletionPopup && (
                 <TaskCompletionPopup
