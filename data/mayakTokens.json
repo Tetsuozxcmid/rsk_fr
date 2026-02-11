@@ -1,17 +1,6 @@
 {
   "tokens": [
     {
-      "id": "dbf87d1e-5a8f-4725-9557-94daccdad7f8",
-      "name": "1",
-      "token": "82ac89326742bd8ca274b0a3f7acb6ea54b74c4f8705cc7352bcb2d55d965487",
-      "usageLimit": 2,
-      "usedCount": 2,
-      "taskRange": "1",
-      "createdAt": "2026-02-10T13:01:44.641Z",
-      "updatedAt": "2026-02-10T13:03:24.182Z",
-      "isActive": true
-    },
-    {
       "id": "b49c9392-de4d-4982-bf28-eda6b84f7118",
       "name": "1",
       "token": "0f886ed12ec81032e19657eb19bf9ec37a4e215a3ecce6f197ddd0e834e3ffd1",
