@@ -76,6 +76,17 @@
       "createdAt": "2026-02-10T13:26:16.307Z",
       "updatedAt": "2026-02-10T13:26:24.654Z",
       "isActive": true
+    },
+    {
+      "id": "a799ab72-61c0-476e-9e20-5bd90e7ac037",
+      "name": "ВУЗЫ",
+      "token": "1eb2c9604eb12ac655c57efbbd0a02228ef72db7cb379396a7e1206eed8eb6cd",
+      "usageLimit": 30,
+      "usedCount": 1,
+      "taskRange": "600-700",
+      "createdAt": "2026-02-12T08:58:11.787Z",
+      "updatedAt": "2026-02-12T08:58:31.669Z",
+      "isActive": true
     }
   ]
 }
