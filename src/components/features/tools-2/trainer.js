@@ -112,7 +112,13 @@ const usePopups = () => {
 const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange }) => {
     const [tasks, setTasks] = useState([]);
     const [tasksTexts, setTasksTexts] = useState([]);
-    const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+    const [currentTaskIndex, setCurrentTaskIndex] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
+            if (saved !== null) return parseInt(saved, 10);
+        } catch {}
+        return 0;
+    });
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [timerState, setTimerState] = useState(() => {
@@ -189,6 +195,13 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
     }
     // ---------------------------------------------------
 
+    // Сохраняем currentTaskIndex в sessionStorage при каждом изменении
+    useEffect(() => {
+        try {
+            sessionStorage.setItem(getStorageKey("currentTaskIndex"), currentTaskIndex.toString());
+        } catch {}
+    }, [currentTaskIndex]);
+
     useEffect(() => {
         const loadTasks = async () => {
             if (!isTokenValid) return;
@@ -216,7 +229,20 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                         }
                     }
                 } else {
-                    setCurrentTaskIndex(0);
+                    // Восстанавливаем сохранённый индекс из sessionStorage, если он валиден
+                    try {
+                        const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
+                        if (saved !== null) {
+                            const savedIdx = parseInt(saved, 10);
+                            if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tasksData.length) {
+                                setCurrentTaskIndex(savedIdx);
+                            } else {
+                                setCurrentTaskIndex(0);
+                            }
+                        }
+                    } catch {
+                        setCurrentTaskIndex(0);
+                    }
                 }
 
                 if (tasksData.length === 0) {
@@ -644,30 +670,6 @@ const SecondQuestionnairePopup = memo(function SecondQuestionnairePopup({ onClos
 });
 
 const ThirdQuestionnairePopup = memo(function ThirdQuestionnairePopup({ onClose, onSave }) {
-    // --- НАЧАЛО ВАЖНОЙ ЛОГИКИ ---
-    // 1. Создаем состояние 'levels', чтобы хранить значения из полей ввода.
-    //    Без этой строки переменной 'levels' просто не существует.
-    const [levels, setLevels] = useState({
-        level1: "",
-        level2: "",
-        level3: "",
-        level4: "",
-        level5: "",
-    });
-
-    // 2. Создаем функцию для обновления состояния при вводе текста.
-    const handleLevelChange = (level, value) => {
-        setLevels((prev) => ({
-            ...prev,
-            [level]: value,
-        }));
-    };
-
-    // 3. Создаем переменную для проверки, можно ли нажимать кнопку "Сохранить".
-    const isSaveDisabled = !Object.values(levels).some((level) => level !== "");
-    // --- КОНЕЦ ВАЖНОЙ ЛОГИКИ ---
-
-    // Теперь в JSX можно без ошибок использовать 'levels', 'handleLevelChange' и 'isSaveDisabled'
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
             <div className="relative bg-white p-6 rounded-lg max-w-md w-full shadow-2xl border border-gray-200 pointer-events-auto">
@@ -675,36 +677,22 @@ const ThirdQuestionnairePopup = memo(function ThirdQuestionnairePopup({ onClose,
                     <h3 className="text-xl font-bold">Завершение сессии</h3>
                 </div>
 
-                <>
-                    <div className="space-y-4">
-                        <p>Пожалуйста, заполните измерения Delta для завершения сессии:</p>
-                        <div className="grid grid-cols-2 gap-2">
-                            <Input type="number" placeholder="Уровень 1" value={levels.level1} onChange={(e) => handleLevelChange("level1", e.target.value)} />
-                            <Input type="number" placeholder="Уровень 2" value={levels.level2} onChange={(e) => handleLevelChange("level2", e.target.value)} />
-                            <Input type="number" placeholder="Уровень 3" value={levels.level3} onChange={(e) => handleLevelChange("level3", e.target.value)} />
-                            <Input type="number" placeholder="Уровень 4" value={levels.level4} onChange={(e) => handleLevelChange("level4", e.target.value)} />
-                            <Input type="number" placeholder="Уровень 5" value={levels.level5} onChange={(e) => handleLevelChange("level5", e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="mt-6 flex justify-center gap-2">
-                        <Button onClick={onClose} className="!bg-gray-200 !text-gray-800 hover:!bg-gray-300 flex-1">
-                            Отмена
-                        </Button>
-                        <Button
-                            onClick={() => {
-                                if (onClose) onClose();
-                                window.__openRankingTestPopup && window.__openRankingTestPopup();
-                            }}
-                            className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200 flex-1">
-                            Пройти Тестирование
-                        </Button>
-                        <span className="flex-1" title={isSaveDisabled ? "Сначала заполните хотя бы одно поле Дельта" : ""}>
-                            <Button onClick={() => onSave(levels)} className="!bg-blue-500 !text-white hover!bg-blue-600 w-full" disabled={isSaveDisabled}>
-                                Сохранить и завершить
-                            </Button>
-                        </span>
-                    </div>
-                </>
+                <div className="mt-6 flex justify-center gap-2">
+                    <Button onClick={onClose} className="!bg-gray-200 !text-gray-800 hover:!bg-gray-300 flex-1">
+                        Отмена
+                    </Button>
+                    <Button
+                        onClick={() => {
+                            if (onClose) onClose();
+                            window.__openRankingTestPopup && window.__openRankingTestPopup();
+                        }}
+                        className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200 flex-1">
+                        Пройти Тестирование
+                    </Button>
+                    <Button onClick={() => onSave({})} className="!bg-blue-500 !text-white hover:!bg-blue-600 flex-1">
+                        Сохранить и завершить
+                    </Button>
+                </div>
             </div>
         </div>
     );
@@ -1176,10 +1164,14 @@ export default function TrainerPage({ goTo }) {
     const [showLevelsInput, setShowLevelsInput] = useState(false);
     const [showSessionCompletionPopup, setShowSessionCompletionPopup] = useState(false);
     const [showRankingTestPopup, setShowRankingTestPopup] = useState(false);
+    const [rankingForceRetake, setRankingForceRetake] = useState(false);
 
     // Глобальный callback для открытия попапа тестирования из дочерних компонентов
     useEffect(() => {
-        window.__openRankingTestPopup = () => setShowRankingTestPopup(true);
+        window.__openRankingTestPopup = () => {
+            setRankingForceRetake(true);
+            setShowRankingTestPopup(true);
+        };
         return () => { delete window.__openRankingTestPopup; };
     }, []);
 
@@ -2153,7 +2145,8 @@ export default function TrainerPage({ goTo }) {
             {showRolePopup && <RoleSelectionPopup onClose={() => setShowRolePopup(false)} onConfirm={handleRoleConfirm} />}
             {showRankingTestPopup && (
                 <RankingTestPopup
-                    onClose={() => setShowRankingTestPopup(false)}
+                    onClose={() => { setShowRankingTestPopup(false); if (rankingForceRetake) { setShowThirdQuestionnaire(true); } setRankingForceRetake(false); }}
+                    forceRetake={rankingForceRetake}
                     onSave={async (results) => {
                         try {
                             const activeUser =
