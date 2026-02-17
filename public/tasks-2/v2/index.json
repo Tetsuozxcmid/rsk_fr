@@ -1941,15 +1941,15 @@
     {
         "file": "",
         "instruction": "323.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai",
         "sourceLink": "https://eos.ru/press-center/news/medo-2-7-1-metod-postepennyh-priblizhenij/"
     },
     {
         "file": "",
         "instruction": "324.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "325.pdf",
@@ -1983,8 +1983,8 @@
     {
         "file": "",
         "instruction": "329.pdf",
-        "toolLink1": "https://pictory.ai/",
-        "toolName1": "Pictory",
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen",
         "sourceLink": "https://www.amic.ru/news/vyyasnilos-skolko-zemskih-uchiteley-v-altayskom-krae-vernuli-million-rubley-570788"
     },
     {
@@ -1992,8 +1992,8 @@
         "instruction": "330.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
-        "toolLink2": "https://pictory.ai/",
-        "toolName2": "2: Pictory",
+        "toolLink2": "https://chat.qwen.ai/",
+        "toolName2": "Qwen",
         "sourceLink": "https://xn--80aapampemcchfmo7a3c9ehj.xn--p1ai/news/v-rostovskoy-oblasti-poyavitsya-novaya-mera-podderzhki-selskikh-uchiteley/"
     },
     {
@@ -2008,8 +2008,8 @@
         "instruction": "332.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1: Perplexity",
-        "toolLink2": "https://pictory.ai/",
-        "toolName2": "2: Pictory",
+        "toolLink2": "https://chat.qwen.ai/",
+        "toolName2": "Qwen",
         "sourceLink": "https://xn--80apfedmab8e4d.xn--p1ai/2021/11/kak-vernut-dengi-za-remont-podezda-esli-delali-ego-svoimi-silami-bez-upravlyayushhej-kompanii/"
     },
     {
@@ -2061,8 +2061,8 @@
     {
         "file": "339.MP3",
         "instruction": "339.pdf",
-        "toolLink1": "https://auphonic.com/landing",
-        "toolName1": "Auphonic",
+        "toolLink1": "https://audiocleaner.ai/ru",
+        "toolName1": "AudioCleaner",
         "sourceLink": "https://xn--80apfedmab8e4d.xn--p1ai/2021/11/kak-vernut-dengi-za-remont-podezda-esli-delali-ego-svoimi-silami-bez-upravlyayushhej-kompanii/"
     },
     {
@@ -2279,8 +2279,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai",
         "sourceLink": "https://lenobl.ru/ru/dlya-smi/news/83656/"
     },
     {
@@ -2331,7 +2331,7 @@
         "sourceLink": "https://www.livekuban.ru/news/zhizn/stalo-izvestno-skolko-socialnykh-obektov-stroitsya-v-krasnodare"
     },
     {
-        "file": "",
+        "file": "384.pdf",
         "toolLink1": "",
         "toolName1": ""
     },
@@ -2355,8 +2355,8 @@
     },
     {
         "file": "388.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable",
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai",
         "sourceLink": "https://bft.ru/expert-bft/40329/"
     },
     {
