@@ -128,6 +128,17 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                 const parsed = JSON.parse(saved);
                 if (parsed.isRunning && parsed.startTime) {
                     const elapsed = Math.floor((Date.now() - parsed.startTime) / 1000);
+                    const MAX_TIMER_SECONDS = 3 * 60 * 60; // 3 часа
+                    // Если таймер "висит" дольше 3 часов — сбрасываем
+                    if (elapsed > MAX_TIMER_SECONDS) {
+                        sessionStorage.removeItem("trainer_v2_taskTimer");
+                        return {
+                            isRunning: false,
+                            startTime: null,
+                            elapsedTime: 0,
+                            readyElapsedTime: null,
+                        };
+                    }
                     return {
                         isRunning: true,
                         startTime: parsed.startTime,
@@ -216,33 +227,37 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                 // Убрали фильтрацию, теперь просто находим нужный индекс для старта
                 setTasks(tasksData);
 
-                // Если диапазон задан, попробуем найти первое задание из диапазона и встать на него
-                if (tokenTaskRange) {
-                    const [startStr, endStr] = tokenTaskRange.split("-");
-                    const start = parseInt(startStr, 10);
-                    if (!isNaN(start)) {
-                        const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
-                        if (startIndex !== -1) {
-                            setCurrentTaskIndex(startIndex);
-                        } else {
-                            setCurrentTaskIndex(0);
-                        }
-                    }
-                } else {
-                    // Восстанавливаем сохранённый индекс из sessionStorage, если он валиден
-                    try {
-                        const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
-                        if (saved !== null) {
-                            const savedIdx = parseInt(saved, 10);
-                            if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tasksData.length) {
-                                setCurrentTaskIndex(savedIdx);
+                // Восстанавливаем сохранённый индекс из sessionStorage
+                try {
+                    const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
+                    if (saved !== null) {
+                        const savedIdx = parseInt(saved, 10);
+                        if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tasksData.length) {
+                            setCurrentTaskIndex(savedIdx);
+                        } else if (tokenTaskRange) {
+                            // Сохранённый индекс невалиден — ставим на начало диапазона
+                            const [startStr] = tokenTaskRange.split("-");
+                            const start = parseInt(startStr, 10);
+                            if (!isNaN(start)) {
+                                const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
+                                setCurrentTaskIndex(startIndex !== -1 ? startIndex : 0);
                             } else {
                                 setCurrentTaskIndex(0);
                             }
+                        } else {
+                            setCurrentTaskIndex(0);
                         }
-                    } catch {
-                        setCurrentTaskIndex(0);
+                    } else if (tokenTaskRange) {
+                        // Нет сохранённого индекса — первый вход, ставим на начало диапазона
+                        const [startStr] = tokenTaskRange.split("-");
+                        const start = parseInt(startStr, 10);
+                        if (!isNaN(start)) {
+                            const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
+                            setCurrentTaskIndex(startIndex !== -1 ? startIndex : 0);
+                        }
                     }
+                } catch {
+                    setCurrentTaskIndex(0);
                 }
 
                 if (tasksData.length === 0) {
@@ -300,7 +315,10 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                 });
             }, 1000);
         }
-        return () => clearInterval(timerRef.current);
+        return () => {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        };
     }, []);
 
     const goToTask = useCallback(
@@ -1011,7 +1029,7 @@ const TrainerControls = memo(function TrainerControls({
                     </div>
                 </div>
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
-                    {isCurrentTaskAllowed && (
+                    {(isCurrentTaskAllowed || isTaskRunning) && (
                         <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
                             {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
                         </Button>
