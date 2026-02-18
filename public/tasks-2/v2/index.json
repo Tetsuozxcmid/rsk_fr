@@ -1891,14 +1891,14 @@
     {
         "file": "318.MP3",
         "instruction": "318.pdf",
-        "toolLink1": "https://auphonic.com/landing",
-        "toolName1": "Auphonic"
+        "toolLink1": "https://audiocleaner.ai/ru",
+        "toolName1": "AudioCleaner"
     },
     {
         "file": "319.MP3",
         "instruction": "319.pdf",
-        "toolLink1": "https://auphonic.com/landing",
-        "toolName1": "Auphonic"
+        "toolLink1": "https://audiocleaner.ai/ru",
+        "toolName1": "AudioCleaner"
     },
     {
         "file": "",
@@ -1969,8 +1969,8 @@
     {
         "file": "",
         "instruction": "331.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "",
@@ -1981,8 +1981,8 @@
     {
         "file": "",
         "instruction": "333.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "",
@@ -1999,8 +1999,8 @@
     {
         "file": "",
         "instruction": "336.pdf",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory"
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen"
     },
     {
         "file": "337.png",
@@ -2017,14 +2017,14 @@
     {
         "file": "",
         "instruction": "339.pdf",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory"
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen"
     },
     {
         "file": "",
         "instruction": "340.pdf",
-        "toolLink1": "https://pictory.ai",
-        "toolName1": "Picrory"
+        "toolLink1": "https://chat.qwen.ai/",
+        "toolName1": "Qwen"
     },
     {
         "file": "",
@@ -2065,8 +2065,11 @@
     {
         "file": "347.pdf",
         "instruction": "347.pdf",
-        "toolLink1": "https://www.napkin.ai/",
-        "toolName1": "Napkin"
+        "toolLink1": "https://www.perplexity.ai/",
+        "toolName1": "1:Perplexity",
+        "toolLink2": "https://www.napkin.ai/",
+        "toolName2": "2:Napkin"
+        
     },
     {
         "file": "",
@@ -2170,8 +2173,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "",
@@ -2204,8 +2207,8 @@
         "file": "373.pdf",
         "toolLink1": "https://www.perplexity.ai/",
         "toolName1": "1:Perplexity",
-        "toolLink2": "https://lovable.dev/",
-        "toolName2": "2:Lovable"
+        "toolLink2": "https://chat.z.ai/",
+        "toolName2": "2:Z.ai"
     },
     {
         "file": "374.pdf",
@@ -2239,8 +2242,8 @@
     },
     {
         "file": "380.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "381.pdf",
@@ -2264,8 +2267,8 @@
     },
     {
         "file": "",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "386.pdf",
@@ -2279,13 +2282,13 @@
     },
     {
         "file": "388.pdf",
-        "toolLink1": "https://notebooklm.google.com/",
-        "toolName1": "notebooklm"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "389.pdf",
-        "toolLink1": "https://lovable.dev/",
-        "toolName1": "Lovable"
+        "toolLink1": "https://chat.z.ai/",
+        "toolName1": "Z.ai"
     },
     {
         "file": "390.pdf",
