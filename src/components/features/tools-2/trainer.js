@@ -34,6 +34,12 @@ import { STATIC_MAYAK_DATA } from "../../../../data/mayakDataConst";
 const TRAINER_PREFIX = "trainer_v2"; // Уникальный префикс для этого тренажера
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
 
+const getRange = (taskNumber) => {
+    const start = Math.floor((taskNumber - 1) / 100) * 100 + 1;
+    const end = start + 99;
+    return `${start}-${end}`;
+};
+
 const CONSTANTS = {
     STORAGE_KEYS: {
         USER_ROLE: "userRole",
@@ -109,7 +115,7 @@ const usePopups = () => {
 /**
  * Хук для управления задачами тренажера
  */
-const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange }) => {
+const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange, tokenSectionId }) => {
     const [tasks, setTasks] = useState([]);
     const [tasksTexts, setTasksTexts] = useState([]);
     const [currentTaskIndex, setCurrentTaskIndex] = useState(() => {
@@ -189,9 +195,11 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
 
     const basePath = taskVersion === "v2" ? `/tasks-2/${taskVersion}` : `/tasks-2/${taskVersion}/${userType}/${who}`;
 
-    const instructionFileUrl = currentTask?.instruction ? `${basePath}/Instructions/${currentTask.instruction}` : "";
-    const taskFileUrl = currentTask?.file ? `${basePath}/Files/${currentTask.file}` : "";
-    const currentImage = currentTask?.photo ? `${basePath}/${currentTask.photo}` : "";
+    const taskRange = currentTask?._range || (taskVersion === "v2" ? getRange(currentTaskIndex + 1) : null);
+    const rangePath = taskVersion === "v2" && taskRange ? `${basePath}/${taskRange}` : basePath;
+
+    const instructionFileUrl = currentTask?.instruction ? `${rangePath}/Instructions/${currentTask.instruction}` : "";
+    const taskFileUrl = currentTask?.file ? `${rangePath}/Files/${currentTask.file}` : "";
 
     // --- НОВАЯ ЛОГИКА: ССЫЛКА ИЛИ ФАЙЛ В ПАПКЕ SOURCE ---
     let sourceUrl = "";
@@ -201,7 +209,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
             sourceUrl = currentTask.sourceLink;
         } else {
             // Это файл, ищем его в папке 'source' (как на скриншоте)
-            sourceUrl = `${basePath}/source/${currentTask.sourceLink}`; 
+            sourceUrl = `${basePath}/source/${currentTask.sourceLink}`;
         }
     }
     // ---------------------------------------------------
@@ -219,13 +227,82 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
             setIsLoading(true);
             setError(null);
             try {
-                // Загружаем основной список заданий
-                const tasksResponse = await fetch(`${basePath}/index.json`);
-                if (!tasksResponse.ok) throw new Error(`Не удалось загрузить задания: ${tasksResponse.status}`);
-                let tasksData = await tasksResponse.json();
+                let tasksData;
+                let tasksTextsData;
 
-                // Убрали фильтрацию, теперь просто находим нужный индекс для старта
+                if (taskVersion === "v2") {
+                    if (tokenSectionId) {
+                        // Загружаем ТОЛЬКО одну папку по sectionId вместо всего manifest
+                        const indexRes = await fetch(`${basePath}/${tokenSectionId}/index.json`);
+                        if (!indexRes.ok) throw new Error(`Не удалось загрузить index.json для раздела ${tokenSectionId}: ${indexRes.status}`);
+                        const data = await indexRes.json();
+
+                        // Берём rangeStart/rangeEnd из meta.json
+                        const metaRes = await fetch(`${basePath}/${tokenSectionId}/meta.json`);
+                        let rangeStart = 1;
+                        let rangeEnd = 100;
+                        if (metaRes.ok) {
+                            const meta = await metaRes.json();
+                            rangeStart = meta.rangeStart || 1;
+                            rangeEnd = meta.rangeEnd || (rangeStart + data.length - 1);
+                        }
+
+                        const startPos = rangeStart - 1;
+                        tasksData = new Array(rangeEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "" }));
+                        for (let i = 0; i < data.length; i++) {
+                            tasksData[startPos + i] = { ...data[i], _range: tokenSectionId };
+                        }
+
+                        // TaskText.json — тоже из одной папки
+                        const textRes = await fetch(`${basePath}/${tokenSectionId}/TaskText.json`);
+                        tasksTextsData = textRes.ok ? await textRes.json() : [];
+                    } else {
+                    // Загружаем manifest со списком диапазонов
+                    const manifestRes = await fetch(`${basePath}/manifest.json`);
+                    if (!manifestRes.ok) throw new Error(`Не удалось загрузить manifest: ${manifestRes.status}`);
+                    const ranges = await manifestRes.json();
+
+                    // Определяем максимальную позицию, чтобы создать массив правильного размера
+                    const maxEnd = Math.max(...ranges.map((r) => parseInt(r.split("-")[1], 10)));
+
+                    // Параллельно загружаем index.json из каждого диапазона
+                    const indexPromises = ranges.map((range) =>
+                        fetch(`${basePath}/${range}/index.json`)
+                            .then((r) => (r.ok ? r.json() : []))
+                            .then((data) => ({ range, data }))
+                    );
+                    const allIndexResults = await Promise.all(indexPromises);
+
+                    // Собираем массив с правильными позициями (заполняем пропуски пустышками)
+                    tasksData = new Array(maxEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "" }));
+                    for (const { range, data } of allIndexResults) {
+                        const startPos = parseInt(range.split("-")[0], 10) - 1; // "201-300" → индекс 200
+                        for (let i = 0; i < data.length; i++) {
+                            tasksData[startPos + i] = { ...data[i], _range: range };
+                        }
+                    }
+
+                    // Параллельно загружаем TaskText.json из каждого диапазона
+                    const textPromises = ranges.map((range) =>
+                        fetch(`${basePath}/${range}/TaskText.json`)
+                            .then((r) => (r.ok ? r.json() : []))
+                    );
+                    const allTextArrays = await Promise.all(textPromises);
+                    tasksTextsData = allTextArrays.flat();
+                    }
+                } else {
+                    // Старая логика для не-v2 версий
+                    const tasksResponse = await fetch(`${basePath}/index.json`);
+                    if (!tasksResponse.ok) throw new Error(`Не удалось загрузить задания: ${tasksResponse.status}`);
+                    tasksData = await tasksResponse.json();
+
+                    const textsResponse = await fetch(`${basePath}/TaskText.json`);
+                    if (!textsResponse.ok) throw new Error("Не удалось загрузить тексты заданий");
+                    tasksTextsData = await textsResponse.json();
+                }
+
                 setTasks(tasksData);
+                setTasksTexts(tasksTextsData);
 
                 // Восстанавливаем сохранённый индекс из sessionStorage
                 try {
@@ -263,12 +340,6 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                 if (tasksData.length === 0) {
                     setError("Нет доступных заданий");
                 }
-
-                // Одновременно загружаем тексты для попапов
-                const textsResponse = await fetch(`${basePath}/TaskText.json`);
-                if (!textsResponse.ok) throw new Error("Не удалось загрузить тексты заданий");
-                const tasksTextsData = await textsResponse.json();
-                setTasksTexts(tasksTextsData);
             } catch (err) {
                 setError(err.message);
                 setTasks([]);
@@ -278,7 +349,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
             }
         };
         loadTasks();
-    }, [userType, who, taskVersion, isTokenValid, basePath]);
+    }, [userType, who, taskVersion, isTokenValid, basePath, tokenSectionId]);
 
     const startTimer = useCallback(() => {
         const now = Date.now();
@@ -347,7 +418,6 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
         prevTask,
         instructionFileUrl,
         taskFileUrl,
-        currentImage,
         sourceUrl,
         basePath,
         tasksTexts,
@@ -1203,15 +1273,17 @@ export default function TrainerPage({ goTo }) {
     const [who, setWho] = useState("im");
     const [isTokenValid, setIsTokenValid] = useState(false);
     const [tokenTaskRange, setTokenTaskRange] = useState(null); // Состояние для диапазона
+    const [tokenSectionId, setTokenSectionId] = useState(null); // Slug папки раздела
     const [isMiscAccordionOpen, setIsMiscAccordionOpen] = useState(false);
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl,sourceUrl, currentImage, tasksTexts, isCurrentTaskAllowed } = useTaskManager({
+    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl, sourceUrl, tasksTexts, isCurrentTaskAllowed } = useTaskManager({
         userType,
         who,
         taskVersion,
         isTokenValid,
         tokenTaskRange, // Передаем в хук
+        tokenSectionId, // Slug папки раздела
     });
 
     useEffect(() => {
@@ -1831,6 +1903,9 @@ export default function TrainerPage({ goTo }) {
                 // Если токен исчерпан (isExhausted), но активен (isActive), и мы уже здесь (с кукой) — тоже пускаем.
                 if (data.valid || (data.isExhausted && data.isActive)) {
                     setIsTokenValid(true);
+                    if (data.sectionId) {
+                        setTokenSectionId(data.sectionId);
+                    }
                     if (data.taskRange) {
                         setTokenTaskRange(data.taskRange); // Сохраняем диапазон
                     }
