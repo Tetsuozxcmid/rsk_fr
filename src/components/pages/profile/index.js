@@ -89,19 +89,20 @@ export default function ProfileIndexPage({ goTo }) {
         if (!confirmed) return;
 
         try {
-            // Вызываем серверный logout для очистки HttpOnly кук
-            await fetch("/api/auth/logout", {
+            const response = await fetch("/api/auth/logout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // Важно! Отправляем куки на сервер
+                credentials: "include",
                 cache: "no-store",
             });
+
+            const data = await response.json();
+            console.log("Data logout: ", data);
         } catch (error) {
             console.error("Logout API error:", error);
         }
 
         // Удаляем клиентские cookie (на всякий случай)
-
         const cookies = document.cookie.split(";");
         for (let cookie of cookies) {
             const eqPos = cookie.indexOf("=");
