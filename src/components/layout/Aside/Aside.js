@@ -51,7 +51,9 @@ export default function Aside() {
                     <AnimatePresence>
                         {!isCollapsed && (
                             <motion.div key="logo" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                                <Image src="/images/logo.svg" alt="logo" width={76} height={40} />
+                                <div className="relative w-[76px] h-[40px] max-lg:w-[46px] max-lg:h-[24px]">
+                                    <Image src="/images/logo.svg" alt="logo" fill />
+                                </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -77,7 +79,9 @@ export default function Aside() {
                 <AnimatePresence>
                     {!isCollapsed && (
                         <motion.div key="logo" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                            <Image src="/images/logo.svg" alt="logo" width={76} height={40} />
+                            <div className="relative w-[76px] h-[40px] max-lg:w-[46px] max-lg:h-[24px]">
+                                <Image src="/images/logo.svg" alt="logo" fill />
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

@@ -22,6 +22,11 @@ aside {
     position: sticky;
     flex-direction: column;
 
+    @media (max-width: 900px) {
+        gap: 1.25rem;
+        padding: 0.75rem;
+    }
+
     &.collapsed {
         width: fit-content;
     }
@@ -149,6 +154,32 @@ button,
     &[disabled] {
         cursor: not-allowed;
     }
+
+    @media (max-width: 900px) {
+        gap: 0.5rem;
+        border-radius: 0.625rem;
+        padding: 0.375rem 0.875rem;
+
+        &.big {
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+        }
+
+        &.small {
+            gap: 0.375rem;
+            border-radius: 0.5rem;
+            padding: 0.375rem 0.75rem;
+        }
+
+        &.icon {
+            height: 100%;
+            aspect-ratio: 1;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            width: fit-content;
+            border-radius: 0.75rem;
+        }
+    }
 }
 
 meter {
@@ -178,7 +209,15 @@ meter {
             gap: 0.875rem;
             border-radius: 0.5rem;
             padding: 0.5rem 0.875rem;
+
+            @media (max-width: 900px) {
+                gap: 0.375rem;
+                border-radius: 0.375rem;
+                padding: 0.375rem 0.625rem;
+            }
         }
+
+
     }
 
     &.small {
@@ -189,6 +228,13 @@ meter {
         .option {
             gap: 0.875rem;
             padding: 0.625rem 0.375rem;
+            border-radius: 0.375rem;
+
+            @media (max-width: 900px) {
+                gap: 0.25rem;
+                border-radius: 0.25rem;
+                padding: 0.25rem 0.5rem;
+            }
         }
     }
 
@@ -201,6 +247,30 @@ meter {
         border-radius: 0.5rem;
         padding: 0.5rem 0.75rem;
         justify-content: center;
+
+        @media (max-width: 900px) {
+            gap: 0.25rem;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+
+    @media (max-width: 900px) {
+        gap: 0.25rem;
+        padding: 0.25rem;
+        border-radius: 0.75rem;
+
+        &.big {
+            gap: 0.25rem;
+            padding: 0.25rem;
+            border-radius: 0.5rem;
+        }
+
+        &.small {
+            gap: 0.125rem;
+            padding: 0.125rem;
+            border-radius: 0.375rem;
+        }
     }
 }
 
@@ -210,11 +280,19 @@ meter {
     border-radius: 0.75rem;
     flex-direction: column;
 
+    @media (max-width: 900px) {
+        border-radius: 0.375rem;
+    }
+
     input,
     textarea {
         width: 100%;
         resize: none;
         padding: 0.75rem 0.875rem;
+
+        @media (max-width: 900px) {
+            padding: 0.375rem 0.875rem;
+        }
     }
 
     .dropdown-wrapper {
@@ -265,8 +343,7 @@ meter {
                 border-radius: 0.375rem;
 
                 &:checked::after {
-                    background: url("data:image/svg+xml,%3Csvg%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20xmlns%3D'http%3A//www.w3.org/2000/svg'%3E%3Cpath%20d%3D'M13.3334%204L6.00008%2011.3333L2.66675%208'%20stroke%3D'white'%20stroke-width%3D'1.33333'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'/%3E%3C/svg%3E")
-                        center/contain no-repeat;
+                    background: url("data:image/svg+xml,%3Csvg%20width%3D'16'%20height%3D'16'%20viewBox%3D'0%200%2016%2016'%20fill%3D'none'%20xmlns%3D'http%3A//www.w3.org/2000/svg'%3E%3Cpath%20d%3D'M13.3334%204L6.00008%2011.3333L2.66675%208'%20stroke%3D'white'%20stroke-width%3D'1.33333'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'/%3E%3C/svg%3E") center/contain no-repeat;
                 }
             }
 
@@ -277,16 +354,26 @@ meter {
                 aspect-ratio: 1;
             }
 
-            &.big,
-            &:checked.big {
+            &.big {
                 width: 2rem;
                 padding: 0.5rem;
             }
 
-            &.small,
-            &:checked.small {
+            &.small {
                 width: 1rem;
                 padding: 0.25rem;
+            }
+
+            @media (max-width: 900px) {
+                width: 1.125rem;
+
+                &.big {
+                    width: 1.5rem;
+                }
+
+                &.small {
+                    width: 0.875rem;
+                }
             }
         }
     }
