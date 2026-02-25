@@ -170,7 +170,7 @@ export function NavItem({ label, href, icon: Icon, submenu, isCollapsed, isHover
     return (
         <div key={label} className={`group flex flex-col gap-[0.75rem] cursor-pointer`} onMouseEnter={() => onHover(label)} onMouseLeave={() => onHover(null)}>
             <Link className={`${router.pathname === href ? "active" : ""} items-center ${isInactive ? "inactive pointer-events-none" : isSubmenuActive ? "opacity-100" : "opacity-30 group-hover:opacity-100"}`} href={isInactive ? "#" : href}>
-                <Icon />
+                <Icon className="w-[1.375rem] h-[1.375rem] max-[900px]:w-[1.25rem] max-[900px]:h-[1.25rem]" />
                 <AnimatePresence>
                     {!isCollapsed && (
                         <motion.span initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="whitespace-nowrap">
