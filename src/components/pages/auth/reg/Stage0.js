@@ -16,7 +16,7 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
         email: "",
         password: "",
         role: userType,
-    }); 
+    });
 
     useEffect(() => {
         setFormData((prev) => ({ ...prev, role: userType }));
@@ -86,29 +86,29 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
             const data = await response.json();
 
             if (!response.ok) {
-                 // Обработка ошибок через errorCode
+                // Обработка ошибок через errorCode
                 switch (data.errorCode) {
                     case "EMAIL_NOT_CONFIRMED":
                         return alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
-                    
+
                     case "VALIDATION_ERROR":
                         return alert("Неверные данные: " + data.error);
-                    
+
                     case "BAD_REQUEST":
                         return alert("Пользователь с таким email уже существует");
-                    
+
                     case "UNAUTHORIZED":
                         return alert("Неавторизованный запрос");
-                    
+
                     case "FORBIDDEN":
                         return alert("Доступ запрещён");
-                    
+
                     case "NOT_FOUND":
                         return alert("Ресурс не найден");
-                    
+
                     case "SERVER_ERROR":
                         return alert("Ошибка сервера. Попробуйте позже");
-                    
+
                     case "UNKNOWN_ERROR":
                     default:
                         return alert("Произошла неизвестная ошибка");
@@ -121,11 +121,11 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
         } catch (err) {
             console.error("Registration error:", err);
             alert("Ошибка соединения с сервером. Проверьте интернет-соединение");
-        } 
+        }
     };
 
     return (
-        <motion.div key="register-stage0" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute w-full">
+        <motion.div key="register-stage0" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute justify-center w-full h-full">
             <h3>Добро пожаловать</h3>
             <Switcher className="!w-full" value={userType} onChange={setUserType}>
                 <Switcher.Option value="student">Студент</Switcher.Option>

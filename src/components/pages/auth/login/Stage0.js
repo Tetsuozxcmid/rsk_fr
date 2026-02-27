@@ -28,9 +28,9 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                 credentials: "include",
             });
 
-            const data = await response.json(); 
+            const data = await response.json();
 
-            if (!response.ok) { 
+            if (!response.ok) {
                 switch (data.errorCode) {
                     case "EMAIL_NOT_CONFIRMED":
                         return alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
@@ -62,7 +62,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
         }
     };
 
-        const onLogin = async (formData) => {
+    const onLogin = async (formData) => {
         try {
             const response = await fetch("/api/auth/login", {
                 method: "POST",
@@ -75,7 +75,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
 
             if (!response.ok) {
                 // Обработка ошибок через errorCode
-                switch (data.errorCode) { 
+                switch (data.errorCode) {
                     case "EMAIL_NOT_CONFIRMED":
                         return alert("Вы не подтвердили email. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
 
@@ -83,7 +83,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                         return alert("Неверный логин или пароль");
 
                     case "USER_NOT_FOUND":
-                        return alert("Пользователь с таким логином или почтой не существует"); 
+                        return alert("Пользователь с таким логином или почтой не существует");
 
                     case "VALIDATION_ERROR":
                         return alert("Неверные данные: " + data.error);
@@ -117,7 +117,7 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
     };
 
     return (
-        <motion.div key="login-stage0" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute w-full">
+        <motion.div key="login-stage0" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute justify-center w-full h-full">
             <h3>С возвращением!</h3>
             <form id="login" className="w-full grid grid-cols-1 gap-[0.75rem]" autoComplete="on" onSubmit={handleSubmit}>
                 <Input type="text" name="login" placeholder="Почта / Логин" autoComplete="username" required value={formData.login} onChange={handleChange} />

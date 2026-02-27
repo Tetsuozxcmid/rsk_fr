@@ -17,7 +17,7 @@ export default function Aside({ isMobileOpen, closeMobile }) {
     const router = useRouter();
     const userData = useUserData();
     const { navLinks, isLoading } = useNavLinks();
-    
+
     const initialCollapsed = Cookies.get("sidebarCollapsed") === "true";
     const [isCollapsed, setIsCollapsed] = useState(initialCollapsed);
     const [hovered, setHovered] = useState(null);
@@ -27,9 +27,9 @@ export default function Aside({ isMobileOpen, closeMobile }) {
     useEffect(() => {
         const handleResize = () => {
             const width = window.innerWidth;
-            if (width < 640) setScreenType('mobile');
-            else if (width < 900) setScreenType('tablet');
-            else setScreenType('desktop');
+            if (width < 640) setScreenType("mobile");
+            else if (width < 900) setScreenType("tablet");
+            else setScreenType("desktop");
         };
 
         handleResize(); // Определяем размер сразу
@@ -50,37 +50,35 @@ export default function Aside({ isMobileOpen, closeMobile }) {
 
     // Теперь у нас 5 вариантов состояния для идеальной плавности
     const asideVariants = {
-        expanded: { width: 380, x: 0 },
+        expanded: { width: Math.max(160, window.innerWidth * 0.16), x: 0 },
         collapsed: { width: 104, x: 0 }, // 6.5rem = 104px
         tabletCollapsed: { width: 80, x: 0 }, // 5rem = 80px
         mobileOpen: { x: 0, width: 280 },
-        mobileClosed: { x: "-100%", width: 280 }
+        mobileClosed: { x: "-100%", width: 280 },
     };
 
     // Функция для определения активного варианта
     const getVariant = () => {
         if (!isMounted || screenType === null) return "mobileClosed";
-        
-        if (screenType === 'mobile') {
+
+        if (screenType === "mobile") {
             return isMobileOpen ? "mobileOpen" : "mobileClosed";
         }
-        
+
         if (isCollapsed) {
-            return screenType === 'tablet' ? "tabletCollapsed" : "collapsed";
+            return screenType === "tablet" ? "tabletCollapsed" : "collapsed";
         }
-        
+
         return "expanded";
     };
 
     // Early return для предотвращения гидратационных лагов
     if (!isMounted || screenType === null) {
         return (
-            <aside 
+            <aside
                 className="overflow-hidden bg-white max-[640px]:fixed max-[640px]:z-[100] max-[640px]:h-full max-[640px]:left-0 max-[640px]:top-0 max-[640px]:-translate-x-full sm:relative"
-                style={{ 
-                    width: isCollapsed 
-                        ? (typeof window !== 'undefined' && window.innerWidth < 900 ? "5rem" : "6.5rem") 
-                        : "var(--aside-expanded)" 
+                style={{
+                    width: isCollapsed ? (typeof window !== "undefined" && window.innerWidth < 900 ? "5rem" : "6.5rem") : "var(--aside-expanded)",
                 }}
             />
         );
@@ -88,81 +86,49 @@ export default function Aside({ isMobileOpen, closeMobile }) {
 
     return (
         <>
-            <AnimatePresence>
-                {isMobileOpen && (
-                    <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        exit={{ opacity: 0 }}
-                        onClick={closeMobile}
-                        className="fixed inset-0 bg-black/40 z-[90] sm:hidden"
-                    />
-                )}
-            </AnimatePresence>
+            <AnimatePresence>{isMobileOpen && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={closeMobile} className="fixed inset-0 bg-black/40 z-[90] sm:hidden" />}</AnimatePresence>
 
             <motion.aside
-                initial={false} 
+                initial={false}
                 animate={getVariant()}
                 variants={asideVariants}
                 transition={springTransition}
                 layout
-                className="overflow-hidden bg-white max-[640px]:fixed max-[640px]:z-[100] max-[640px]:h-full max-[640px]:left-0 max-[640px]:top-0 sm:relative sm:translate-x-0"
-            >
+                className="overflow-hidden bg-white max-[640px]:fixed max-[640px]:z-[100] max-[640px]:h-full max-[640px]:left-0 max-[640px]:top-0 sm:relative sm:translate-x-0">
                 {/* ЛОГОТИП И БУРГЕР */}
-                <div className={`logo-container flex items-center ${isCollapsed && screenType !== 'mobile' ? "justify-center" : "justify-between"}`}>
+                <div className={`logo-container flex items-center ${isCollapsed && screenType !== "mobile" ? "justify-center" : "justify-between"}`}>
                     <AnimatePresence mode="wait">
-                        {(!isCollapsed || screenType === 'mobile') && (
-                            <motion.div 
-                                key="logo" 
-                                initial={false} 
-                                animate={{ opacity: 1, x: 0 }} 
-                                exit={{ opacity: 0, x: -20 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                            >
+                        {(!isCollapsed || screenType === "mobile") && (
+                            <motion.div key="logo" initial={false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
                                 <div className="relative w-[76px] h-[40px] max-[900px]:w-[46px] max-[900px]:h-[24px]">
                                     <Image src="/images/logo.svg" alt="logo" fill priority />
                                 </div>
                             </motion.div>
                         )}
                     </AnimatePresence>
-                    <Burger 
-                        onClick={screenType === 'mobile' ? closeMobile : toggleSidebar} 
-                        className="cursor-pointer flex-shrink-0 w-[1.25rem] h-[1.25rem]" 
-                    />
+                    <Burger onClick={screenType === "mobile" ? closeMobile : toggleSidebar} className="cursor-pointer flex-shrink-0 w-[1.25rem] h-[1.25rem]" />
                 </div>
 
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-20">
-                        {(!isCollapsed || screenType === 'mobile') && <span>Загрузка...</span>}
-                    </div>
+                    <div className="flex justify-center items-center h-20">{(!isCollapsed || screenType === "mobile") && <span>Загрузка...</span>}</div>
                 ) : (
                     <>
                         <nav className="flex-1">
                             {navLinks.map((item) => (
-                                <NavItem 
-                                    key={item.label} 
-                                    {...item} 
-                                    isCollapsed={screenType === 'mobile' ? false : isCollapsed} 
-                                    onHover={setHovered} 
-                                    hovered={hovered === item.label} 
-                                />
+                                <NavItem key={item.label} {...item} isCollapsed={screenType === "mobile" ? false : isCollapsed} onHover={setHovered} hovered={hovered === item.label} />
                             ))}
                         </nav>
-                        
+
                         <div className="flex flex-col gap-1">
-                            <Button 
-                                inverted 
-                                className={`bg-(--color-blue-noise)! text-(--color-blue)! ${(isCollapsed && screenType !== 'mobile') ? "!p-[1rem]" : ""}`} 
-                                onClick={() => window.open("https://t.me/rskfed", "_blank")}
-                            >
+                            <Button inverted className={`bg-(--color-blue-noise)! text-(--color-blue)! ${isCollapsed && screenType !== "mobile" ? "!p-[1rem]" : ""}`} onClick={() => window.open("https://t.me/rskfed", "_blank")}>
                                 <Telegram className="h-[1.375rem] flex-shrink-0" />
-                                {(!isCollapsed || screenType === 'mobile') && <span className="ml-2">Наш телеграмм</span>}
+                                {(!isCollapsed || screenType === "mobile") && <span className="ml-2">Наш телеграмм</span>}
                             </Button>
 
                             {userData ? (
                                 <div className="flex gap-[0.75rem] items-center h-[2.5rem] mt-4 cursor-pointer" onClick={() => router.push("/profile")}>
                                     <div className="h-full rounded-[0.5rem] aspect-square bg-(--color-black) flex-shrink-0" />
-                                    {(!isCollapsed || screenType === 'mobile') && (
+                                    {(!isCollapsed || screenType === "mobile") && (
                                         <motion.div initial={false} animate={{ opacity: 1, x: 0 }} className="flex flex-col truncate">
                                             <span className="text-sm font-bold truncate">{userData.username || "User"}</span>
                                             <span className="text-xs opacity-50 truncate">{userData.email}</span>
@@ -170,17 +136,16 @@ export default function Aside({ isMobileOpen, closeMobile }) {
                                     )}
                                 </div>
                             ) : (
-                                <Button 
-                                    inverted 
-                                    roundeful 
-                                    className={`auth mt-4 ${(isCollapsed && screenType !== 'mobile') ? "!p-[1rem]" : ""}`} 
-                                    onClick={() => router.push("/auth")}
-                                >
+                                <Button inverted roundeful className={`auth mt-4 ${isCollapsed && screenType !== "mobile" ? "!p-[1rem]" : ""}`} onClick={() => router.push("/auth")}>
                                     <AnimatePresence mode="wait">
-                                        {(!isCollapsed || screenType === 'mobile') ? (
-                                            <motion.span key="full" initial={false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>Авторизация</motion.span>
+                                        {!isCollapsed || screenType === "mobile" ? (
+                                            <motion.span key="full" initial={false} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                                Авторизация
+                                            </motion.span>
                                         ) : (
-                                            <motion.span key="icon" initial={false} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}><AuthIcon className="w-[1.25rem] h-[1.25rem] flex-shrink-0" /></motion.span>
+                                            <motion.span key="icon" initial={false} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.8 }}>
+                                                <AuthIcon className="w-[1.25rem] h-[1.25rem] flex-shrink-0" />
+                                            </motion.span>
                                         )}
                                     </AnimatePresence>
                                 </Button>

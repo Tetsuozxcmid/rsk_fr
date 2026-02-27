@@ -8,7 +8,7 @@ export default function RegStage1({
     onSwitchToLogin, // Принимаем функцию переключения
 }) {
     return (
-        <motion.div key="register-stage1" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute w-full">
+        <motion.div key="register-stage1" custom={custom} initial="initial" animate="in" exit="out" variants={pageVariants} className="auth_cntr col-span-4 absolute w-full h-full justify-center">
             <div className="flex flex-col items-center gap-[0.5rem] w-full">
                 <h3>Регистрация завершена</h3>
                 <p className="text-(--color-gray-black) text-center">Вы можете закончить настройку своего аккаунта в настройках профиля. Не забудьте подтвердить почту в отправленном вам письме. Удачи в цифровизации!</p>
