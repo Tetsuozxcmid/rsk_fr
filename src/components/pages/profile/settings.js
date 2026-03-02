@@ -150,7 +150,7 @@ export default function SettingsPage({ goTo }) {
                 setIsDirty(false);
 
                 if (changes.Organization) {
-                    setCookie("organization", changes.Organization); // теперь ID
+                    setCookie("organization", formData.Organization); // теперь ID
                 }
 
                 window.location.reload();
