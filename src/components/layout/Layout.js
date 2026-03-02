@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import AsideLoader from "./Aside/Loader";
 
 // 1. Создаем контекст ("рацию"), чтобы Header и Aside могли общаться
-export const LayoutContext = createContext();
+export const LayoutContext = createContext({ isMobileOpen: false, setIsMobileOpen: () => {} });
 
 const Aside = dynamic(() => import("./Aside/Aside"), { ssr: false, loading: () => <AsideLoader /> });
 

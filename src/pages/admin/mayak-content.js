@@ -1,6 +1,8 @@
-"use client";
-
 import { useState, useEffect, useCallback, useRef, memo } from "react";
+
+export async function getServerSideProps() {
+    return { props: {} };
+}
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 
