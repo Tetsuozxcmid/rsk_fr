@@ -141,7 +141,7 @@ export default function AdminMayakResults() {
         <Layout>
             <Header><Header.Heading>Протокол аттестаций</Header.Heading></Header>
 
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-3 sm:p-6 flex flex-col gap-4">
                 {/* Умный поиск как в Google Docs */}
                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-[500px]">
                     <div className="flex-1">
@@ -179,7 +179,8 @@ export default function AdminMayakResults() {
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
+                    {/* Десктоп: оригинальная таблица */}
+                    <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 border-b">
@@ -229,75 +230,121 @@ export default function AdminMayakResults() {
                         </table>
                     </div>
 
-                    {/* Пагинация */}
-                    <div className="p-4 border-t bg-gray-50 flex items-center justify-between">
-                        <div className="text-xs text-gray-500">
-                            Страница {currentPage} из {totalPages || 1}
+                    {/* Мобильный: карточки */}
+                    <div className="sm:hidden divide-y divide-gray-100">
+                        {currentData.map((item, index) => {
+                            const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                            const isMatch = matches.includes(globalIndex);
+                            const isCurrentMatch = isMatch && matches[activeMatchIndex] === globalIndex;
+                            const isQrHighlighted = highlightedId && item.id === highlightedId;
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    ref={isQrHighlighted ? highlightRef : null}
+                                    className={`px-3 py-2.5 transition-colors ${
+                                        isQrHighlighted
+                                            ? "bg-orange-50 ring-2 ring-orange-300"
+                                            : isCurrentMatch
+                                                ? "bg-orange-50"
+                                                : ""
+                                    }`}
+                                >
+                                    <div className="flex items-start gap-2">
+                                        <span className="text-xs text-gray-400 pt-0.5 flex-shrink-0 w-6 text-right">{globalIndex + 1}.</span>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-gray-900 break-words">
+                                                {isQrHighlighted
+                                                    ? `${item.lastName} ${item.firstName}`
+                                                    : highlightText(`${item.lastName} ${item.firstName}`, searchQuery, isCurrentMatch)
+                                                }
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-0.5 break-words">
+                                                {isQrHighlighted
+                                                    ? (item.college || "—")
+                                                    : highlightText(item.college || "—", searchQuery, isCurrentMatch)
+                                                }
+                                            </p>
+                                            <p className="text-[11px] text-gray-400 font-mono mt-1">
+                                                {formatDate(item.timestamp)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Пагинация */}
+                <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                    <div className="text-xs text-gray-500">
+                        Страница {currentPage} из {totalPages || 1}
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: currentPage === 1 ? 0.3 : 1 }}
+                            className="px-3 py-1 text-sm rounded"
+                        >
+                            Назад
+                        </button>
+                        <div className="hidden sm:flex gap-1">
+                            {(() => {
+                                const pages = [];
+                                const delta = 2;
+
+                                pages.push(1);
+
+                                if (currentPage - delta > 2) {
+                                    pages.push("dots-left");
+                                }
+
+                                for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                    pages.push(i);
+                                }
+
+                                if (currentPage + delta < totalPages - 1) {
+                                    pages.push("dots-right");
+                                }
+
+                                if (totalPages > 1) {
+                                    pages.push(totalPages);
+                                }
+
+                                return pages.map((page) => {
+                                    if (typeof page === "string") {
+                                        return <span key={page} className="w-8 h-8 flex items-center justify-center text-sm text-gray-400">...</span>;
+                                    }
+                                    const isActive = currentPage === page;
+                                    return (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            style={{
+                                                background: isActive ? "#111" : "#fff",
+                                                color: isActive ? "#fff" : "#111",
+                                                border: isActive ? "none" : "1px solid #e5e7eb",
+                                                fontWeight: isActive ? "bold" : "normal",
+                                            }}
+                                            className="w-8 h-8 flex items-center justify-center rounded text-sm"
+                                        >
+                                            {page}
+                                        </button>
+                                    );
+                                });
+                            })()}
                         </div>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                                style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: currentPage === 1 ? 0.3 : 1 }}
-                                className="px-3 py-1 text-sm rounded"
-                            >
-                                Назад
-                            </button>
-                            <div className="flex gap-1">
-                                {(() => {
-                                    const pages = [];
-                                    const delta = 2;
-
-                                    pages.push(1);
-
-                                    if (currentPage - delta > 2) {
-                                        pages.push("dots-left");
-                                    }
-
-                                    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-                                        pages.push(i);
-                                    }
-
-                                    if (currentPage + delta < totalPages - 1) {
-                                        pages.push("dots-right");
-                                    }
-
-                                    if (totalPages > 1) {
-                                        pages.push(totalPages);
-                                    }
-
-                                    return pages.map((page) => {
-                                        if (typeof page === "string") {
-                                            return <span key={page} className="w-8 h-8 flex items-center justify-center text-sm text-gray-400">...</span>;
-                                        }
-                                        const isActive = currentPage === page;
-                                        return (
-                                            <button
-                                                key={page}
-                                                onClick={() => setCurrentPage(page)}
-                                                style={{
-                                                    background: isActive ? "#111" : "#fff",
-                                                    color: isActive ? "#fff" : "#111",
-                                                    border: isActive ? "none" : "1px solid #e5e7eb",
-                                                    fontWeight: isActive ? "bold" : "normal",
-                                                }}
-                                                className="w-8 h-8 flex items-center justify-center rounded text-sm"
-                                            >
-                                                {page}
-                                            </button>
-                                        );
-                                    });
-                                })()}
-                            </div>
-                            <button
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages || totalPages === 0}
-                                style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1 }}
-                                className="px-3 py-1 text-sm rounded"
-                            >
-                                Вперед
-                            </button>
-                        </div>
+                        <span className="sm:hidden text-xs text-gray-500 px-2">{currentPage}/{totalPages || 1}</span>
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1 }}
+                            className="px-3 py-1 text-sm rounded"
+                        >
+                            Вперед
+                        </button>
                     </div>
                 </div>
             </div>

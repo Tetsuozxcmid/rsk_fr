@@ -1,8 +1,10 @@
 {
-  "5c41a648": {
-    "userName": "Администратор",
-    "createdAt": "2026-03-01T22:10:12.742Z",
-    "delivered": false,
-    "hasLogData": true
+  "58d8183c": {
+    "userName": "12 12",
+    "createdAt": "2026-03-03T15:36:37.026Z",
+    "delivered": true,
+    "hasLogData": true,
+    "deliveredTo": 804636463,
+    "deliveredAt": "2026-03-03T15:37:21.003Z"
   }
 }

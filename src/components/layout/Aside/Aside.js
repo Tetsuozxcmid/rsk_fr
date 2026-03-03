@@ -93,7 +93,6 @@ export default function Aside({ isMobileOpen, closeMobile }) {
                 animate={getVariant()}
                 variants={asideVariants}
                 transition={springTransition}
-                layout
                 className="overflow-hidden bg-white max-[640px]:fixed max-[640px]:z-[100] max-[640px]:h-full max-[640px]:left-0 max-[640px]:top-0 sm:relative sm:translate-x-0">
                 {/* ЛОГОТИП И БУРГЕР */}
                 <div className={`logo-container flex items-center ${isCollapsed && screenType !== "mobile" ? "justify-center" : "justify-between"}`}>
