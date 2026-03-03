@@ -11,6 +11,7 @@ import Plusicon from "@/assets/general/plus.svg";
 import SettsIcon from "@/assets/general/setts.svg";
 import RandomIcon from "@/assets/general/random.svg";
 import ResetIcon from "@/assets/general/ResetIcon.svg";
+import CloseIcon from "@/assets/general/close.svg";
 import TelegramIcon from "@/assets/general/TelegramIcon.svg";
 import TopIcon from "@/assets/general/TopIcon.svg";
 import HotIcon from "@/assets/general/HotIcon.svg";
@@ -20,6 +21,8 @@ import { getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./action
 // Добавляем эти две строки для работы сертификата
 import { pdf } from "@react-pdf/renderer";
 import Certificate from "./Certificate";
+import SessionLogs from "./SessionLogs";
+import QRCode from "qrcode";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import TextareaAutosize from "react-textarea-autosize";
 import Input from "@/components/ui/Input/Input";
@@ -39,6 +42,9 @@ const getRange = (taskNumber) => {
     const end = start + 99;
     return `${start}-${end}`;
 };
+
+// Вводные задания: первые 3 в каждой колоде (колоды по 100, начинаются на кратных 100)
+const isIntroTask = (index) => index % 100 < 3;
 
 const CONSTANTS = {
     STORAGE_KEYS: {
@@ -193,17 +199,35 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
         return taskNum >= start && taskNum <= end;
     })();
 
+    // Вычисляем допустимые границы навигации по tokenTaskRange
+    let allowedMinIndex = 0;
+    let allowedMaxIndex = Math.max(0, tasks.length - 1);
+    if (tokenTaskRange && tasks.length > 0) {
+        const [startStr, endStr] = tokenTaskRange.split("-");
+        const start = parseInt(startStr, 10);
+        const end = parseInt(endStr, 10);
+        if (!isNaN(start)) {
+            const idx = tasks.findIndex(t => parseInt(t.number, 10) >= start);
+            if (idx !== -1) allowedMinIndex = idx;
+        }
+        if (!isNaN(end)) {
+            for (let i = tasks.length - 1; i >= 0; i--) {
+                if (parseInt(tasks[i].number, 10) <= end) { allowedMaxIndex = i; break; }
+            }
+        }
+    }
+
     const basePath = taskVersion === "v2" ? `/tasks-2/${taskVersion}` : `/tasks-2/${taskVersion}/${userType}/${who}`;
 
     const taskRange = currentTask?._range || (taskVersion === "v2" ? getRange(currentTaskIndex + 1) : null);
     const rangePath = taskVersion === "v2" && taskRange ? `${basePath}/${taskRange}` : basePath;
 
-    const instructionFileUrl = currentTask?.instruction ? `${rangePath}/Instructions/${currentTask.instruction}` : "";
-    const taskFileUrl = currentTask?.file ? `${rangePath}/Files/${currentTask.file}` : "";
+    const instructionFileUrl = currentTask?.hasInstruction && currentTask?.instruction ? `${rangePath}/Instructions/${currentTask.instruction}` : "";
+    const taskFileUrl = currentTask?.hasFile && currentTask?.file ? `${rangePath}/Files/${currentTask.file}` : "";
 
     // --- НОВАЯ ЛОГИКА: ССЫЛКА ИЛИ ФАЙЛ В ПАПКЕ SOURCE ---
     let sourceUrl = "";
-    if (currentTask?.sourceLink) {
+    if (currentTask?.hasSource && currentTask?.sourceLink) {
         if (currentTask.sourceLink.startsWith("http") || currentTask.sourceLink.startsWith("www")) {
             // Это внешняя ссылка
             sourceUrl = currentTask.sourceLink;
@@ -231,14 +255,16 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                 let tasksTextsData;
 
                 if (taskVersion === "v2") {
+                    const cacheBust = `?t=${Date.now()}`;
+                    const fetchOpts = { cache: 'no-store' };
                     if (tokenSectionId) {
                         // Загружаем ТОЛЬКО одну папку по sectionId вместо всего manifest
-                        const indexRes = await fetch(`${basePath}/${tokenSectionId}/index.json`);
+                        const indexRes = await fetch(`${basePath}/${tokenSectionId}/index.json${cacheBust}`, fetchOpts);
                         if (!indexRes.ok) throw new Error(`Не удалось загрузить index.json для раздела ${tokenSectionId}: ${indexRes.status}`);
                         const data = await indexRes.json();
 
                         // Берём rangeStart/rangeEnd из meta.json
-                        const metaRes = await fetch(`${basePath}/${tokenSectionId}/meta.json`);
+                        const metaRes = await fetch(`${basePath}/${tokenSectionId}/meta.json${cacheBust}`, fetchOpts);
                         let rangeStart = 1;
                         let rangeEnd = 100;
                         if (metaRes.ok) {
@@ -248,17 +274,17 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                         }
 
                         const startPos = rangeStart - 1;
-                        tasksData = new Array(rangeEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "" }));
+                        tasksData = new Array(rangeEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "", services: "" }));
                         for (let i = 0; i < data.length; i++) {
                             tasksData[startPos + i] = { ...data[i], _range: tokenSectionId };
                         }
 
                         // TaskText.json — тоже из одной папки
-                        const textRes = await fetch(`${basePath}/${tokenSectionId}/TaskText.json`);
+                        const textRes = await fetch(`${basePath}/${tokenSectionId}/TaskText.json${cacheBust}`, fetchOpts);
                         tasksTextsData = textRes.ok ? await textRes.json() : [];
                     } else {
                     // Загружаем manifest со списком диапазонов
-                    const manifestRes = await fetch(`${basePath}/manifest.json`);
+                    const manifestRes = await fetch(`${basePath}/manifest.json${cacheBust}`, fetchOpts);
                     if (!manifestRes.ok) throw new Error(`Не удалось загрузить manifest: ${manifestRes.status}`);
                     const ranges = await manifestRes.json();
 
@@ -267,14 +293,14 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
 
                     // Параллельно загружаем index.json из каждого диапазона
                     const indexPromises = ranges.map((range) =>
-                        fetch(`${basePath}/${range}/index.json`)
+                        fetch(`${basePath}/${range}/index.json${cacheBust}`, fetchOpts)
                             .then((r) => (r.ok ? r.json() : []))
                             .then((data) => ({ range, data }))
                     );
                     const allIndexResults = await Promise.all(indexPromises);
 
                     // Собираем массив с правильными позициями (заполняем пропуски пустышками)
-                    tasksData = new Array(maxEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "" }));
+                    tasksData = new Array(maxEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "", services: "" }));
                     for (const { range, data } of allIndexResults) {
                         const startPos = parseInt(range.split("-")[0], 10) - 1; // "201-300" → индекс 200
                         for (let i = 0; i < data.length; i++) {
@@ -284,7 +310,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
 
                     // Параллельно загружаем TaskText.json из каждого диапазона
                     const textPromises = ranges.map((range) =>
-                        fetch(`${basePath}/${range}/TaskText.json`)
+                        fetch(`${basePath}/${range}/TaskText.json${cacheBust}`, fetchOpts)
                             .then((r) => (r.ok ? r.json() : []))
                     );
                     const allTextArrays = await Promise.all(textPromises);
@@ -394,11 +420,11 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
 
     const goToTask = useCallback(
         (index) => {
-            if (index >= 0 && index < tasks.length) {
+            if (index >= allowedMinIndex && index <= allowedMaxIndex && index < tasks.length) {
                 setCurrentTaskIndex(index);
             }
         },
-        [tasks.length, setCurrentTaskIndex]
+        [tasks.length, allowedMinIndex, allowedMaxIndex, setCurrentTaskIndex]
     );
 
     const nextTask = useCallback(() => goToTask(currentTaskIndex + 1), [currentTaskIndex, goToTask]);
@@ -423,6 +449,8 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
         tasksTexts,
         setError,
         isCurrentTaskAllowed,
+        allowedMinIndex,
+        allowedMaxIndex,
     };
 };
 
@@ -757,28 +785,49 @@ const SecondQuestionnairePopup = memo(function SecondQuestionnairePopup({ onClos
     );
 });
 
-const ThirdQuestionnairePopup = memo(function ThirdQuestionnairePopup({ onClose, onSave }) {
+const ThirdQuestionnairePopup = memo(function ThirdQuestionnairePopup({ onClose, testingDone, surveyDone, onOpenTesting, onOpenSurvey, onGetCertificate, certificateLoading }) {
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
             <div className="relative bg-white p-6 rounded-lg max-w-md w-full shadow-2xl border border-gray-200 pointer-events-auto">
-                <div className="mb-4">
+                <div className="flex justify-between items-start mb-4">
                     <h3 className="text-xl font-bold">Завершение сессии</h3>
+                    <Button icon onClick={onClose} className="!w-9 !h-9 !p-0 !bg-transparent !text-black hover:!bg-black/5 flex items-center justify-center">
+                        <CloseIcon className="w-5 h-5" />
+                    </Button>
                 </div>
 
-                <div className="mt-6 flex justify-center gap-2">
-                    <Button onClick={onClose} className="!bg-gray-200 !text-gray-800 hover:!bg-gray-300 flex-1">
-                        Отмена
+                <div className="flex flex-col gap-3">
+                    <Button
+                        onClick={onOpenTesting}
+                        disabled={testingDone}
+                        className={testingDone
+                            ? "!bg-green-100 !text-green-600 !cursor-default flex-1"
+                            : "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1"
+                        }
+                    >
+                        {testingDone ? "Тестирование пройдено" : "Пройти тестирование"}
                     </Button>
                     <Button
-                        onClick={() => {
-                            if (onClose) onClose();
-                            window.__openRankingTestPopup && window.__openRankingTestPopup();
-                        }}
-                        className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200 flex-1">
-                        Пройти Тестирование
+                        onClick={onOpenSurvey}
+                        disabled={!testingDone || surveyDone}
+                        className={surveyDone
+                            ? "!bg-green-100 !text-green-600 !cursor-default flex-1"
+                            : testingDone
+                                ? "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1"
+                                : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"
+                        }
+                    >
+                        {surveyDone ? "Анкета заполнена" : "Анкета обратной связи"}
                     </Button>
-                    <Button onClick={() => onSave({})} className="!bg-blue-500 !text-white hover:!bg-blue-600 flex-1">
-                        Сохранить и завершить
+                    <Button
+                        onClick={onGetCertificate}
+                        disabled={!surveyDone || certificateLoading}
+                        className={surveyDone
+                            ? "!bg-[#0088cc] !text-white hover:!bg-[#006daa] flex-1"
+                            : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"
+                        }
+                    >
+                        {certificateLoading ? "Подготовка..." : "Получить сертификат"}
                     </Button>
                 </div>
             </div>
@@ -877,7 +926,10 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
         copyToClipboard(textToCopy)
             .then(() => {
                 setIsCopied(true);
-                setTimeout(() => setIsCopied(false), 2000);
+                setTimeout(() => {
+                    setIsCopied(false);
+                    onClose();
+                }, 800);
             })
             .catch((err) => {
                 console.error("Ошибка копирования:", err);
@@ -887,41 +939,49 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
 
     return (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
-            <div className="bg-white p-6 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pointer-events-auto">
-                <div className="mb-4">
-                    <h3 className="text-xl font-bold">Задание завершено за {formatTaskTime(elapsedTime)}</h3>
+            <div className="bg-white p-6 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto pointer-events-auto shadow-lg border border-gray-200">
+                <div className="flex items-start justify-between mb-4">
+                    <div>
+                        <h3 className="text-xl font-bold">Задание №{taskData.number}</h3>
+                        <p className="text-sm text-gray-400 mt-1">Время выполнения: {formatTaskTime(elapsedTime)}</p>
+                    </div>
+                    <Button icon className="!bg-transparent !text-black hover:!bg-black/5" onClick={onClose}>
+                        <CloseIcon />
+                    </Button>
                 </div>
 
-                {/* Здесь вы, вероятно, вставили свой код с полями Input. */}
-                {/* Теперь он будет работать, так как переменная 'levels' определена. */}
-                {/* Например: */}
-                {/* <div className="grid grid-cols-2 gap-2">
-                      <Input type="number" placeholder="Уровень 1" value={levels.level1} onChange={(e) => handleLevelChange("level1", e.target.value)} />
-                      ... и так далее для остальных уровней
-                    </div> */}
-
-                <div className="space-y-4">
-                    <Button onClick={handleCopyClick} className="!py-2 !px-4" disabled={isCopied}>
-                        {isCopied ? "Скопировано!" : "Скопировать задание"}
-                    </Button>
-                    <div className="flex items-center justify-between bg-yellow-50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-yellow-800">Задание №{taskData.number}</h4>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                    {taskData.title && (
+                        <div>
+                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Название задания:</p>
+                            <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.title}</p>
+                        </div>
+                    )}
+                    {taskData.contentType && (
+                        <div>
+                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Тип контента:</p>
+                            <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.contentType}</p>
+                        </div>
+                    )}
+                    <div>
+                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Описание ситуации:</p>
+                        <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.description}</p>
                     </div>
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-blue-800 mb-2">Описание ситуации:</h4>
-                        <p className="whitespace-pre-line">{taskData.description}</p>
-                    </div>
-
-                    <div className="bg-green-50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-green-800 mb-2">Вашей задачей было:</h4>
-                        <p className="whitespace-pre-line">{taskData.task}</p>
+                    <div>
+                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Вашей задачей было:</p>
+                        <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.task}</p>
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <Button onClick={onClose} className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200">
-                        Закрыть
+                <div className="mt-4 flex justify-end relative">
+                    <Button onClick={handleCopyClick} className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200">
+                        Скопировать задание
                     </Button>
+                    {isCopied && (
+                        <span className="absolute -top-8 right-0 bg-black text-white text-xs px-3 py-1.5 rounded-lg shadow-lg animate-fade-in">
+                            Скопировано!
+                        </span>
+                    )}
                 </div>
             </div>
         </div>
@@ -1021,6 +1081,15 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
     );
 });
 
+const ROLE_DESCRIPTIONS = {
+    "ЛЕТОПИСЕЦ": "Превращает рабочий процесс в историю. Фиксирует не только факты, но и эмоции команды. Делает фото и видео ярких моментов, создает итоговый ролик о пути команды.",
+    "ИНСПЕКТОР": "Страж качества и правил. Следит за объективностью оценки, анализирует работу соседних команд и предоставляет им аргументированную обратную связь.",
+    "МЕДИАТОР": "Хранитель гармонии и атмосферы безопасности. Отвечает за то, чтобы голос каждого участника был услышан. Проводит сессии рефлексии и вовлекает «тихих» участников в обсуждение.",
+    "ХРАНИТЕЛЬ МАЯКА": "Ответственный за темп, энергию и боевой дух. Проводит специальные ритуалы для поднятия командного духа и следит, чтобы «огонь» в команде не гас в трудные моменты.",
+    "ИНЖЕНЕР": "Мастер технологий. Устраняет технический хаос, помогает участникам с настройкой ноутбуков и цифровых инструментов, обеспечивая стабильную работу всей команды.",
+    "КАПИТАН": "Стратег и лидер. Ведет команду к цели через продуктивные дебаты, гарантирует внутреннюю дисциплину и проверяет выполнение ролевых задач каждым участником.",
+};
+
 const TrainerControls = memo(function TrainerControls({
     userType,
     who,
@@ -1035,22 +1104,26 @@ const TrainerControls = memo(function TrainerControls({
     sourceUrl,
     currentTask,
     isCurrentTaskAllowed,
+    allowedMinIndex,
+    allowedMaxIndex,
     levels,
     showLevelsInput,
     selectedRole,
+    rankingDelta5,
     onUserTypeChange,
     onWhoChange,
     onTaskVersionChange,
     onPrevTask,
     onNextTask,
     onTaskInputChange,
-    onTaskInputCommit,
     onToggleTaskTimer,
     onCompleteSession,
     onShowRolePopup,
     onLevelChange,
     onSaveMeasurements,
     onToolLink1Click,
+    mayakData,
+    onShowInstruction,
 }) {
     const formatTaskTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -1063,7 +1136,20 @@ const TrainerControls = memo(function TrainerControls({
             <div className="flex justify-between items-center w-full">
                 <div className="flex items-center gap-4 lg:gap-[1.6rem]">
                     <h3>Тренажёр</h3>
-                    {selectedRole && <div className="text-sm font-bold text-blue-600 p-2 bg-blue-100 rounded-lg whitespace-nowrap">{selectedRole}</div>}
+                    {selectedRole && (
+                        <div style={{ position: "relative" }} className="role-tooltip-wrap">
+                            <div className="text-sm font-bold text-blue-600 p-2 bg-blue-100 rounded-lg whitespace-nowrap cursor-default">{selectedRole}</div>
+                            <div className="role-tooltip" style={{ position: "absolute", left: 0, top: "100%", marginTop: "8px", width: "380px", padding: "12px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#fff", color: "#111", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", opacity: 0, visibility: "hidden", transition: "opacity 0.2s, visibility 0.2s", zIndex: 50, pointerEvents: "none" }}>
+                                <p style={{ fontSize: "12px", color: "#666", lineHeight: "1.5" }}>{ROLE_DESCRIPTIONS[selectedRole] || ""}</p>
+                            </div>
+                            <style>{`.role-tooltip-wrap:hover .role-tooltip { opacity: 1 !important; visibility: visible !important; }`}</style>
+                        </div>
+                    )}
+                    {rankingDelta5 !== null && (
+                        <span className="text-sm whitespace-nowrap" style={{ color: "var(--color-black)" }}>
+                            ур.5 Δ {rankingDelta5}
+                        </span>
+                    )}
                 </div>
                 <div className="flex gap-[0.5rem]">
                     <Button inverted className="!bg-(--color-red-noise) !text-(--color-red)" onClick={onCompleteSession}>
@@ -1086,14 +1172,14 @@ const TrainerControls = memo(function TrainerControls({
             <div className="flex flex-col gap-[0.75rem]">
                 <div className="flex flex-col gap-[0.75rem]">
                     <div className="flex items-center gap-[0.5rem]">
-                        <span className="text-sm text-gray-500">Задание №{tasks.length > 0 ? currentTaskIndex + 1 : 0}</span>
+                        <span className="text-sm text-gray-500">Задание №{tasks.length > 0 && tasks[currentTaskIndex] ? tasks[currentTaskIndex].number : 0}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex === 0 || isTaskRunning}>
+                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex <= allowedMinIndex || isTaskRunning}>
                             ←
                         </Button>
                         <Input type="text" inputMode="numeric" min="1" max={tasks.length || 1} value={taskInputValue} onChange={onTaskInputChange} className="text-center !w-15 !h-10" disabled={isTaskRunning} />
-                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= tasks.length - 1 || isTaskRunning}>
+                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= allowedMaxIndex || isTaskRunning}>
                             →
                         </Button>
                     </div>
@@ -1101,7 +1187,9 @@ const TrainerControls = memo(function TrainerControls({
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
                     {(isCurrentTaskAllowed || isTaskRunning) && (
                         <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
-                            {isTaskRunning ? `Завершить (${formatTaskTime(taskElapsedTime)})` : "Начать задание"}
+                            {isTaskRunning
+                                ? (isIntroTask(currentTaskIndex) ? "Завершить" : `Завершить (${formatTaskTime(taskElapsedTime)})`)
+                                : "Начать задание"}
                         </Button>
                     )}
                     {instructionFileUrl && (
@@ -1160,6 +1248,39 @@ const TrainerControls = memo(function TrainerControls({
                             </Button>
                         </span>
                     )}
+                    {currentTask?.services && (() => {
+                        const items = currentTask.services.split(',').map(s => s.trim()).filter(Boolean);
+                        const serviceLinks = mayakData?.defaultLinks?.services || [];
+                        const parsed = items.map(item => {
+                            const parts = item.split('|');
+                            const name = parts.length > 1 ? parts[0].trim() : item;
+                            const url = parts.length > 1 ? parts[1].trim() : item;
+                            if (!/^https?:\/\//.test(url)) return null;
+                            const displayName = parts.length > 1 ? name : new URL(url).hostname.replace('www.', '');
+                            const linked = serviceLinks.find(s => s.url === url || s.name.toLowerCase() === displayName.toLowerCase());
+                            return { name: displayName, url, instructionImage: linked?.instructionImage || "" };
+                        }).filter(Boolean);
+                        if (parsed.length === 0) return null;
+                        return (
+                            <div className="w-full flex flex-col gap-2 mt-1">
+                                {parsed.map((svc, idx) => (
+                                    <div key={idx} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                                        <span className="font-semibold text-sm text-gray-900">{svc.name}</span>
+                                        <div className="flex gap-2 flex-shrink-0">
+                                            <Button inverted className={`!px-3 !py-1.5 !text-xs ${!isTaskRunning ? "!opacity-50 !cursor-not-allowed" : ""}`} disabled={!isTaskRunning} onClick={() => window.open(svc.url, "_blank")}>
+                                                Регистрация
+                                            </Button>
+                                            {svc.instructionImage && (
+                                                <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => onShowInstruction({ name: svc.name, image: svc.instructionImage })}>
+                                                    Инструкция
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
                     {sourceUrl && (
                     <span title={!isTaskRunning ? "Сначала начните задание" : "Источник / Доп. материал"}>
                         <Button
@@ -1208,18 +1329,29 @@ export default function TrainerPage({ goTo }) {
 
     const [hasCompletedSecondQuestionnaire, setHasCompletedSecondQuestionnaire] = useState(localStorage.getItem(getStorageKey("hasCompletedSecondQuestionnaire")) === "true");
     const [selectedRole, setSelectedRole] = useState(localStorage.getItem(getStorageKey("userRole")) || null);
+    const [rankingDelta5, setRankingDelta5] = useState(() => {
+        try {
+            const raw = localStorage.getItem("trainer_v2_rankingTestResults");
+            if (raw) {
+                const data = JSON.parse(raw);
+                return data?.level5?.delta ?? null;
+            }
+        } catch {}
+        return null;
+    });
     const [showRolePopup, setShowRolePopup] = useState(false);
     const [taskVersion, setTaskVersion] = useState(localStorage.getItem(getStorageKey("taskVersion")) || "v2");
+
+    // Инициализация времени начала сессии при первом входе на страницу
+    useEffect(() => {
+        if (!localStorage.getItem(getStorageKey("sessionStartTime"))) {
+            localStorage.setItem(getStorageKey("sessionStartTime"), Date.now().toString());
+        }
+    }, []);
 
     useEffect(() => {
         localStorage.setItem(getStorageKey("taskVersion"), taskVersion);
     }, [taskVersion]);
-
-    const handleRoleConfirm = (role) => {
-        setSelectedRole(role);
-        localStorage.setItem(getStorageKey("userRole"), role);
-        setShowRolePopup(false);
-    };
 
     useEffect(() => {
         const completed = localStorage.getItem(getStorageKey("hasCompletedSecondQuestionnaire")) === "true";
@@ -1238,6 +1370,10 @@ export default function TrainerPage({ goTo }) {
     const [showSecondQuestionnaire, setShowSecondQuestionnaire] = useState(false);
     const [showThirdQuestionnaire, setShowThirdQuestionnaire] = useState(false);
     const [hasCompletedQuestionnaire, setHasCompletedQuestionnaire] = useState(false);
+    const [telegramLink, setTelegramLink] = useState(null);
+    const [telegramLoading, setTelegramLoading] = useState(false);
+    const [completionTestingDone, setCompletionTestingDone] = useState(false);
+    const [completionSurveyDone, setCompletionSurveyDone] = useState(false);
 
     const [showImagePopup, setShowImagePopup] = useState(false);
 
@@ -1276,8 +1412,9 @@ export default function TrainerPage({ goTo }) {
     const [tokenSectionId, setTokenSectionId] = useState(null); // Slug папки раздела
     const [isMiscAccordionOpen, setIsMiscAccordionOpen] = useState(false);
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
+    const [instructionModal, setInstructionModal] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl, sourceUrl, tasksTexts, isCurrentTaskAllowed } = useTaskManager({
+    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl, sourceUrl, tasksTexts, isCurrentTaskAllowed, allowedMinIndex, allowedMaxIndex } = useTaskManager({
         userType,
         who,
         taskVersion,
@@ -1285,6 +1422,60 @@ export default function TrainerPage({ goTo }) {
         tokenTaskRange, // Передаем в хук
         tokenSectionId, // Slug папки раздела
     });
+
+    // Автозавершение вводного задания (без таймера, без попапа завершения)
+    const autoCompleteIntroTask = useCallback(async () => {
+        const taskNumber = currentTask?.number?.toString();
+        const taskName = currentTask?.name || `Задание ${currentTaskIndex + 1}`;
+        const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+
+        // Записываем в лог с нулевым временем
+        const logEntry = {
+            number: taskNumber || String(currentTaskIndex + 1),
+            title: taskName,
+            taskTitle: currentTask?.title || "",
+            contentType: currentTask?.contentType || "",
+            description: taskTextData?.description || "",
+            taskText: taskTextData?.task || "",
+            time: "00:00",
+            mayak: { m: "", a: "", y: "", k: "", o1: "", k2: "", o2: "" },
+            finalPrompt: "(вводное задание)"
+        };
+        const currentLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
+        const filteredLog = currentLog.filter(item => item.number && String(item.number) !== String(logEntry.number));
+        localStorage.setItem(getStorageKey("session_tasks_log"), JSON.stringify([...filteredLog, logEntry]));
+
+        // Сохраняем на сервер
+        try {
+            await saveToJson({
+                taskName,
+                minutes: 0,
+                currentTaskIndex,
+                type,
+                userType,
+                who,
+                taskElapsedTime: 0,
+                sectionId: tokenSectionId,
+            });
+        } catch (err) {
+            console.error("Error saving intro task:", err);
+        }
+
+        // Останавливаем таймер если был запущен
+        if (timerState.isRunning) {
+            stopTimer();
+        }
+    }, [currentTask, currentTaskIndex, tasksTexts, type, userType, who, timerState.isRunning, stopTimer]);
+
+    const handleRoleConfirm = (role) => {
+        setSelectedRole(role);
+        localStorage.setItem(getStorageKey("userRole"), role);
+        setShowRolePopup(false);
+        // Автозавершение вводного задания после выбора роли
+        if (isIntroTask(currentTaskIndex)) {
+            autoCompleteIntroTask();
+        }
+    };
 
     useEffect(() => {
         if (currentTask) {
@@ -1295,10 +1486,9 @@ export default function TrainerPage({ goTo }) {
     }, [currentTask]);
 
     useEffect(() => {
-        // Этот хук синхронизирует значение в поле ввода с реальным индексом задания.
-        // Он сработает, когда задание меняется по клику на стрелки.
-        if (tasks.length > 0) {
-            setTaskInputValue((currentTaskIndex + 1).toString());
+        // Синхронизируем поле ввода с номером задания (task.number), а не индексом
+        if (tasks.length > 0 && tasks[currentTaskIndex]) {
+            setTaskInputValue(tasks[currentTaskIndex].number?.toString() || (currentTaskIndex + 1).toString());
         }
     }, [currentTaskIndex, tasks]);
 
@@ -1381,20 +1571,37 @@ export default function TrainerPage({ goTo }) {
             ?.split("=")[1] || "anonymous";
 
     const toggleTaskTimer = async () => {
+        // Для вводных заданий — запуск без таймера, завершение через автозавершение
+        if (isIntroTask(currentTaskIndex)) {
+            if (timerState.isRunning) {
+                stopTimer();
+                autoCompleteIntroTask();
+            } else {
+                startTimer();
+            }
+            return;
+        }
         if (timerState.isRunning) {
             const timeWhenStopped = timerState.elapsedTime;
             stopTimer();
 
             // Используем предзагруженные данные, убираем fetch и try/catch для него
-            const taskTextData = tasksTexts.find((t) => t.number === currentTask?.number?.toString() || t.number === (currentTaskIndex + 1).toString());
+            const taskNumber = currentTask?.number?.toString();
+            const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
 
             if (taskTextData) {
-                setCurrentTaskData(taskTextData);
+                setCurrentTaskData({
+                    ...taskTextData,
+                    title: currentTask?.title || "",
+                    contentType: currentTask?.contentType || "",
+                });
             } else {
                 // Fallback, если текст по какой-то причине не найден
                 console.warn(`Текст для задания ${currentTaskIndex + 1} не найден.`);
                 setCurrentTaskData({
                     number: currentTask?.number || currentTaskIndex + 1,
+                    title: currentTask?.title || "",
+                    contentType: currentTask?.contentType || "",
                     description: currentTask?.description || "Описание задания недоступно",
                     task: currentTask?.name || "Текст задания недоступен",
                 });
@@ -1404,6 +1611,33 @@ export default function TrainerPage({ goTo }) {
 
             const minutes = Math.round(timeWhenStopped / 60);
             const taskName = currentTask?.name || `Задание ${currentTaskIndex + 1}`;
+
+            // Сохраняем данные для лога в localStorage (чтобы потом выгрузить в PDF)
+            // Используем taskTextData напрямую, а не стейт currentTaskData, так как стейт обновится позже
+            const logEntry = {
+                number: taskNumber || String(currentTaskIndex + 1),
+                title: taskName,
+                taskTitle: currentTask?.title || "",
+                contentType: currentTask?.contentType || "",
+                description: taskTextData?.description || "",
+                taskText: taskTextData?.task || "",
+                time: formatTaskTime(timeWhenStopped),
+                mayak: {
+                    m: fields.m,
+                    a: fields.a,
+                    y: fields.y,
+                    k: fields.k,
+                    o1: fields.o1,
+                    k2: fields.k2,
+                    o2: fields.o2
+                },
+                finalPrompt: prompt
+            };
+
+            const currentLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
+            // Убираем дубликаты и пустые записи
+            const filteredLog = currentLog.filter(item => item.number && String(item.number) !== String(logEntry.number));
+            localStorage.setItem(getStorageKey("session_tasks_log"), JSON.stringify([...filteredLog, logEntry]));
 
             // Этот try/catch для сохранения результата остается, он важен
             try {
@@ -1415,6 +1649,7 @@ export default function TrainerPage({ goTo }) {
                     userType,
                     who,
                     taskElapsedTime: timeWhenStopped,
+                    sectionId: tokenSectionId,
                 });
 
                 if (!result.success) {
@@ -1464,6 +1699,88 @@ export default function TrainerPage({ goTo }) {
         setPrompt("");
     };
 
+    const handleDownloadLogs = async () => {
+        try {
+            const userData = getUserFromCookies();
+            const userName = userData?.name || "Участник";
+            const dateStr = new Date().toLocaleDateString("ru-RU");
+
+            // 1. Собираем данные ранжирования
+            const currentRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults") || "{}");
+            const prevRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults_previous") || "{}");
+
+            const rankingData = [1, 2, 3, 4, 5].map(lvl => {
+                const curData = currentRanking[`level${lvl}`];
+                const prevData = prevRanking[`level${lvl}`];
+                const cur = curData?.delta;
+                const prev = prevData?.delta;
+                const curTime = curData?.time || 0;
+                const prevTime = prevData?.time || 0;
+                let progress = "—";
+                let color = "#333";
+
+                if (cur !== undefined && prev !== undefined) {
+                    const diff = prev - cur;
+                    progress = `${Math.abs(diff)}`;
+                    if (diff > 0) { color = "#28a745"; }
+                    else if (diff < 0) { color = "#dc3545"; }
+                    else { progress = "0"; color = "#6c757d"; }
+                }
+
+                return { in: prev ?? null, out: cur ?? null, inTime: prevTime, outTime: curTime, progress, color };
+            });
+
+            // 2. Собираем данные по заданиям (фильтруем только реально выполненные)
+            const rawLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
+            const completedTasksData = rawLog.filter(t => t.finalPrompt && t.finalPrompt !== "");
+
+            // 2.5. Подгружаем средние времена по разделу
+            let avgTimes = {};
+            if (tokenSectionId) {
+                try {
+                    const avgRes = await fetch(`/api/mayak/avg-times?sectionId=${tokenSectionId}`);
+                    if (avgRes.ok) {
+                        avgTimes = await avgRes.json();
+                    }
+                } catch (e) {
+                    console.warn("Failed to fetch avg times:", e);
+                }
+            }
+
+            // Обогащаем данные средним временем
+            const enrichedTasks = completedTasksData.map(task => ({
+                ...task,
+                avgTime: avgTimes[String(task.number)] || null,
+            }));
+
+            // 3. Расчет общего времени сессии
+            const startTime = parseInt(localStorage.getItem(getStorageKey("sessionStartTime")) || Date.now().toString());
+            const totalSessionSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+            const blobLogs = await pdf(
+                <SessionLogs
+                    userName={userName}
+                    userRole={selectedRole}
+                    date={dateStr}
+                    totalTime={formatTaskTime(totalSessionSeconds)}
+                    rankingData={rankingData}
+                    tasks={enrichedTasks}
+                />
+            ).toBlob();
+
+            const urlLogs = URL.createObjectURL(blobLogs);
+            const linkLogs = document.createElement('a');
+            linkLogs.href = urlLogs;
+            linkLogs.download = `Log_Mayak_${userName.replace(/\s+/g, '_')}_${dateStr}.pdf`;
+            document.body.appendChild(linkLogs);
+            linkLogs.click();
+            document.body.removeChild(linkLogs);
+            URL.revokeObjectURL(urlLogs);
+        } catch (error) {
+            console.error("Ошибка при генерации логов:", error);
+        }
+    };
+
     const handleDownloadCertificate = async () => {
         try {
             // Используем getUserFromCookies для получения имени
@@ -1471,9 +1788,14 @@ export default function TrainerPage({ goTo }) {
             const userName = userData?.name || "Участник";
             const dateStr = new Date().toLocaleDateString("ru-RU");
 
+            // Генерация QR-кода со ссылкой на страницу результатов с подсветкой по userId
+            const userId = userData?.id || "";
+            const qrUrl = `${window.location.origin}/results?id=${encodeURIComponent(userId)}`;
+            const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 200, margin: 1 });
+
             // Генерация PDF
-            const blobCert = await pdf(<Certificate userName={userName} date={dateStr} />).toBlob();
-            
+            const blobCert = await pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} />).toBlob();
+
             // Скачивание файла
             const urlCert = URL.createObjectURL(blobCert);
             const linkCert = document.createElement('a');
@@ -1489,9 +1811,102 @@ export default function TrainerPage({ goTo }) {
         }
     };
 
-    const handleSaveSessionCompletion = async (levels) => {
-        // 1. Сразу открываем Яндекс.Форму, чтобы пользователь переключил внимание
-        const yandexWindow = window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
+    const handleSendToTelegram = async () => {
+        setTelegramLoading(true);
+        try {
+            const userData = getUserFromCookies();
+            const userName = userData?.name || "Участник";
+            const dateStr = new Date().toLocaleDateString("ru-RU");
+
+            // Генерация QR-кода со ссылкой на страницу результатов с подсветкой по userId
+            const userId = userData?.id || "";
+            const qrUrl = `${window.location.origin}/results?id=${encodeURIComponent(userId)}`;
+            const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 200, margin: 1 });
+
+            // Генерируем PDF на клиенте (как blob), конвертируем в base64
+            const certBlob = await pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} />).toBlob();
+
+            // Собираем данные для лога (аналогично handleDownloadLogs)
+            const currentRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults") || "{}");
+            const prevRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults_previous") || "{}");
+            const rankingData = [1, 2, 3, 4, 5].map(lvl => {
+                const curData = currentRanking[`level${lvl}`];
+                const prevData = prevRanking[`level${lvl}`];
+                return { in: prevData?.delta ?? null, out: curData?.delta ?? null, inTime: prevData?.time || 0, outTime: curData?.time || 0 };
+            });
+
+            const rawLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
+            const completedTasksData = rawLog.filter(t => t.finalPrompt && t.finalPrompt !== "");
+
+            let avgTimes = {};
+            if (tokenSectionId) {
+                try {
+                    const avgRes = await fetch(`/api/mayak/avg-times?sectionId=${tokenSectionId}`);
+                    if (avgRes.ok) avgTimes = await avgRes.json();
+                } catch (e) { console.warn("Failed to fetch avg times:", e); }
+            }
+
+            const enrichedTasks = completedTasksData.map(task => ({ ...task, avgTime: avgTimes[String(task.number)] || null }));
+            const startTime = parseInt(localStorage.getItem(getStorageKey("sessionStartTime")) || Date.now().toString());
+            const totalSessionSeconds = Math.floor((Date.now() - startTime) / 1000);
+
+            const logBlob = await pdf(
+                <SessionLogs
+                    userName={userName}
+                    userRole={selectedRole}
+                    date={dateStr}
+                    totalTime={formatTaskTime(totalSessionSeconds)}
+                    rankingData={rankingData}
+                    tasks={enrichedTasks}
+                />
+            ).toBlob();
+
+            // Конвертируем blob -> base64
+            const blobToBase64 = (blob) => new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+
+            const certBase64 = await blobToBase64(certBlob);
+            const logBase64 = await blobToBase64(logBlob);
+
+            // Отправляем на сервер
+            const res = await fetch("/api/mayak/telegram-prepare", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userName,
+                    certificate: certBase64,
+                    log: logBase64,
+                    logData: {
+                        userName,
+                        userRole: selectedRole,
+                        date: dateStr,
+                        totalTime: formatTaskTime(totalSessionSeconds),
+                        rankingData,
+                        tasks: enrichedTasks,
+                    },
+                }),
+            });
+
+            if (!res.ok) throw new Error("Ошибка подготовки сессии");
+
+            const { deepLink } = await res.json();
+            setTelegramLink(deepLink);
+            // Открываем Telegram напрямую
+            window.open(deepLink, "_blank");
+        } catch (error) {
+            console.error("Ошибка отправки в Telegram:", error);
+            alert("Не удалось подготовить файлы для Telegram. Попробуйте ещё раз.");
+        } finally {
+            setTelegramLoading(false);
+        }
+    };
+
+    const handleSaveSessionCompletion = async () => {
+        setTelegramLoading(true);
 
         try {
             // --- Подготовка данных ---
@@ -1522,50 +1937,48 @@ export default function TrainerPage({ goTo }) {
                 },
             };
 
-            // 2. Запускаем сохранение данных (фоном)
-            const savePromise = fetch("/api/mayak/saveDeltaTest", {
+            // Сохраняем данные (фоном)
+            fetch("/api/mayak/saveDeltaTest", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
-            });
+            }).catch(e => console.error("Ошибка сохранения (не критично):", e));
 
-            // 3. Генерируем и "кликаем" сертификат
-            // Важно использовать await, чтобы убедиться, что процесс генерации прошел
+            // Скачиваем PDF локально
             await handleDownloadCertificate();
+            await handleDownloadLogs();
 
-            // 4. ПАУЗА 10 СЕКУНД
-            // Мы просто держим страницу живой.
-            // За это время браузер успеет обработать клик по ссылке и начать загрузку файла.
-            await new Promise((resolve) => setTimeout(resolve, 10000));
-
-            // (Опционально) Дожидаемся сохранения, хотя за 10 сек оно точно прошло
+            // Отправляем в Telegram (фоном, не блокируя)
             try {
-                await savePromise;
+                await handleSendToTelegram();
             } catch (e) {
-                console.error("Ошибка сохранения (не критично):", e);
+                console.error("Telegram отправка не удалась (не критично):", e);
             }
 
-            // 5. Очистка состояния
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
+            // Очистка состояния
             setShowSessionCompletionPopup(false);
             setShowThirdQuestionnaire(false);
             localStorage.removeItem(getStorageKey("userRole"));
+            localStorage.removeItem(getStorageKey("sessionStartTime"));
+            localStorage.removeItem(getStorageKey("session_tasks_log"));
+            localStorage.removeItem(getStorageKey("completedTasks"));
+            localStorage.removeItem("trainer_v2_rankingTestResults");
+            localStorage.removeItem("trainer_v2_rankingTestResults_previous");
+            sessionStorage.removeItem("trainer_v2_taskTimer");
+            sessionStorage.removeItem(getStorageKey("currentTaskIndex"));
             setSelectedRole(null);
-            
+
             removeKeyCookie();
 
             localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
 
-            // 6. ПЕРЕЗАГРУЗКА
-            // Срабатывает только через 10 секунд после начала процесса
             window.location.href = "/";
 
         } catch (error) {
             console.error("Ошибка в процессе завершения:", error);
-            if (yandexWindow) {
-                // yandexWindow.close(); 
-            }
             alert("Произошла ошибка. Если сертификат не скачался, проверьте папку загрузок.");
-            // Даже при ошибке обновляем страницу, чтобы сбросить состояние
             window.location.href = "/";
         }
     };
@@ -1903,6 +2316,14 @@ export default function TrainerPage({ goTo }) {
                 // Если токен исчерпан (isExhausted), но активен (isActive), и мы уже здесь (с кукой) — тоже пускаем.
                 if (data.valid || (data.isExhausted && data.isActive)) {
                     setIsTokenValid(true);
+
+                    // Устанавливаем время начала сессии, если оно еще не установлено
+                    if (!localStorage.getItem(getStorageKey("sessionStartTime"))) {
+                        localStorage.setItem(getStorageKey("sessionStartTime"), Date.now().toString());
+                        // Очищаем старые логи при новой сессии (новом токене)
+                        localStorage.removeItem(getStorageKey("session_tasks_log"));
+                    }
+
                     if (data.sectionId) {
                         setTokenSectionId(data.sectionId);
                     }
@@ -1938,9 +2359,12 @@ export default function TrainerPage({ goTo }) {
         sourceUrl,
         currentTask,
         isCurrentTaskAllowed,
+        allowedMinIndex,
+        allowedMaxIndex,
         levels,
         showLevelsInput,
         selectedRole,
+        rankingDelta5,
         onUserTypeChange: setUserType,
         onWhoChange: (value) => {
             // Сначала обновляем состояние, чтобы UI отреагировал
@@ -1973,18 +2397,17 @@ export default function TrainerPage({ goTo }) {
 
             // Устанавливаем новый таймер
             debounceTimeoutRef.current = setTimeout(() => {
-                const newIndex = parseInt(value, 10) - 1;
+                const taskNumber = parseInt(value, 10);
 
-                // Если номер корректен, переключаем задание
-                if (newIndex >= 0 && newIndex < tasks.length) {
+                // Ищем задание по номеру (task.number), а не по индексу
+                const newIndex = tasks.findIndex(t => parseInt(t.number, 10) === taskNumber);
+
+                // Если задание найдено и в пределах допустимого диапазона — переключаем
+                if (newIndex !== -1 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex) {
                     goToTask(newIndex);
-                } else {
-                    // Если введен невалидный номер (например 999), можно просто сбросить
-                    // поле обратно к текущему активному заданию для ясности.
-                    // Но лучше дать пользователю исправить ошибку.
-                    // Поле само синхронизируется при клике на стрелки.
                 }
-            }, 250); // Уменьшил задержку до 250ms, будет еще быстрее
+                // Если не найдено — просто не переключаем, даём пользователю исправить
+            }, 600);
         },
         onToggleTaskTimer: toggleTaskTimer,
         onCompleteSession: () => setShowThirdQuestionnaire(true),
@@ -1999,15 +2422,25 @@ export default function TrainerPage({ goTo }) {
                 } else if (currentTaskIndex + 1 === 1) {
                     e.preventDefault();
                     setShowFirstQuestionnaire(true);
+                    // Автозавершение при клике на входную анкету
+                    if (isIntroTask(currentTaskIndex)) {
+                        autoCompleteIntroTask();
+                    }
                 } else if (currentTaskIndex + 1 === 2) {
                     e.preventDefault();
                     window.open("https://forms.yandex.ru/u/689197c9eb6146293aca92fa/", "_blank");
+                    // Автозавершение при клике на Yandex Forms
+                    if (isIntroTask(currentTaskIndex)) {
+                        autoCompleteIntroTask();
+                    }
                 } else {
                     e.preventDefault();
                     window.open(currentTask.toolLink1, "_blank");
                 }
             }
         },
+        mayakData,
+        onShowInstruction: (data) => setInstructionModal(data),
     };
 
     return (
@@ -2045,7 +2478,22 @@ export default function TrainerPage({ goTo }) {
                 />
             )}
 
-            {showThirdQuestionnaire && <ThirdQuestionnairePopup onClose={() => setShowThirdQuestionnaire(false)} onSave={handleSaveSessionCompletion} />}
+            {showThirdQuestionnaire && <ThirdQuestionnairePopup
+                onClose={() => setShowThirdQuestionnaire(false)}
+                testingDone={completionTestingDone}
+                surveyDone={completionSurveyDone}
+                certificateLoading={telegramLoading}
+                onOpenTesting={() => {
+                    window.__openRankingTestPopup && window.__openRankingTestPopup();
+                }}
+                onOpenSurvey={() => {
+                    window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
+                    setCompletionSurveyDone(true);
+                }}
+                onGetCertificate={() => {
+                    handleSaveSessionCompletion();
+                }}
+            />}
 
             <div className="hero relative">
                 {isMobile && (
@@ -2187,7 +2635,46 @@ export default function TrainerPage({ goTo }) {
                                                     className={`${openSubAccordionKey === subItem.key ? "!bg-gray-100 !text-black" : ""}`}>
                                                     {subItem.label}
                                                 </Button>
-                                                {openSubAccordionKey === subItem.key && (
+                                                {openSubAccordionKey === subItem.key && subItem.key === 'services' && (() => {
+                                                    const allServices = (mayakData.defaultLinks[subItem.key] || []).slice().sort(sortByOrder);
+                                                    const requiredServices = allServices.filter(s => s.required !== false);
+                                                    const optionalServices = allServices.filter(s => s.required === false);
+                                                    const renderServiceCard = (link, linkIndex) => (
+                                                        <div key={linkIndex} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                                                            <div className="flex flex-col min-w-0">
+                                                                <span className="font-semibold text-sm text-gray-900">{link.name}</span>
+                                                                {link.description && <span className="text-xs text-gray-500 truncate">{link.description}</span>}
+                                                            </div>
+                                                            <div className="flex gap-2 flex-shrink-0">
+                                                                <Button inverted className="!px-3 !py-1.5 !text-xs" disabled={!link.url} onClick={() => link.url && window.open(link.url, "_blank")}>
+                                                                    {link.buttonLabel || (link.url ? "Регистрация" : "Скачать")}
+                                                                </Button>
+                                                                {link.instructionImage && (
+                                                                    <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => setInstructionModal({ name: link.name, image: link.instructionImage })}>
+                                                                        Инструкция
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                    return (
+                                                        <div className="flex flex-col gap-4 pt-2">
+                                                            {requiredServices.length > 0 && (
+                                                                <div className="flex flex-col gap-2">
+                                                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Обязательные</span>
+                                                                    {requiredServices.map(renderServiceCard)}
+                                                                </div>
+                                                            )}
+                                                            {optionalServices.length > 0 && (
+                                                                <div className="flex flex-col gap-2">
+                                                                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Необязательные</span>
+                                                                    {optionalServices.map(renderServiceCard)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()}
+                                                {openSubAccordionKey === subItem.key && subItem.key !== 'services' && (
                                                     <div className="flex flex-nowrap gap-2 pt-2 overflow-x-auto">
                                                         {(mayakData.defaultLinks[subItem.key] || [])
                                                             .slice()
@@ -2224,6 +2711,37 @@ export default function TrainerPage({ goTo }) {
                 </div>
 
                 {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
+
+                {instructionModal && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={() => setInstructionModal(null)}>
+                        <div className="relative bg-white rounded-2xl shadow-2xl max-w-[95vw] max-h-[95vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+                            <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 rounded-t-2xl">
+                                <h3 className="text-base font-semibold text-gray-900">Инструкция: {instructionModal.name}</h3>
+                                <Button
+                                    icon
+                                    className="!bg-transparent !text-black hover:!bg-black/5"
+                                    onClick={() => setInstructionModal(null)}>
+                                    <CloseIcon />
+                                </Button>
+                            </div>
+                            <div className="p-4">
+                                <img
+                                    src={instructionModal.image}
+                                    alt={`Инструкция ${instructionModal.name}`}
+                                    className="w-full max-w-[900px] rounded-xl"
+                                    onError={(e) => {
+                                        const src = e.target.src;
+                                        if (src.endsWith('.jpg')) {
+                                            e.target.src = src.replace('.jpg', '.png');
+                                        } else if (src.endsWith('.png')) {
+                                            e.target.src = src.replace('.png', '.jpg');
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
             {showCompletionPopup && (
                 <TaskCompletionPopup
@@ -2238,10 +2756,25 @@ export default function TrainerPage({ goTo }) {
             {showRolePopup && <RoleSelectionPopup onClose={() => setShowRolePopup(false)} onConfirm={handleRoleConfirm} />}
             {showRankingTestPopup && (
                 <RankingTestPopup
-                    onClose={() => { setShowRankingTestPopup(false); if (rankingForceRetake) { setShowThirdQuestionnaire(true); } setRankingForceRetake(false); }}
+                    onClose={() => {
+                        setShowRankingTestPopup(false);
+                        // Автозавершение при выходе из тестирования ранжирования
+                        if (!rankingForceRetake && isIntroTask(currentTaskIndex)) {
+                            autoCompleteIntroTask();
+                        }
+                        if (rankingForceRetake) {
+                            setCompletionTestingDone(true);
+                            setShowThirdQuestionnaire(true);
+                        }
+                        setRankingForceRetake(false);
+                    }}
                     forceRetake={rankingForceRetake}
                     onSave={async (results) => {
                         try {
+                            // Обновляем дельту уровня 5 в state
+                            if (results?.level5?.delta !== undefined) {
+                                setRankingDelta5(results.level5.delta);
+                            }
                             const activeUser =
                                 document.cookie
                                     .split("; ")
@@ -2269,7 +2802,7 @@ export default function TrainerPage({ goTo }) {
     );
 }
 
-async function saveToJson({ taskName, minutes, currentTaskIndex, type, userType, who, taskElapsedTime }) {
+async function saveToJson({ taskName, minutes, currentTaskIndex, type, userType, who, taskElapsedTime, sectionId }) {
     try {
         const activeUser =
             document.cookie
@@ -2285,6 +2818,7 @@ async function saveToJson({ taskName, minutes, currentTaskIndex, type, userType,
             timeSpent: minutes,
             secondsSpent: taskElapsedTime,
             completed: true,
+            sectionId,
             taskDetails: {
                 type: type,
                 userType: userType,

@@ -19,6 +19,11 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: "Укажите sectionId или range" });
     }
 
+    // Защита от path traversal
+    if (sectionId.includes("..") || sectionId.includes("/") || sectionId.includes("\\") || path.basename(sectionId) !== sectionId) {
+        return res.status(400).json({ success: false, error: "Недопустимый sectionId" });
+    }
+
     const rangeDir = path.join(V2_DIR, sectionId);
     const indexPath = path.join(rangeDir, "index.json");
     const textPath = path.join(rangeDir, "TaskText.json");
@@ -33,15 +38,39 @@ export default async function handler(req, res) {
             let existingInstructions = [];
             let rangeName = "";
 
-            try { tasks = JSON.parse(await fs.readFile(indexPath, "utf-8")); } catch {}
-            try { texts = JSON.parse(await fs.readFile(textPath, "utf-8")); } catch {}
+            try {
+                const parsed = JSON.parse(await fs.readFile(indexPath, "utf-8"));
+                if (Array.isArray(parsed)) tasks = parsed;
+            } catch {}
+            try {
+                const parsed = JSON.parse(await fs.readFile(textPath, "utf-8"));
+                if (Array.isArray(parsed)) texts = parsed;
+            } catch {}
             try { existingFiles = await fs.readdir(path.join(rangeDir, "Files")); } catch {}
             try { existingInstructions = await fs.readdir(path.join(rangeDir, "Instructions")); } catch {}
-            try { const meta = JSON.parse(await fs.readFile(metaPath, "utf-8")); rangeName = meta.rangeName || ""; } catch {}
+            try {
+                const meta = JSON.parse(await fs.readFile(metaPath, "utf-8"));
+                if (meta && typeof meta === "object") rangeName = meta.rangeName || "";
+            } catch {}
+
+            // Собираем размеры файлов
+            let fileSizes = {};
+            try {
+                const filesDir = path.join(rangeDir, "Files");
+                for (const f of existingFiles) {
+                    try { const st = await fs.stat(path.join(filesDir, f)); fileSizes[f] = st.size; } catch {}
+                }
+            } catch {}
+            try {
+                const instrDir = path.join(rangeDir, "Instructions");
+                for (const f of existingInstructions) {
+                    try { const st = await fs.stat(path.join(instrDir, f)); fileSizes[f] = st.size; } catch {}
+                }
+            } catch {}
 
             return res.status(200).json({
                 success: true,
-                data: { tasks, texts, existingFiles, existingInstructions, rangeName },
+                data: { tasks, texts, existingFiles, existingInstructions, rangeName, fileSizes },
             });
         } catch (error) {
             return res.status(500).json({ success: false, error: error.message });
@@ -62,72 +91,47 @@ export default async function handler(req, res) {
             try { existingFiles = await fs.readdir(path.join(rangeDir, "Files")); } catch {}
             try { existingInstructions = await fs.readdir(path.join(rangeDir, "Instructions")); } catch {}
 
-            const errors = [];
+            const warnings = [];
 
             // Проверяем уникальность номеров
             const numbers = tasks.map((t) => t.number).filter(Boolean);
             const duplicates = numbers.filter((n, i) => numbers.indexOf(n) !== i);
             if (duplicates.length > 0) {
-                errors.push({ index: -1, field: "number", message: `Дублирующиеся номера: ${[...new Set(duplicates)].join(", ")}` });
+                return res.status(422).json({ success: false, error: `Дублирующиеся номера: ${[...new Set(duplicates)].join(", ")}` });
             }
 
             tasks.forEach((task, i) => {
-                // Проверяем инструкцию
-                if (task.hasInstruction) {
-                    if (!task.instruction || !task.instruction.trim()) {
-                        errors.push({ index: i, field: "instruction", message: "Отмечено наличие инструкции, но файл не указан" });
-                    } else if (!existingInstructions.includes(task.instruction.trim())) {
-                        errors.push({ index: i, field: "instruction", message: `Файл "${task.instruction}" не найден в Instructions/` });
-                    } else {
-                        // Проверяем расширение
-                        const ext = path.extname(task.instruction.trim()).toLowerCase();
-                        const realFile = existingInstructions.find((f) => f === task.instruction.trim());
-                        if (realFile) {
-                            const realExt = path.extname(realFile).toLowerCase();
-                            if (ext !== realExt) {
-                                errors.push({ index: i, field: "instruction", message: `Расширение не совпадает: указано "${ext}", реально "${realExt}"` });
-                            }
-                        }
-                    }
-                }
+                const instrName = (task.instruction || "").trim();
+                const fileName = (task.file || "").trim();
 
-                // Проверяем доп. материал
-                if (task.hasFile) {
-                    if (!task.file || !task.file.trim()) {
-                        errors.push({ index: i, field: "file", message: "Отмечено наличие доп. материала, но файл не указан" });
-                    } else if (!existingFiles.includes(task.file.trim())) {
-                        errors.push({ index: i, field: "file", message: `Файл "${task.file}" не найден в Files/` });
-                    } else {
-                        const ext = path.extname(task.file.trim()).toLowerCase();
-                        const realFile = existingFiles.find((f) => f === task.file.trim());
-                        if (realFile) {
-                            const realExt = path.extname(realFile).toLowerCase();
-                            if (ext !== realExt) {
-                                errors.push({ index: i, field: "file", message: `Расширение не совпадает: указано "${ext}", реально "${realExt}"` });
-                            }
-                        }
-                    }
+                // Предупреждения о недостающих файлах (не блокируют сохранение)
+                if (instrName && !existingInstructions.includes(instrName)) {
+                    warnings.push({ index: i, field: "instruction", message: `Задание ${task.number}: файл инструкции не найден` });
+                }
+                if (fileName && !existingFiles.includes(fileName)) {
+                    warnings.push({ index: i, field: "file", message: `Задание ${task.number}: файл доп. материала не найден` });
                 }
             });
 
-            if (errors.length > 0) {
-                return res.status(422).json({ success: false, error: "Обнаружены конфликты", errors });
-            }
-
-            // Сохраняем index.json (без служебных полей hasInstruction/hasFile)
+            // Сохраняем index.json
             const cleanTasks = tasks.map((t) => {
                 const clean = {
                     number: String(t.number || ""),
                     title: t.title || "",
                     contentType: t.contentType || "",
-                    file: t.file || "",
-                    instruction: t.instruction || "",
-                    hasInstruction: !!t.hasInstruction,
-                    hasFile: !!t.hasFile,
+                    file: (t.file && existingFiles.includes((t.file || "").trim())) ? t.file : "",
+                    instruction: (t.instruction && existingInstructions.includes((t.instruction || "").trim())) ? t.instruction : "",
+                    instructionText: t.instructionText || "",
+                    materialText: t.materialText || "",
+                    hasInstruction: !!(t.instructionText || "").trim(),
+                    hasFile: !!(t.materialText || "").trim(),
+                    hasSource: !!(t.sourceLink || "").trim(),
+                    sourceLink: t.sourceLink || "",
                     toolLink1: t.toolLink1 || "",
                     toolName1: t.toolName1 || "",
                     toolLink2: t.toolLink2 || "",
                     toolName2: t.toolName2 || "",
+                    services: t.services || "",
                 };
                 return clean;
             });
@@ -154,7 +158,7 @@ export default async function handler(req, res) {
                 await fs.writeFile(metaPath, JSON.stringify(existingMeta, null, 2), "utf-8");
             }
 
-            return res.status(200).json({ success: true });
+            return res.status(200).json({ success: true, warnings: warnings.length > 0 ? warnings : undefined });
         } catch (error) {
             return res.status(500).json({ success: false, error: error.message });
         }
