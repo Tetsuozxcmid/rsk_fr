@@ -1486,11 +1486,15 @@ export default function TrainerPage({ goTo }) {
     }, [currentTask]);
 
     useEffect(() => {
-        // Синхронизируем поле ввода с номером задания (task.number), а не индексом
+        // Синхронизируем поле ввода: с токеном — номер задания, без — порядковый номер
         if (tasks.length > 0 && tasks[currentTaskIndex]) {
-            setTaskInputValue(tasks[currentTaskIndex].number?.toString() || (currentTaskIndex + 1).toString());
+            if (tokenTaskRange) {
+                setTaskInputValue(tasks[currentTaskIndex].number?.toString() || (currentTaskIndex + 1).toString());
+            } else {
+                setTaskInputValue((currentTaskIndex + 1).toString());
+            }
         }
-    }, [currentTaskIndex, tasks]);
+    }, [currentTaskIndex, tasks, tokenTaskRange]);
 
     const [fields, setFields] = useState({
         m: "",
@@ -2397,13 +2401,19 @@ export default function TrainerPage({ goTo }) {
 
             // Устанавливаем новый таймер
             debounceTimeoutRef.current = setTimeout(() => {
-                const taskNumber = parseInt(value, 10);
+                const inputNum = parseInt(value, 10);
+                let newIndex;
 
-                // Ищем задание по номеру (task.number), а не по индексу
-                const newIndex = tasks.findIndex(t => parseInt(t.number, 10) === taskNumber);
+                if (tokenTaskRange) {
+                    // С токеном: ищем по номеру задания (task.number)
+                    newIndex = tasks.findIndex(t => parseInt(t.number, 10) === inputNum);
+                } else {
+                    // Без токена: ввод = порядковый номер (1, 2, 3...)
+                    newIndex = inputNum - 1;
+                }
 
                 // Если задание найдено и в пределах допустимого диапазона — переключаем
-                if (newIndex !== -1 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex) {
+                if (newIndex >= 0 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex && newIndex < tasks.length) {
                     goToTask(newIndex);
                 }
                 // Если не найдено — просто не переключаем, даём пользователю исправить
