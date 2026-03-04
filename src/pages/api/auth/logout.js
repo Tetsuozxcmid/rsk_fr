@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
         // Получаем тело ответа
         const data = await response.json();
+        console.log(data);
 
         // Отдаём фронту всё как есть
         res.status(response.status).json(data);

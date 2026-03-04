@@ -2,107 +2,71 @@
 import { useState, useEffect } from "react";
 
 export function useDropdownFilter(controlledValue, onChange, src, name, options) {
-    const [inputValue, setInputValue] = useState(""); // то, что видит пользователь
-    const [selectedValue, setSelectedValue] = useState(controlledValue || "");
-    const [items, setItems] = useState([]); // массив { value, label }
+    const [inputValue, setInputValue] = useState("");
+    const [items, setItems] = useState([]);
     const [filtered, setFiltered] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
 
-    // Синхронизация с controlledValue (извне)
-    useEffect(() => {
-        if (controlledValue !== undefined) {
-            setSelectedValue(controlledValue);
-            // Если есть items, найдём лейбл для отображения
-            if (items.length > 0) {
-                const match = items.find((item) => item.value == controlledValue);
-                setInputValue(match ? match.label : "");
-            }
-        }
-    }, [controlledValue, items]);
-
-    // Загрузка/преобразование опций
+    // 1. Загрузка и нормализация списка (API или текстовый файл)
     useEffect(() => {
         if (options && Array.isArray(options)) {
-            // Если передан массив объектов с id/short_name
-            if (options.length > 0 && typeof options[0] === "object" && options[0].id != null) {
-                const mapped = options.map((opt) => ({
-                    value: opt.id,
-                    label: opt.short_name,
-                }));
-                // Уникализация по value (на всякий случай)
-                const unique = Array.from(new Map(mapped.map((item) => [item.value, item])).values());
-                unique.sort((a, b) => a.label.localeCompare(b.label));
-                setItems(unique);
-            } else {
-                // Массив строк
-                const unique = [...new Set(options)];
-                unique.sort((a, b) => a.localeCompare(b));
-                setItems(unique.map((str) => ({ value: str, label: str })));
-            }
-            return;
-        }
-
-        // Загрузка из файла (регионы)
-        if (src) {
+            const mapped = options.map((opt) => ({
+                value: opt.id ?? opt.organization_id ?? opt.value ?? opt,
+                label: opt.short_name ?? opt.label ?? opt,
+            }));
+            setItems(mapped);
+        } else if (src) {
             fetch(src)
                 .then((res) => res.text())
                 .then((text) => {
-                    const loaded = text
+                    const lines = text
                         .split("\n")
                         .map((l) => l.trim())
                         .filter(Boolean);
-                    const unique = [...new Set(loaded)];
-                    unique.sort((a, b) => a.localeCompare(b));
-                    setItems(unique.map((str) => ({ value: str, label: str })));
-                })
-                .catch((err) => console.error("Failed to load:", err));
+                    setItems(lines.map((l) => ({ value: l, label: l })));
+                });
         }
-    }, [src, options]);
+    }, [options, src]);
 
-    // Фильтрация по введённому тексту
+    // 2. Синхронизация: установка текстового значения в инпут при получении ID извне
     useEffect(() => {
-        if (!inputValue) {
+        if (controlledValue && items.length > 0) {
+            const match = items.find((i) => String(i.value) === String(controlledValue));
+            if (match) {
+                setInputValue(match.label);
+            }
+        } else if (!controlledValue) {
+            setInputValue("");
+        }
+    }, [controlledValue, items]);
+
+    // 3. Обработка ручного ввода и фильтрация
+    const handleInput = (val) => {
+        setInputValue(val);
+        if (!val) {
+            onChange?.({ target: { name, value: "" } });
             setFiltered([]);
             setShowDropdown(false);
             return;
         }
-        const matches = items.filter((item) => item.label.toLowerCase().includes(inputValue.toLowerCase()));
+        const matches = items.filter((i) => String(i.label).toLowerCase().includes(val.toLowerCase()));
         setFiltered(matches);
-        setShowDropdown(matches.length > 0);
-    }, [inputValue, items]);
-
-    const handleInput = (val) => {
-        setInputValue(val);
-        // Если пользователь стирает текст, сбрасываем выбранное значение
-        if (!val) {
-            setSelectedValue("");
-            onChange?.({ target: { name: name || "", value: "" } });
-        }
         setShowDropdown(true);
     };
 
+    // 4. Выбор элемента из списка
     const handleSelect = (item) => {
         setInputValue(item.label);
-        setSelectedValue(item.value);
-        onChange?.({ target: { name: name || "", value: item.value } });
         setShowDropdown(false);
-    };
-
-    const handleEnter = () => {
-        if (filtered.length > 0) {
-            handleSelect(filtered[0]);
-        }
+        onChange?.({ target: { name, value: item.value } });
     };
 
     return {
-        inputValue, // для отображения в <input>
-        selectedValue, // для внешнего контрола (controlledValue)
+        inputValue,
         filtered,
         showDropdown,
         setShowDropdown,
         handleInput,
         handleSelect,
-        handleEnter,
-        items, // если понадобятся все опции
     };
 }

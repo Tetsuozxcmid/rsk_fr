@@ -74,7 +74,6 @@ export default function ProfileIndexPage({ goTo }) {
                     }
                 }
                 setUserData(data);
-                console.log(data);
                 setHydrated(true);
             } catch (err) {
                 console.error("Request error:", err);
@@ -144,7 +143,7 @@ export default function ProfileIndexPage({ goTo }) {
                             <Tags
                                 tags={[
                                     {
-                                        name: `${userData.data.Type === "teacher" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : "Ошибка данных"}`,
+                                        name: `${userData.data.Type === "teacher" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : userData.data.Type === "admin" ? "Эндминистратор" : "Ошибка данных"}`,
                                         color: "blue",
                                         icon: "coin",
                                     },

@@ -8,6 +8,7 @@ import Header from "@/components/layout/Header";
 import Input from "@/components/ui/Input/Input";
 import Textarea from "@/components/ui/Textarea";
 import DropdownInput from "@/components/ui/Input/DropdownInput";
+import Switcher from "@/components/ui/Switcher";
 
 import Setts from "@/assets/general/setts.svg";
 import Notify from "@/assets/general/notify.svg";
@@ -15,10 +16,11 @@ import Notify from "@/assets/general/notify.svg";
 export default function SettingsPage({ goTo }) {
     const [userData, setUserData] = useState(null); // оригинальные данные
     const [orgList, setOrgList] = useState([]); // Изменено на массив по умолчанию
-    const [formData, setFormData] = useState({ Organization: "", Region: "", Surname: "", NameIRL: "", Patronymic: "", Description: "" }); // данные для формы
+    const [formData, setFormData] = useState({ Organization: "", Region: "", Surname: "", NameIRL: "", Patronymic: "", Description: "", role: "student" }); // данные для формы
     const [hydrated, setHydrated] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
     const [region, setRegion] = useState("");
+    const [role, setRole] = useState("student");
 
     useEffect(() => {
         const ProfileInfo = async () => {
@@ -35,13 +37,16 @@ export default function SettingsPage({ goTo }) {
                 setRegion(data.data.Region || "");
 
                 setFormData({
-                    Organization_id: data.data.organization_id || "", // ID организации (число/строка)
+                    Organization: data.data.Organization.id || null, // ID организации (число/строка)
                     Region: data.data.Region || "",
                     Surname: data.data.Surname || "",
                     NameIRL: data.data.NameIRL || "",
                     Patronymic: data.data.Patronymic || "",
                     Description: data.data.Description || "",
+                    role: data.data.role || "student",
                 });
+
+                setRole(data.data.role || "student");
 
                 setHydrated(true);
             } catch (err) {
@@ -120,11 +125,22 @@ export default function SettingsPage({ goTo }) {
         e.preventDefault();
         if (!isDirty) return;
 
+        // Собираем только измененные поля
         const changes = { id: userData.data.id };
         Object.keys(formData).forEach((key) => {
-            const oldValue = key === "Organization" ? userData.data.organization_id : userData.data[key];
-            if (formData[key] !== oldValue) {
-                changes[key] = formData[key];
+            let valueToSend = formData[key];
+            let oldValue = userData.data[key];
+
+            // Маппинг для организации, если ключи отличаются
+            if (key === "Organization") {
+                oldValue = userData.data.organization_id;
+                // Если бэкенд ждет поле с другим именем, меняем ключ:
+                changes["organization_id"] = valueToSend;
+                return;
+            }
+
+            if (valueToSend !== oldValue) {
+                changes[key] = valueToSend;
             }
         });
 
@@ -136,6 +152,7 @@ export default function SettingsPage({ goTo }) {
                 credentials: "include",
             });
             const data = await response.json();
+            console.log(response);
 
             if (response.ok) {
                 // Обновляем userData, включая organization_id
@@ -160,6 +177,21 @@ export default function SettingsPage({ goTo }) {
         } catch (err) {
             console.error("Update error:", err);
         }
+    };
+
+    const handleRoleChange = (value) => {
+        setRole(value);
+
+        setFormData((prev) => {
+            const newForm = { ...prev, role: value };
+
+            if (userData?.data) {
+                const dirty = Object.keys(newForm).some((key) => newForm[key] !== userData.data[key]);
+                setIsDirty(dirty);
+            }
+
+            return newForm;
+        });
     };
 
     return (
@@ -191,13 +223,12 @@ export default function SettingsPage({ goTo }) {
                     <div className="flex flex-col gap-[.75rem]">
                         <DropdownInput
                             id="Organization"
-                            name="Organization"
+                            name="Organization" // Должно совпадать с ключом в formData
                             placeholder="Организация"
-                            value={formData.Organization} // ← ID
-                            options={orgList} // ← массив объектов { id, short_name, ... }
+                            value={formData.Organization}
+                            options={orgList}
                             onChange={(e) => handleOrgChange(e.target.value)}
                             disabled={!region}
-                            className={`transition ${!region ? "opacity-60 pointer-events-none" : ""}`}
                         />
                         <DropdownInput id="region" name="Region" placeholder="Введите регион" value={region || ""} onChange={(e) => handleRegionChange(e.target.value || "")} src="/data/regions.txt" />
                         <p style={{ color: "var(--color-gray-black)" }}>
@@ -210,7 +241,14 @@ export default function SettingsPage({ goTo }) {
                 </div>
 
                 <div className="flex flex-col justify-between h-full">
-                    <div className="flex flex-col gap-[1.25rem]"></div>
+                    <div className="flex flex-col gap-[.5rem]">
+                        <h6>Тип профиля</h6>
+
+                        <Switcher value={role} onChange={handleRoleChange}>
+                            <Switcher.Option value="student">Студент</Switcher.Option>
+                            <Switcher.Option value="teacher">Сотрудник</Switcher.Option>
+                        </Switcher>
+                    </div>
                     <Button onClick={handleSubmit} disabled={!isDirty}>
                         Сохранить изменения
                     </Button>

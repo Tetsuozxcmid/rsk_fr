@@ -123,7 +123,7 @@ export function useNavLinks() {
         if (!profileData) return;
 
         const role = profileData?.Type;
-        const learn = profileData?.learn === true;
+        const learn = profileData?.is_learned === true;
         const organization = profileData?.Organization.id;
 
         if (!role) {
