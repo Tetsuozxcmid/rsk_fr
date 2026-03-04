@@ -53,6 +53,31 @@ export default async function handler(req, res) {
                 if (meta && typeof meta === "object") rangeName = meta.rangeName || "";
             } catch {}
 
+            // Авто-обнаружение файлов на диске: если file/instruction пустые,
+            // но файл с номером задания есть в папке — подставляем автоматически
+            for (const task of tasks) {
+                const num = (task.number || "").toString();
+                if (!num) continue;
+
+                // Авто-подстановка file (доп. материал)
+                if (!task.file) {
+                    const match = existingFiles.find(f => {
+                        const name = f.replace(/\.[^.]+$/, ""); // убираем расширение
+                        return name === num;
+                    });
+                    if (match) task.file = match;
+                }
+
+                // Авто-подстановка instruction
+                if (!task.instruction) {
+                    const match = existingInstructions.find(f => {
+                        const name = f.replace(/\.[^.]+$/, "");
+                        return name === num;
+                    });
+                    if (match) task.instruction = match;
+                }
+            }
+
             // Собираем размеры файлов
             let fileSizes = {};
             try {

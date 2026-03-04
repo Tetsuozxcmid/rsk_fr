@@ -111,16 +111,16 @@
                 "order": 0
             },
             {
-                "name": "Udio",
-                "url": "https://www.udio.com",
-                "description": "Создание профессиональной музыки в любом жанре.",
+                "name": "Suno",
+                "url": "https://suno.com/invite/@3321616",
+                "description": "Создание песен с уникальным вокалом и музыкой.",
                 "iconType": "standard",
                 "order": 1
             },
             {
-                "name": "Suno",
-                "url": "https://suno.com/invite/@3321616",
-                "description": "Создание песен с уникальным вокалом и музыкой.",
+                "name": "Udio",
+                "url": "https://www.udio.com",
+                "description": "Создание профессиональной музыки в любом жанре.",
                 "iconType": "standard",
                 "order": 2
             },
@@ -164,8 +164,8 @@
         ],
         "visual-dynamic": [
             {
-                "name": "Алиса",
-                "url": "https://alice.yandex.ru/",
+                "name": "GigaChat",
+                "url": "https://giga.chat/invite/7D5V1GG",
                 "description": "Генерация коротких видеороликов по текстовому описанию.",
                 "iconType": "standard",
                 "order": 0
@@ -185,18 +185,11 @@
                 "order": 2
             },
             {
-                "name": "Piсtory",
-                "url": "https://pictory.ai/",
-                "iconType": "standard",
-                "description": "Автоматическое создание видео из статей и скриптов.",
-                "order": 3
-            },
-            {
                 "name": "AiStudio(Veo)",
                 "url": "https://aistudio.google.com/prompts/new_video?model=veo-2.0-generate-001",
                 "iconType": "standard",
                 "description": "Генерация высококачественных видео с помощью модели Google Veo.",
-                "order": 4
+                "order": 3
             }
         ],
         "interactive": [
