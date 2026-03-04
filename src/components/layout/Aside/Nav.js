@@ -78,7 +78,7 @@ export function useNavLinks() {
             prevLinks.map((link) => {
                 const updatedLink = { ...link };
                 if (link.label === "Админ панель") {
-                    updatedLink.disable = role !== "moder";
+                    updatedLink.disable = role !== "moder" && role !== "admin";
                 }
                 return updatedLink;
             })
