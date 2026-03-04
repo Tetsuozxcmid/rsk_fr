@@ -114,7 +114,14 @@ export default function Aside({ isMobileOpen, closeMobile }) {
                     <>
                         <nav className="flex-1">
                             {navLinks.map((item) => (
-                                <NavItem key={item.label} {...item} isCollapsed={screenType === "mobile" ? false : isCollapsed} onHover={setHovered} hovered={hovered === item.label} />
+                                <NavItem
+                                    key={item.label}
+                                    {...item}
+                                    screenType={screenType} // Передаем тип экрана
+                                    isCollapsed={screenType === "mobile" ? false : isCollapsed}
+                                    onHover={setHovered}
+                                    isHovered={hovered === item.label} // Исправлено с hovered на isHovered
+                                />
                             ))}
                         </nav>
 
