@@ -12,9 +12,8 @@ import Button from "@/components/ui/Button";
 import Index from "@/assets/general/index.svg";
 import Notify from "@/assets/general/notify.svg";
 
-export default function Projects() {
+export default function Projects({ organization }) {
     // Получаем организацию из cookies
-    const organization = getCookie("organization");
     const { loading, categories: projects, error, fetchProjects } = useProjects();
     const [processedCategories, setProcessedCategories] = useState([]);
 
@@ -147,4 +146,12 @@ export default function Projects() {
             </div>
         </Layout>
     );
+}
+
+export async function getServerSideProps(context) {
+    const organization = context.req.cookies.organization || null;
+
+    return {
+        props: { organization },
+    };
 }
