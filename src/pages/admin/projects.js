@@ -57,20 +57,21 @@ export default function AdminProjects() {
     }, []);
 
     const handleReview = async (submissionId, isApproved, reason = "Все хорошо") => {
-        const status = isApproved ? "одобрен" : "отклонен";
+        const status = isApproved ? "ACCEPTED" : "REJECTED";
         const actionText = isApproved ? "одобрить" : "отклонить";
 
-        if (!window.confirm(`Вы уверены, что хотите ${actionText} эту заявку по причине ${reason}?`)) {
+        if (!window.confirm(`Вы уверены, что хотите ${actionText} эту заявку?`)) {
             return;
         }
 
         try {
-            // Устанавливаем ID удаляемого элемента для анимации
             setRemovingId(submissionId);
 
             const res = await fetch(`/api/admin/projects/review/${submissionId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
                 credentials: "include",
                 body: JSON.stringify({
                     status: status,
@@ -78,16 +79,15 @@ export default function AdminProjects() {
                 }),
             });
 
-            if (!res.ok) throw new Error(`Ошибка при ${actionText}и заявки`);
+            if (!res.ok) throw new Error(`Ошибка при ${actionText} заявки`);
 
-            // Ждем завершения анимации перед удалением из состояния
             setTimeout(() => {
                 setSubmissions((prev) => prev.filter((sub) => sub.id !== submissionId));
                 setRemovingId(null);
             }, 500);
         } catch (err) {
-            console.error(`Ошибка ${actionText}и:`, err);
-            alert(`Произошла ошибка при ${actionText} заявки`);
+            console.error(err);
+            alert("Ошибка отправки ревью");
             setRemovingId(null);
         }
     };
@@ -150,45 +150,63 @@ export default function AdminProjects() {
                         </span>
                     </div>
 
-                    {submissions.map((submission) => (
-                        <div
-                            key={submission.id}
-                            className={`
-                                flex flex-col border-[1.5px] border-(--color-gray-plus-50) rounded-[1rem] gap-[1rem] p-[1.25rem] mb-[1rem]
-                                transition-all duration-500 ease-in-out overflow-hidden
-                                ${removingId === submission.id ? "opacity-0 transform translate-x-full scale-80 max-h-0 py-0 mb-0" : "opacity-100 transform translate-x-0 scale-100 max-h-[500px]"}
-                            `}>
-                            <h5>Заявка #{submission.id}</h5>
-                            <div className="flex items-center justify-start gap-[1.5rem]">
-                                <div className="flex gap-[0.5rem]">
-                                    <span className="link small">Курс #{submission.course_id}</span>
-                                </div>
-                                <div className="flex gap-[0.5rem]">
-                                    <span className="link small">Пользователь #{submission.user_id}</span>
-                                </div>
-                                <div className="flex gap-[0.5rem]">
-                                    <a href={submission.file_url} target="_blank" rel="noopener noreferrer" className="link small text-(--color-blue)">
-                                        {submission.file_url}
+                    {submissions.map((submission) => {
+                        const taskLink = `https://test.rosdk.ru/projects/${submission.project_category}/${submission.project_id}/${submission.task_id}`;
+                        const projectLink = `https://test.rosdk.ru/projects/${submission.project_category}/${submission.project_id}`;
+
+                        return (
+                            <div
+                                key={submission.id}
+                                className={`
+                flex flex-col border-[1.5px] border-(--color-gray-plus-50) rounded-[1rem] gap-[1rem] p-[1.25rem] mb-[1rem]
+                transition-all duration-500 ease-in-out overflow-hidden
+                ${removingId === submission.id ? "opacity-0 transform translate-x-full scale-80 max-h-0 py-0 mb-0" : "opacity-100 transform translate-x-0 scale-100 max-h-[500px]"}
+            `}>
+                                <div className="w-full flex justify-between">
+                                    <a href={taskLink} target="_blank" rel="noopener noreferrer" className="link text-(--color-blue)">
+                                        <h5>{submission.task_title}</h5>
                                     </a>
+                                    <h6>#{submission.id}</h6>
+                                </div>
+
+                                <div className="flex flex-col gap-[0.5rem]">
+                                    <div className="flex gap-[0.5rem]">
+                                        <span className="link small">Проект:</span>
+                                        <a href={projectLink} target="_blank" rel="noopener noreferrer" className="link small text-(--color-blue)">
+                                            {submission.project_title}
+                                        </a>
+                                    </div>
+
+                                    <div className="flex gap-[0.5rem]">
+                                        <span className="link small">Категория: {submission.project_category}</span>
+                                    </div>
+
+                                    <div className="flex gap-[0.5rem]">
+                                        <span className="link small">Команда #{submission.team_id}</span>
+                                    </div>
+
+                                    {submission.result_url && (
+                                        <div className="flex gap-[0.5rem]">
+                                            <span className="link small">Результат:</span>
+                                            <a href={submission.result_url} target="_blank" rel="noopener noreferrer" className="link small text-(--color-blue)">
+                                                {submission.result_url}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end gap-[0.5rem]">
+                                    <Button inverted roundeful className="!w-fit reject-button" onClick={() => handleRejectClick(submission.id)} disabled={removingId === submission.id}>
+                                        Отклонить <Zapret />
+                                    </Button>
+
+                                    <Button inverted roundeful className="!w-fit approve-button" onClick={() => handleReview(submission.id, true)} disabled={removingId === submission.id}>
+                                        Подтвердить <NeZapret />
+                                    </Button>
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-[0.5rem]">
-                                <Button
-                                    inverted
-                                    roundeful
-                                    className="!w-fit reject-button"
-                                    onClick={() => {
-                                        handleRejectClick(submission.id);
-                                    }}
-                                    disabled={removingId === submission.id}>
-                                    Отклонить <Zapret />
-                                </Button>
-                                <Button inverted roundeful className="!w-fit approve-button" onClick={() => handleReview(submission.id, true)} disabled={removingId === submission.id}>
-                                    Подтвердить <NeZapret />
-                                </Button>
-                            </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
                 {showRejectPopup && <RejectReasonPopup onClose={() => setShowRejectPopup(false)} onConfirm={handleRejectConfirm} projectId={rejectingProjectId} />}
             </div>

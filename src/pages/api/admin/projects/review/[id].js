@@ -1,19 +1,25 @@
 export default async function ProfileUpdateHandler(req, res) {
     try {
         const token = req.cookies.users_access_token;
+
         if (!token) {
-            return res.status(401).json({ success: false, error: "No token provided" });
+            return res.status(401).json({
+                success: false,
+                error: "No token provided",
+            });
         }
 
-        const id = req.query;
+        const { id } = req.query;
 
-        // Проверка метода
-        if (req.method !== "PATCH") {
-            return res.status(405).json({ success: false, error: "Method not allowed" });
+        if (req.method !== "POST") {
+            return res.status(405).json({
+                success: false,
+                error: "Method not allowed",
+            });
         }
 
-        const response = await fetch(`https://api.rosdk.ru/projects/zvezda/moderator/${id.id}/review`, {
-            method: "PATCH",
+        const response = await fetch(`https://api.rosdk.ru/projects/zvezda/moderator/${id}/review`, {
+            method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",
@@ -23,11 +29,15 @@ export default async function ProfileUpdateHandler(req, res) {
         });
 
         const data = await response.json();
-        console.log(data);
 
-        // Возвращаем клиенту
-        return res.json({ success: true, data });
+        return res.status(response.status).json({
+            success: response.ok,
+            data,
+        });
     } catch (err) {
-        return res.status(500).json({ success: false, error: err.message });
+        return res.status(500).json({
+            success: false,
+            error: err.message,
+        });
     }
 }
