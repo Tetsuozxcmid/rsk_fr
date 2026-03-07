@@ -37,6 +37,7 @@ const BASE_NAV_LINKS = [
         submenu: [
             { label: "Проекты", href: "/admin/projects" },
             { label: "Обучение", href: "/admin/cours" },
+            { label: "Роли", href: "/admin/roleswitch" },
         ],
     },
 ];

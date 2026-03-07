@@ -1,0 +1,59 @@
+export default async function changeUserRole(req, res) {
+    try {
+        if (req.method !== "POST") {
+            return res.status(405).json({
+                success: false,
+                error: "Method not allowed",
+            });
+        }
+
+        const token = req.cookies.users_access_token;
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                error: "No token provided",
+            });
+        }
+
+        const { username, role } = req.body;
+
+        if (!username || !role) {
+            return res.status(400).json({
+                success: false,
+                error: "username and role required",
+            });
+        }
+
+        const response = await fetch("https://api.rosdk.ru/profile_interaction/admin-role", {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                Cookie: req.headers.cookie || "",
+            },
+            body: JSON.stringify({
+                role: role,
+                user_id: username,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return res.status(response.status).json({
+                success: false,
+                error: data?.error || "API error",
+            });
+        }
+
+        return res.json({
+            success: true,
+            data,
+        });
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: err.message,
+        });
+    }
+}
