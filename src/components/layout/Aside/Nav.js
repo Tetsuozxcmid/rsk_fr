@@ -88,7 +88,7 @@ export function useNavLinks() {
 
         const role = profileData?.Type;
         const learn = profileData?.is_learned === true;
-        const organization = profileData?.Organization.id;
+        const organization = profileData?.Organization?.id;
 
         if (!role) {
             clearCookies();
