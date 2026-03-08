@@ -45,7 +45,7 @@ export default function AdminProjects() {
                 const data = await res.json();
                 console.log(data.data);
                 setSubmissions(data.data.data || []);
-                setTime(data.data.time);
+                setTime(data.data?.data?.[0]?.time || 0);
             } catch (err) {
                 console.error("Ошибка:", err);
             } finally {
@@ -96,26 +96,25 @@ export default function AdminProjects() {
         const timer = document.getElementById("timer");
         if (!time || !timer) return;
 
-        const interval = setInterval(() => {
-            const now = Date.now();
-            const target = time * 1000;
-            const diff = target - now;
+        let remaining = time; // просто секунды из API
 
-            if (diff <= 0) {
-                router.replace(window.location.pathname);
+        const interval = setInterval(() => {
+            if (remaining <= 0) {
                 clearInterval(interval);
+                router.replace(window.location.pathname);
                 return;
             }
 
-            const totalSeconds = Math.floor(diff / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
+            const minutes = Math.floor(remaining / 60);
+            const seconds = remaining % 60;
 
             timer.innerText = `Оставшееся время сессии: ${minutes} мин ${seconds} сек`;
+
+            remaining--; // уменьшаем каждую секунду
         }, 1000);
 
         return () => clearInterval(interval);
-    }, [time]);
+    }, [time, router]);
 
     if (loading) {
         return (

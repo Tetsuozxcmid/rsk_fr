@@ -31,15 +31,12 @@ export default function CategoryPage() {
 
     useEffect(() => {
         if (projects.length > 0) {
-            const maxLvl = Math.max(...projects.map(p => p.level_number || 1));
+            const maxLvl = Math.max(...projects.map((p) => p.level_number || 1));
             setMaxLevel(maxLvl);
-            
-            
-            const projectsInCat = projects.filter(p => p.star_category === url);
-            const incompleteProject = projectsInCat.find(p => 
-                !p.tasks.every(t => t.status === "ACCEPTED")
-            );
-            
+
+            const projectsInCat = projects.filter((p) => p.star_category === url);
+            const incompleteProject = projectsInCat.find((p) => !p.tasks.every((t) => t.status === "ACCEPTED"));
+
             if (incompleteProject) {
                 setSelectedLevel(incompleteProject.level_number || 1);
             }
@@ -133,17 +130,11 @@ export default function CategoryPage() {
         );
     }
 
-    const projectsInCategory = projects.filter((p) => 
-        p.star_category === url && p.level_number === selectedLevel
-    );
-    
-    
+    const projectsInCategory = projects.filter((p) => p.star_category === url && p.level_number === selectedLevel);
+
     const isLevelCompleted = (level) => {
-        const levelProjects = projects.filter(p => 
-            p.star_category === url && p.level_number === level
-        );
-        return levelProjects.length > 0 && 
-               levelProjects.every(p => p.tasks.every(t => t.status === "ACCEPTED"));
+        const levelProjects = projects.filter((p) => p.star_category === url && p.level_number === level);
+        return levelProjects.length > 0 && levelProjects.every((p) => p.tasks.every((t) => t.status === "ACCEPTED"));
     };
 
     if (projectsInCategory.length === 0) {
@@ -164,8 +155,11 @@ export default function CategoryPage() {
         );
     }
 
-    const completedCount = projectsInCategory.filter((p) => p.tasks.every((t) => t.status === "SUCCESS")).length;
-    const total = projectsInCategory.length;
+    const projectsInLevel = projects.filter((p) => p.star_category === url && p.level_number === selectedLevel);
+
+    const completedCount = projectsInLevel.filter((p) => (p.tasks ?? []).every((t) => t.status === "ACCEPTED")).length;
+
+    const total = projectsInLevel.length;
 
     const sortedBase = projectsInCategory
         .sort((a, b) => a.id - b.id)
@@ -174,7 +168,7 @@ export default function CategoryPage() {
             originalIdx: idx,
         }));
 
-    const sorted = [...sortedBase.filter((p) => !p.tasks.every((t) => t.status === "SUCCESS")), ...sortedBase.filter((p) => p.tasks.every((t) => t.status === "SUCCESS"))];
+    const sorted = [...sortedBase.filter((p) => !p.tasks.every((t) => t.status === "ACCEPTED")), ...sortedBase.filter((p) => p.tasks.every((t) => t.status === "ACCEPTED"))];
 
     return (
         <Layout>
@@ -189,23 +183,18 @@ export default function CategoryPage() {
             <div className="hero" style={{ gridTemplateRows: "max-content" }}>
                 <div className="col-span-12 flex items-start justify-between pl-[1.5rem] mb-[2.5rem]">
                     <div className="flex flex-col gap-[0.5rem] pb-[1.5rem]">
-                        <Switcher 
-                            value={selectedLevel} 
+                        <Switcher
+                            value={selectedLevel}
                             onChange={(level) => {
                                 const canAccess = level === 1 || isLevelCompleted(level - 1);
                                 if (canAccess) setSelectedLevel(level);
-                            }} 
-                            className="flex flex-row justify-center items-center p-[0.25rem] gap-[0.25rem] bg-(--color-gray-plus-50) rounded-[0.625rem] w-fit"
-                        >
-                            {Array.from({length: 5}, (_, i) => i + 1).map(level => {
-                                const canAccess = level === 1;
+                            }}
+                            className="flex flex-row justify-center items-center p-[0.25rem] gap-[0.25rem] bg-(--color-gray-plus-50) rounded-[0.625rem] w-fit">
+                            {Array.from({ length: 5 }, (_, i) => i + 1).map((level) => {
+                                const canAccess = level === 1 || isLevelCompleted(level - 1);
+
                                 return (
-                                    <Switcher.Option 
-                                        key={level}
-                                        value={level}
-                                        disabled={!canAccess}
-                                        className={`whitespace-nowrap ${!canAccess ? 'text-[var(--color-gray-white)] cursor-not-allowed pointer-events-none opacity-50' : ''}`}
-                                    >
+                                    <Switcher.Option key={level} value={level} disabled={!canAccess} className={`whitespace-nowrap ${!canAccess ? "text-[var(--color-gray-white)] cursor-not-allowed pointer-events-none opacity-50" : ""}`}>
                                         Уровень&nbsp;{level}
                                     </Switcher.Option>
                                 );
@@ -235,7 +224,6 @@ export default function CategoryPage() {
                     </Card>
                 </div>
 
-                
                 <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit">
                     {sorted.map((project, idx) => (
                         <div
@@ -252,9 +240,9 @@ export default function CategoryPage() {
                             <Link href={`/projects/${url}/${project.id}`}>
                                 <div
                                     className={`flex items-center justify-center px-[.75rem] py-[1rem] rounded-[6.25rem] ${
-                                        project.tasks.every((t) => t.status === "SUCCESS") ? "bg-[var(--color-green-noise)] text-[var(--color-green-peace)]" : "bg-[var(--color-gray-plus-50)] text-[var(--color-black)]"
+                                        project.tasks.every((t) => t.status === "ACCEPTED") ? "bg-[var(--color-green-noise)] text-[var(--color-green-peace)]" : "bg-[var(--color-gray-plus-50)] text-[var(--color-black)]"
                                     }`}>
-                                    {project.tasks.every((t) => t.status === "SUCCESS") ? "Выполнено" : "Выполнить"}
+                                    {project.tasks.every((t) => t.status === "ACCEPTED") ? "Выполнено" : "Выполнить"}
                                 </div>
                             </Link>
                         </div>

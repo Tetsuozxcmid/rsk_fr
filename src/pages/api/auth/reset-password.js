@@ -1,0 +1,21 @@
+export default async function ResetPasswordHandler(req, res) {
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+    try {
+        const response = await fetch("https://api.rosdk.ru/auth/users_interaction/reset-password/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ email_or_login: req.body.email_or_login }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return res.status(response.status).json({ success: false, error: data.error || "Не удалось отправить письмо" });
+        }
+
+        return res.json({ success: true, data });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+}

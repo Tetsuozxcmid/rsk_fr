@@ -16,16 +16,16 @@ export default async function changeUserRole(req, res) {
             });
         }
 
-        const { username, role } = req.body;
+        const { user_id, role } = req.body;
 
-        if (!username || !role) {
+        if (!user_id || !role) {
             return res.status(400).json({
                 success: false,
                 error: "username and role required",
             });
         }
 
-        const response = await fetch("https://api.rosdk.ru/profile_interaction/admin-role", {
+        const response = await fetch("https://api.rosdk.ru/users/profile_interaction/admin-role", {
             method: "PATCH",
             headers: {
                 "Content-Type": "application/json",
@@ -33,7 +33,7 @@ export default async function changeUserRole(req, res) {
             },
             body: JSON.stringify({
                 role: role,
-                user_id: username,
+                user_id: user_id,
             }),
         });
 

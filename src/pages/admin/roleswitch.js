@@ -22,19 +22,27 @@ export default function AdminRolePage() {
             return;
         }
 
+        const userId = Number(username.replace(/\D/g, ""));
+
+        if (!userId) {
+            setMessage({ type: "error", text: "Некорректный username" });
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         setMessage(null);
 
         try {
-            const res = await fetch("/api/admin/change-role", {
+            const res = await fetch("/api/admin/roleswitch", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
                 credentials: "include",
                 body: JSON.stringify({
-                    username,
-                    role,
+                    user_id: userId,
+                    role: role,
                 }),
             });
 
