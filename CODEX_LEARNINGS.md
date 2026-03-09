@@ -152,3 +152,10 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: process.env.NEXT_PUBLIC_BASE_URL was used inside an API route; Next inlined it to a string literal in the dev bundle, and an old runtime assignment produced invalid compiled code in the server bundle.
 - Fix: remove runtime assignment to NEXT_PUBLIC_BASE_URL, stop reading NEXT_PUBLIC values in this server route, and use server-managed settings or a server-only env like BASE_URL instead.
 - Prevention: never write to process.env.NEXT*PUBLIC*\* at runtime inside API routes, and avoid using public env names as mutable server configuration.
+
+### 2026-03-09 - Animated WebP mascots should restart by remount, not by cache-busting the URL
+
+- Problem: MAYAK owl animations could feel much less smooth in the trainer than the source asset, especially on repeated plays.
+- Root cause: the UI restarted the mascot by appending a changing `?v=...` query to the animated WebP URL, which forced the browser to treat each playback as a new resource and re-decode the heavy asset.
+- Fix: restart the mascot by remounting the `<img>` with a React `key`, keep the URL stable, and preload the mascot assets once on page load.
+- Prevention: for MAYAK animated mascot playback, do not use cache-busting query params as the replay mechanism unless a real asset version change is intended.

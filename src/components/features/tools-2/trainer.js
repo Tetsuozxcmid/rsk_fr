@@ -69,6 +69,15 @@ const getRandomQwenMascotAsset = (zone) => {
     return selectedAsset ? { ...selectedAsset } : null;
 };
 const QWEN_UNAVAILABLE_MASCOT_ASSET = { animatedSrc: "/mascot-bad-3-transparent-anim.webp", hideAfterMs: 5980 };
+const QWEN_MASCOT_ASSET_PRELOAD_LIST = Array.from(
+    new Set([
+        QWEN_UNAVAILABLE_MASCOT_ASSET.animatedSrc,
+        ...Object.values(QWEN_MASCOT_POOLS)
+            .flat()
+            .map((asset) => asset.animatedSrc)
+            .filter(Boolean),
+    ])
+);
 const formatFieldList = (labels) => (Array.isArray(labels) ? labels.filter(Boolean).join(", ") : "");
 const buildQwenTaskContext = ({ taskTextData }) => ({
     description: taskTextData?.description || "",
@@ -1564,6 +1573,25 @@ export default function TrainerPage({ goTo }) {
     const [mascotPlaybackKey, setMascotPlaybackKey] = useState(0);
     const mascotHideTimeoutRef = useRef(null);
 
+    useEffect(() => {
+        if (typeof window === "undefined") {
+            return undefined;
+        }
+
+        const preloadedAssets = QWEN_MASCOT_ASSET_PRELOAD_LIST.map((src) => {
+            const image = new window.Image();
+            image.decoding = "sync";
+            image.src = src;
+            return image;
+        });
+
+        return () => {
+            preloadedAssets.forEach((image) => {
+                image.src = "";
+            });
+        };
+    }, []);
+
     const [isCopied, setIsCopied] = useState(false);
     const [buffer, setBuffer] = useState({});
     const [history, setHistory] = useState([]);
@@ -2966,7 +2994,7 @@ export default function TrainerPage({ goTo }) {
                                 {shouldShowQwenMascot && (
                                     <div className="flex shrink-0 flex-col items-center self-center">
                                         <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
-                                            <img key={mascotPlaybackKey} src={`${activeQwenMascotAsset.animatedSrc}?v=${mascotPlaybackKey}`} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+                                            <img key={mascotPlaybackKey} src={activeQwenMascotAsset.animatedSrc} alt="" aria-hidden="true" decoding="sync" fetchPriority="high" className="h-full w-full object-contain" />
                                         </div>
                                     </div>
                                 )}
