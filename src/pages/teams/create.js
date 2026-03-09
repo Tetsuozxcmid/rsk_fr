@@ -106,7 +106,7 @@ export default function Createteam() {
                 </Button> */}
             </Header>
             <form onSubmit={handleSubmit} className="hero">
-                <div className="col-span-4 flex flex-col">
+                <div className="col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex flex-col">
                     <div className="flex flex-col gap-[1.25rem]">
                         <h6>Основные данные</h6>
                         {/* <Input type="image" className="w-1/2 aspect-square" /> */}
@@ -114,7 +114,7 @@ export default function Createteam() {
                         {/* <Textarea inverted id="direction" name="direction" autoComplete="direction" placeholder="Описание команды" value={formData.direction} onChange={handleChange} /> */}
                     </div>
                 </div>
-                <div className="col-span-4 flex flex-col">
+                <div className="col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex flex-col">
                     <div className=" flex flex-col gap-[1.25rem]">
                         <h6>Организация и регион</h6>
                         <div className="flex flex-col gap-[.75rem]">
@@ -124,7 +124,7 @@ export default function Createteam() {
                         </div>
                     </div>
                 </div>
-                <div className="flex col-span-4 flex-col justify-between h-full">
+                <div className="flex col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex-col justify-between h-full">
                     <div className="flex flex-col gap-[1.25rem]"></div>
                     <Button onClick={handleSubmit}>Создать команду</Button>
                 </div>
@@ -132,3 +132,4 @@ export default function Createteam() {
         </Layout>
     );
 }
+

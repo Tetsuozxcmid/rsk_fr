@@ -205,10 +205,10 @@ export default function SettingsPage({ goTo }) {
                     <Setts />
                 </Button>
             </Header>
-            <div className="hero" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+            <div className="hero grid-cols-3 max-[900px]:grid-cols-1">
                 <div className="flex flex-col gap-[.75rem]">
                     <h6>Основные данные</h6>
-                    <div className="flex gap-[.75rem]">
+                    <div className="flex gap-[.75rem] max-[640px]:flex-col">
                         <div className="flex flex-col gap-[.5rem] flex-1">
                             <Input type="text" id="FamilyName" name="Surname" placeholder="Введите фамилию" value={formData.Surname || ""} onChange={handleChange} required />
                             <Input type="text" id="name" name="NameIRL" placeholder="Введите имя" value={formData.NameIRL || ""} onChange={handleChange} required />
@@ -257,3 +257,5 @@ export default function SettingsPage({ goTo }) {
         </>
     );
 }
+
+

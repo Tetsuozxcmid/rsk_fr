@@ -109,11 +109,11 @@ export default function Projects({ organization }) {
                 </Button>
             </Header>
             <div className="hero" style={{ gridTemplateRows: "max-content" }}>
-                <hgroup className="flex flex-col col-span-4 gap-[.5rem]">
+                <hgroup className="flex flex-col col-span-4 max-[900px]:col-span-12 gap-[.5rem]">
                     <h3>Проекты</h3>
                     <p className="text-(--color-gray-black)">Выберите категорию проектов, которую хотите выполнять. Каждая из них развивает одно из направлений звезды</p>
                 </hgroup>
-                <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit">
+                <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
                     {processedCategories.map((category, idx) => (
                         <Link
                             href={"/projects/" + category.url}
@@ -155,3 +155,4 @@ export async function getServerSideProps(context) {
         props: { organization },
     };
 }
+

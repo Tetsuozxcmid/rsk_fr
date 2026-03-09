@@ -179,13 +179,13 @@ export default function WorkFolderPage({ goTo }) {
                 </Button>
             </Header>
             <div className="hero">
-                <div className="flex flex-col gap-[0.75rem] col-span-4">
+                <div className="flex flex-col gap-[0.75rem] col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6">
                     <Button inverted onClick={() => goTo("profile")}>
                         Назад
                     </Button>
                     <Folder min projects="2" works="12" exp="100" />
                 </div>
-                <div className="flex flex-col gap-[1rem] col-start-7 col-end-13">
+                <div className="flex flex-col gap-[1rem] col-start-7 col-end-13 max-[900px]:col-start-1 max-[900px]:col-end-7">
                     <h4>Дела участника</h4>
                     <Case
                         tabs={[
@@ -199,7 +199,7 @@ export default function WorkFolderPage({ goTo }) {
                         className="h-full gap-[1rem]">
                         <Case.Tab tab="all">
                             {cases.map((card, idx) => (
-                                <div className="block-wrapper col-span-4" key={idx}>
+                                <div className="block-wrapper col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-12" key={idx}>
                                     <h6>{card.name}</h6>
                                     <p className="text-(--color-gray-black)">{card.desc}</p>
                                     <div className="flex flex-wrap gap-[.5rem]">
@@ -212,7 +212,7 @@ export default function WorkFolderPage({ goTo }) {
                             {cases
                                 .filter((card) => card.tags.some((tag) => tag.name === "Проект"))
                                 .map((card, idx) => (
-                                    <div className="block-wrapper col-span-4" key={idx}>
+                                    <div className="block-wrapper col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-12" key={idx}>
                                         <h6>{card.name}</h6>
                                         <p className="text-(--color-gray-black)">{card.desc}</p>
                                         <div className="flex flex-wrap gap-[.5rem]">
@@ -225,7 +225,7 @@ export default function WorkFolderPage({ goTo }) {
                             {cases
                                 .filter((card) => card.tags.some((tag) => tag.name === "Дело"))
                                 .map((card, idx) => (
-                                    <div className="block-wrapper col-span-4" key={idx}>
+                                    <div className="block-wrapper col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-12" key={idx}>
                                         <h6>{card.name}</h6>
                                         <p className="text-(--color-gray-black)">{card.desc}</p>
                                         <div className="flex flex-wrap gap-[.5rem]">
@@ -240,3 +240,5 @@ export default function WorkFolderPage({ goTo }) {
         </>
     );
 }
+
+

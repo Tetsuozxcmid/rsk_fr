@@ -163,7 +163,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                         <h6>{team.team_info.name}</h6>
                     </div>
 
-                    <div className="block-wrapper col-span-4 h-fit">
+                    <div className="block-wrapper col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-12 h-fit">
                         <div className="flex flex-col gap-[.5rem]">
                             <h6>Описание</h6>
                             <p>{team.team_info.description ? team.team_info.description : "Незаполнено"}</p>
@@ -175,7 +175,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                                 <div className="h-[2rem] aspect-square rounded-full bg-(--color-orange-noise)"></div>
                                 <span className="link">{leaderName}</span>
                             </div>
-                            <div className="flex w-2/3 items-center gap-[.5rem]">
+                            <div className="flex w-2/3 items-center gap-[.5rem] max-[900px]:w-full max-[640px]:flex-col">
                                 <Button
                                     onClick={JoinTeam}
                                     small
@@ -194,7 +194,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
                         </div>
                     </div>
 
-                    <div className="block-wrapper col-span-4 h-fit">
+                    <div className="block-wrapper col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-12 h-fit">
                         <div className="flex flex-col gap-[.5rem]">
                             <h6>Организация</h6>
                             <Link href={"/organizations/" + team.team_info.organization_id} className="group cursor-pointer flex items-center justify-between w-full">
@@ -214,7 +214,7 @@ export default function TeamIndexPage({ goTo, teamData }) {
 
                 <div className="block-wrapper gap-[1.25rem] col-span-12 h-fit">
                     <h5>Участники</h5>
-                    <div className="grid grid-cols-2 gap-[.75rem]">
+                    <div className="grid grid-cols-2 gap-[.75rem] max-[900px]:grid-cols-1">
                         {team.members.map((member, idx) => (
                             <div
                                 key={idx}
@@ -231,3 +231,4 @@ export default function TeamIndexPage({ goTo, teamData }) {
         </>
     );
 }
+

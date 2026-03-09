@@ -90,33 +90,33 @@ export default function OrganIndexPage({ goTo, organ }) {
                         <h6>{organInfo.full_name}</h6>
                     </div>
 
-                    <div className="flex gap-[1.25rem]">
-                        <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                    <div className="flex gap-[1.25rem] flex-wrap">
+                        <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6>{organInfo.members_count} участников</h6>
                         </div>
 
-                        {/* <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                        {/* <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <DelIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6 className="text-(--color-gray-white)">Мастерская (скоро)</h6>
                         </div> */}
 
-                        <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                        <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6>{organInfo.teams_count} команд</h6>
                         </div>
 
-                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                         <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6>ИНН:{organInfo.inn}</h6>
                         </div>
 
-                         <div className="w-1/3 gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                         <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-white-gray) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <PersonIcon className="w-[1.375rem] h-[1.375rem] text-(--color-gray-black)" />
                             <h6>Регион: {organInfo.region}</h6>
                         </div>
 
-                         <div className="w-1/3 gap-[1rem] bg-(--color-blue-noise) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
+                         <div className="w-1/3 max-[900px]:w-[calc(50%-0.625rem)] max-[640px]:w-full gap-[1rem] bg-(--color-blue-noise) h-fit flex items-center justify-center rounded-[1rem] px-[1rem] py-[.75rem]">
                             <h6 className="text-(--color-blue)">Индекс {organInfo.star}</h6>
                         </div>
                     </div>
@@ -139,3 +139,4 @@ export default function OrganIndexPage({ goTo, organ }) {
         </>
     );
 }
+

@@ -157,8 +157,8 @@ export default function ProfileIndexPage({ goTo }) {
                         <a className="big relative z-[1]">Теперь вы с нами!</a>
                     </Card.Footer>
                 </Card>
-                <div className="col-span-4 h-fit">
-                    <div className="block-wrapper col-span-4">
+                <div className="col-span-4 max-[900px]:col-span-12 h-fit">
+                    <div className="block-wrapper col-span-4 max-[900px]:col-span-12">
                         <h6>Организация и команда</h6>
                         <div className="flex flex-col gap-[0.75rem]">
                             <Link href={`/organizations/${userData.data.Organization ? userData.data.Organization.id : ""}`}>
@@ -183,3 +183,4 @@ export default function ProfileIndexPage({ goTo }) {
         </>
     );
 }
+

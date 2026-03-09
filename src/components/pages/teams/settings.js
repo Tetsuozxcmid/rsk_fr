@@ -95,20 +95,20 @@ export default function TeamSettsPage({ goTo, teamData }) {
             </Header>
 
             <div className="hero">
-                <div className="col-span-4 flex flex-col h-full gap-[1.25rem]">
+                <div className="col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex flex-col h-full gap-[1.25rem]">
                     <h6>Основные данные</h6>
                     <Input type="image" className="w-1/2 aspect-square" />
                     <Input id="teamName" name="name" autoComplete="off" type="text" placeholder="Введите название команды" value={formData.name} onChange={handleChange} />
                     <Textarea id="teamDesc" name="description" autoComplete="off" inverted placeholder="Введите описание команды" value={formData.description} onChange={handleChange} />
                 </div>
 
-                <div className="col-span-4 flex flex-col gap-[1.25rem]">
+                <div className="col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex flex-col gap-[1.25rem]">
                     <h6>Организация и регион</h6>
                     <Textarea name="organization" id="organization" autoComplete="off" value={team.organization_name} readOnly />
                     <Input name="region" id="region" autoComplete="off" className="h-fit" value={team.region} readOnly />
                 </div>
 
-                <div className="col-span-4 flex flex-col justify-end">
+                <div className="col-span-4 max-[900px]:col-span-6 max-[640px]:col-span-6 flex flex-col justify-end">
                     <Button onClick={handleSubmit} disabled={!isDirty}>
                         Сохранить изменения
                     </Button>
@@ -117,3 +117,4 @@ export default function TeamSettsPage({ goTo, teamData }) {
         </>
     );
 }
+

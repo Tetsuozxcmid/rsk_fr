@@ -98,7 +98,7 @@ export default function Task() {
                 <Header.Heading>Обучение</Header.Heading>
             </Header>
             <div className="hero overflow-hidden" style={{ placeItems: "center" }}>
-                <div className="h-full w-full col-span-12 grid grid-cols-2 gap-[1.5rem]">
+                <div className="h-full w-full col-span-12 grid grid-cols-2 gap-[1.5rem] max-[900px]:grid-cols-1">
                     {/* Блок доступа */}
                     {lesson.download_url.includes("rutube.ru") ? (
                         <iframe
@@ -128,7 +128,7 @@ export default function Task() {
                                 Ожидание проверки
                             </a>
                         ) : submitted == "false" ? (
-                            <div className="flex flex-row gap-[0.75rem] w-full">
+                            <div className="flex flex-row gap-[0.75rem] w-full max-[640px]:flex-col">
                                 <Input type="text" placeholder="Введите ссылку на файл" className="w-full" value={fileUrl} onChange={(e) => setFileUrl(e.target.value)} />
                                 <Button className="!w-fit" inverted disabled={!fileUrl} onClick={handleSubmit}>
                                     Отправить
@@ -143,3 +143,4 @@ export default function Task() {
         </Layout>
     );
 }
+

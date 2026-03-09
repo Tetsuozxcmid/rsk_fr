@@ -46,7 +46,7 @@ export default function Cours() {
             </Header>
 
             <div className="hero overflow-hidden" style={{ placeItems: "center" }}>
-                <div className="h-full w-full col-span-12 grid grid-cols-3 gap-[1.5rem]">
+                <div className="h-full w-full col-span-12 grid grid-cols-3 gap-[1.5rem] max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
                     {loading &&
                         [...Array(6)].map((_, idx) => (
                             <div key={idx} className="animate-pulse flex flex-col justify-center items-center gap-[0.75rem] p-[1rem] rounded-[1rem] bg-(--color-white-gray)" style={{ aspectRatio: "16/9", width: "100%" }}>
@@ -137,9 +137,10 @@ export default function Cours() {
                             });
                         })()}
 
-                    {!loading && (!lessons || lessons.length === 0) && <div className="col-span-3 text-center py-10 text-gray-500">Уроки не найдены</div>}
+                    {!loading && (!lessons || lessons.length === 0) && <div className="col-span-3 max-[900px]:col-span-2 max-[640px]:col-span-1 text-center py-10 text-gray-500">Уроки не найдены</div>}
                 </div>
             </div>
         </Layout>
     );
 }
+

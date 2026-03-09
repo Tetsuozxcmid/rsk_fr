@@ -181,7 +181,7 @@ export default function CategoryPage() {
                 </Button>
             </Header>
             <div className="hero" style={{ gridTemplateRows: "max-content" }}>
-                <div className="col-span-12 flex items-start justify-between pl-[1.5rem] mb-[2.5rem]">
+                <div className="col-span-12 flex items-start justify-between pl-[1.5rem] mb-[2.5rem] max-[900px]:flex-col max-[900px]:gap-[1.25rem] max-[900px]:pl-0">
                     <div className="flex flex-col gap-[0.5rem] pb-[1.5rem]">
                         <Switcher
                             value={selectedLevel}
@@ -224,7 +224,7 @@ export default function CategoryPage() {
                     </Card>
                 </div>
 
-                <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit">
+                <div className="col-span-12 grid grid-cols-3 gap-[1.25rem] h-fit max-[900px]:grid-cols-2 max-[640px]:grid-cols-1">
                     {sorted.map((project, idx) => (
                         <div
                             key={project.originalIdx}
@@ -252,3 +252,4 @@ export default function CategoryPage() {
         </Layout>
     );
 }
+
