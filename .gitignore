@@ -60,3 +60,19 @@ data/botAdmins.json
 data/tokenRequests.json
 data/mayak-settings.json
 public/prep-uploads/
+
+# local product context
+docs/local-product-context/*
+!docs/local-product-context/README.md
+!docs/local-product-context/mayak-patent-full.md
+!docs/local-product-context/mayak-master-guide-full.md
+
+# local extraction scratch space
+.npm-cache/
+.tmp-pdf-tools/
+tmp_pdf_tools/
+tmp_mascot_batch/
+tmp_mascot_compare/
+tmp_qwen_eval_cases.json
+tmp_qwen_eval_results.json
+tmp_qwen_eval_results_v2.json

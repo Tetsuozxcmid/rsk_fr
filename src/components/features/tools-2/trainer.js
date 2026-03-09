@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, memo, useCallback } from "react";
+﻿import { useState, useEffect, useRef, memo, useCallback } from "react";
 import Header from "@/components/layout/Header";
 import Buffer from "./addons/popup";
 import RankingTestPopup from "./addons/RankingTestPopup";
@@ -35,7 +35,45 @@ import Block from "@/components/features/public/Block";
 import { STATIC_MAYAK_DATA } from "../../../../data/mayakDataConst";
 
 const TRAINER_PREFIX = "trainer_v2"; // Уникальный префикс для этого тренажера
+
+const QWEN_EVALUATION_LIMIT = 20;
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
+const QWEN_ZONE_META = {
+    green: {
+        blockClass: "!bg-green-50 border border-green-200",
+    },
+    yellow: {
+        blockClass: "!bg-yellow-50 border border-yellow-200",
+    },
+    red: {
+        blockClass: "!bg-red-50 border border-red-300",
+    },
+    default: {
+        blockClass: "!bg-blue-50 border border-blue-200",
+    },
+};
+
+const getQwenZoneMeta = (zone) => QWEN_ZONE_META[zone] || QWEN_ZONE_META.default;
+const QWEN_MASCOT_POOLS = {
+    green: [{ animatedSrc: "/mascot-good-transparent-anim-smooth.webp" }, { animatedSrc: "/mascot-good-2-transparent-anim.webp" }, { animatedSrc: "/mascot-good-3-transparent-anim.webp" }],
+    yellow: [{ animatedSrc: "/mascot-neutral-1-transparent-anim.webp" }, { animatedSrc: "/mascot-neutral-2-transparent-anim.webp" }, { animatedSrc: "/mascot-neutral-3-transparent-anim.webp" }],
+    red: [{ animatedSrc: "/mascot-bad-transparent-anim.webp" }, { animatedSrc: "/mascot-bad-2-transparent-anim.webp" }, { animatedSrc: "/mascot-bad-3-transparent-anim.webp", hideAfterMs: 5980 }],
+};
+const getRandomQwenMascotAsset = (zone) => {
+    const pool = QWEN_MASCOT_POOLS[zone];
+    if (!Array.isArray(pool) || pool.length === 0) {
+        return null;
+    }
+
+    const selectedAsset = pool[Math.floor(Math.random() * pool.length)];
+    return selectedAsset ? { ...selectedAsset } : null;
+};
+const QWEN_UNAVAILABLE_MASCOT_ASSET = { animatedSrc: "/mascot-bad-3-transparent-anim.webp", hideAfterMs: 5980 };
+const formatFieldList = (labels) => (Array.isArray(labels) ? labels.filter(Boolean).join(", ") : "");
+const buildQwenTaskContext = ({ taskTextData }) => ({
+    description: taskTextData?.description || "",
+    task: taskTextData?.task || "",
+});
 
 const getRange = (taskNumber) => {
     const start = Math.floor((taskNumber - 1) / 100) * 100 + 1;
@@ -207,12 +245,15 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
         const start = parseInt(startStr, 10);
         const end = parseInt(endStr, 10);
         if (!isNaN(start)) {
-            const idx = tasks.findIndex(t => parseInt(t.number, 10) >= start);
+            const idx = tasks.findIndex((t) => parseInt(t.number, 10) >= start);
             if (idx !== -1) allowedMinIndex = idx;
         }
         if (!isNaN(end)) {
             for (let i = tasks.length - 1; i >= 0; i--) {
-                if (parseInt(tasks[i].number, 10) <= end) { allowedMaxIndex = i; break; }
+                if (parseInt(tasks[i].number, 10) <= end) {
+                    allowedMaxIndex = i;
+                    break;
+                }
             }
         }
     }
@@ -256,7 +297,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
 
                 if (taskVersion === "v2") {
                     const cacheBust = `?t=${Date.now()}`;
-                    const fetchOpts = { cache: 'no-store' };
+                    const fetchOpts = { cache: "no-store" };
                     if (tokenSectionId) {
                         // Загружаем ТОЛЬКО одну папку по sectionId вместо всего manifest
                         const indexRes = await fetch(`${basePath}/${tokenSectionId}/index.json${cacheBust}`, fetchOpts);
@@ -270,7 +311,7 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                         if (metaRes.ok) {
                             const meta = await metaRes.json();
                             rangeStart = meta.rangeStart || 1;
-                            rangeEnd = meta.rangeEnd || (rangeStart + data.length - 1);
+                            rangeEnd = meta.rangeEnd || rangeStart + data.length - 1;
                         }
 
                         const startPos = rangeStart - 1;
@@ -283,38 +324,35 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                         const textRes = await fetch(`${basePath}/${tokenSectionId}/TaskText.json${cacheBust}`, fetchOpts);
                         tasksTextsData = textRes.ok ? await textRes.json() : [];
                     } else {
-                    // Загружаем manifest со списком диапазонов
-                    const manifestRes = await fetch(`${basePath}/manifest.json${cacheBust}`, fetchOpts);
-                    if (!manifestRes.ok) throw new Error(`Не удалось загрузить manifest: ${manifestRes.status}`);
-                    const ranges = await manifestRes.json();
+                        // Загружаем manifest со списком диапазонов
+                        const manifestRes = await fetch(`${basePath}/manifest.json${cacheBust}`, fetchOpts);
+                        if (!manifestRes.ok) throw new Error(`Не удалось загрузить manifest: ${manifestRes.status}`);
+                        const ranges = await manifestRes.json();
 
-                    // Определяем максимальную позицию, чтобы создать массив правильного размера
-                    const maxEnd = Math.max(...ranges.map((r) => parseInt(r.split("-")[1], 10)));
+                        // Определяем максимальную позицию, чтобы создать массив правильного размера
+                        const maxEnd = Math.max(...ranges.map((r) => parseInt(r.split("-")[1], 10)));
 
-                    // Параллельно загружаем index.json из каждого диапазона
-                    const indexPromises = ranges.map((range) =>
-                        fetch(`${basePath}/${range}/index.json${cacheBust}`, fetchOpts)
-                            .then((r) => (r.ok ? r.json() : []))
-                            .then((data) => ({ range, data }))
-                    );
-                    const allIndexResults = await Promise.all(indexPromises);
+                        // Параллельно загружаем index.json из каждого диапазона
+                        const indexPromises = ranges.map((range) =>
+                            fetch(`${basePath}/${range}/index.json${cacheBust}`, fetchOpts)
+                                .then((r) => (r.ok ? r.json() : []))
+                                .then((data) => ({ range, data }))
+                        );
+                        const allIndexResults = await Promise.all(indexPromises);
 
-                    // Собираем массив с правильными позициями (заполняем пропуски пустышками)
-                    tasksData = new Array(maxEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "", services: "" }));
-                    for (const { range, data } of allIndexResults) {
-                        const startPos = parseInt(range.split("-")[0], 10) - 1; // "201-300" → индекс 200
-                        for (let i = 0; i < data.length; i++) {
-                            tasksData[startPos + i] = { ...data[i], _range: range };
+                        // Собираем массив с правильными позициями (заполняем пропуски пустышками)
+                        tasksData = new Array(maxEnd).fill(null).map(() => ({ file: "", instruction: "", toolLink1: "", toolName1: "", services: "" }));
+                        for (const { range, data } of allIndexResults) {
+                            const startPos = parseInt(range.split("-")[0], 10) - 1; // "201-300" → индекс 200
+                            for (let i = 0; i < data.length; i++) {
+                                tasksData[startPos + i] = { ...data[i], _range: range };
+                            }
                         }
-                    }
 
-                    // Параллельно загружаем TaskText.json из каждого диапазона
-                    const textPromises = ranges.map((range) =>
-                        fetch(`${basePath}/${range}/TaskText.json${cacheBust}`, fetchOpts)
-                            .then((r) => (r.ok ? r.json() : []))
-                    );
-                    const allTextArrays = await Promise.all(textPromises);
-                    tasksTextsData = allTextArrays.flat();
+                        // Параллельно загружаем TaskText.json из каждого диапазона
+                        const textPromises = ranges.map((range) => fetch(`${basePath}/${range}/TaskText.json${cacheBust}`, fetchOpts).then((r) => (r.ok ? r.json() : [])));
+                        const allTextArrays = await Promise.all(textPromises);
+                        tasksTextsData = allTextArrays.flat();
                     }
                 } else {
                     // Старая логика для не-v2 версий
@@ -797,36 +835,16 @@ const ThirdQuestionnairePopup = memo(function ThirdQuestionnairePopup({ onClose,
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <Button
-                        onClick={onOpenTesting}
-                        disabled={testingDone}
-                        className={testingDone
-                            ? "!bg-green-100 !text-green-600 !cursor-default flex-1"
-                            : "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1"
-                        }
-                    >
+                    <Button onClick={onOpenTesting} disabled={testingDone} className={testingDone ? "!bg-green-100 !text-green-600 !cursor-default flex-1" : "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1"}>
                         {testingDone ? "Тестирование пройдено" : "Пройти тестирование"}
                     </Button>
                     <Button
                         onClick={onOpenSurvey}
                         disabled={!testingDone || surveyDone}
-                        className={surveyDone
-                            ? "!bg-green-100 !text-green-600 !cursor-default flex-1"
-                            : testingDone
-                                ? "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1"
-                                : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"
-                        }
-                    >
+                        className={surveyDone ? "!bg-green-100 !text-green-600 !cursor-default flex-1" : testingDone ? "!bg-blue-500 !text-white hover:!bg-blue-600 flex-1" : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"}>
                         {surveyDone ? "Анкета заполнена" : "Анкета обратной связи"}
                     </Button>
-                    <Button
-                        onClick={onGetCertificate}
-                        disabled={!surveyDone || certificateLoading}
-                        className={surveyDone
-                            ? "!bg-[#0088cc] !text-white hover:!bg-[#006daa] flex-1"
-                            : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"
-                        }
-                    >
+                    <Button onClick={onGetCertificate} disabled={!surveyDone || certificateLoading} className={surveyDone ? "!bg-[#0088cc] !text-white hover:!bg-[#006daa] flex-1" : "!bg-gray-200 !text-gray-400 !cursor-not-allowed flex-1"}>
                         {certificateLoading ? "Подготовка..." : "Получить сертификат"}
                     </Button>
                 </div>
@@ -953,22 +971,30 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
                 <div className="bg-gray-50 p-4 rounded-lg space-y-3">
                     {taskData.title && (
                         <div>
-                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Название задания:</p>
+                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>
+                                Название задания:
+                            </p>
                             <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.title}</p>
                         </div>
                     )}
                     {taskData.contentType && (
                         <div>
-                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Тип контента:</p>
+                            <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>
+                                Тип контента:
+                            </p>
                             <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.contentType}</p>
                         </div>
                     )}
                     <div>
-                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Описание ситуации:</p>
+                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>
+                            Описание ситуации:
+                        </p>
                         <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.description}</p>
                     </div>
                     <div>
-                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>Вашей задачей было:</p>
+                        <p className="text-gray-800 text-lg mb-1" style={{ fontWeight: 900 }}>
+                            Вашей задачей было:
+                        </p>
                         <p className="whitespace-pre-line text-gray-700 text-sm">{taskData.task}</p>
                     </div>
                 </div>
@@ -977,11 +1003,7 @@ const TaskCompletionPopup = memo(function TaskCompletionPopup({ taskData, onClos
                     <Button onClick={handleCopyClick} className="!bg-gray-100 !text-gray-800 hover:!bg-gray-200">
                         Скопировать задание
                     </Button>
-                    {isCopied && (
-                        <span className="absolute -top-8 right-0 bg-black text-white text-xs px-3 py-1.5 rounded-lg shadow-lg animate-fade-in">
-                            Скопировано!
-                        </span>
-                    )}
+                    {isCopied && <span className="absolute -top-8 right-0 bg-black text-white text-xs px-3 py-1.5 rounded-lg shadow-lg animate-fade-in">Скопировано!</span>}
                 </div>
             </div>
         </div>
@@ -1005,19 +1027,8 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
                     <>
                         <div className="flex-1 min-w-0 flex flex-col">
                             <div className="input-wrapper w-full">
-                                <TextareaAutosize
-                                    minRows={1}
-                                    className="w-full resize-none bg-transparent outline-none text-black"
-                                    placeholder={placeholder}
-                                    value={value}
-                                    onChange={handleChange}
-                                    disabled={disabled}
-                                />
-                                {value && (
-                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
-                                        {label}
-                                    </p>
-                                )}
+                                <TextareaAutosize minRows={1} className="w-full resize-none bg-transparent outline-none text-black" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
+                                {value && <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">{label}</p>}
                             </div>
                         </div>
                         <div className="flex flex-shrink-0 items-center gap-2">
@@ -1029,9 +1040,7 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
                                     <Plusicon />
                                 </Button>
                                 {savedField === code && (
-                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">
-                                        Сохранено
-                                    </span>
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded shadow-lg whitespace-nowrap z-10 transition-opacity duration-300">Сохранено</span>
                                 )}
                             </div>
                             <Button icon type="button" onClick={handleRandom} disabled={disabled} title="Случайный вариант">
@@ -1043,19 +1052,8 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
                     <>
                         <div className="flex-1 min-w-0 flex flex-col">
                             <div className="input-wrapper w-full">
-                                <TextareaAutosize
-                                    minRows={1}
-                                    className="w-full resize-none bg-transparent outline-none text-black"
-                                    placeholder={placeholder}
-                                    value={value}
-                                    onChange={handleChange}
-                                    disabled={disabled}
-                                />
-                                {value && (
-                                    <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">
-                                        {label}
-                                    </p>
-                                )}
+                                <TextareaAutosize minRows={1} className="w-full resize-none bg-transparent outline-none text-black" placeholder={placeholder} value={value} onChange={handleChange} disabled={disabled} />
+                                {value && <p className="text-xs text-gray-400 pb-2 pl-[0.875rem] opacity-70">{label}</p>}
                             </div>
                         </div>
                         <Button icon className="!flex lg:!hidden lg:group-hover:!flex" onClick={handleShowBuffer} type="button" disabled={disabled} title="Сохраненные варианты">
@@ -1082,12 +1080,12 @@ const MayakField = memo(function MayakField({ field, value, isMobile, disabled, 
 });
 
 const ROLE_DESCRIPTIONS = {
-    "ЛЕТОПИСЕЦ": "Превращает рабочий процесс в историю. Фиксирует не только факты, но и эмоции команды. Делает фото и видео ярких моментов, создает итоговый ролик о пути команды.",
-    "ИНСПЕКТОР": "Страж качества и правил. Следит за объективностью оценки, анализирует работу соседних команд и предоставляет им аргументированную обратную связь.",
-    "МЕДИАТОР": "Хранитель гармонии и атмосферы безопасности. Отвечает за то, чтобы голос каждого участника был услышан. Проводит сессии рефлексии и вовлекает «тихих» участников в обсуждение.",
+    ЛЕТОПИСЕЦ: "Превращает рабочий процесс в историю. Фиксирует не только факты, но и эмоции команды. Делает фото и видео ярких моментов, создает итоговый ролик о пути команды.",
+    ИНСПЕКТОР: "Страж качества и правил. Следит за объективностью оценки, анализирует работу соседних команд и предоставляет им аргументированную обратную связь.",
+    МЕДИАТОР: "Хранитель гармонии и атмосферы безопасности. Отвечает за то, чтобы голос каждого участника был услышан. Проводит сессии рефлексии и вовлекает «тихих» участников в обсуждение.",
     "ХРАНИТЕЛЬ МАЯКА": "Ответственный за темп, энергию и боевой дух. Проводит специальные ритуалы для поднятия командного духа и следит, чтобы «огонь» в команде не гас в трудные моменты.",
-    "ИНЖЕНЕР": "Мастер технологий. Устраняет технический хаос, помогает участникам с настройкой ноутбуков и цифровых инструментов, обеспечивая стабильную работу всей команды.",
-    "КАПИТАН": "Стратег и лидер. Ведет команду к цели через продуктивные дебаты, гарантирует внутреннюю дисциплину и проверяет выполнение ролевых задач каждым участником.",
+    ИНЖЕНЕР: "Мастер технологий. Устраняет технический хаос, помогает участникам с настройкой ноутбуков и цифровых инструментов, обеспечивая стабильную работу всей команды.",
+    КАПИТАН: "Стратег и лидер. Ведет команду к цели через продуктивные дебаты, гарантирует внутреннюю дисциплину и проверяет выполнение ролевых задач каждым участником.",
 };
 
 const TrainerControls = memo(function TrainerControls({
@@ -1139,7 +1137,26 @@ const TrainerControls = memo(function TrainerControls({
                     {selectedRole && (
                         <div style={{ position: "relative" }} className="role-tooltip-wrap">
                             <div className="text-sm font-bold text-blue-600 p-2 bg-blue-100 rounded-lg whitespace-nowrap cursor-default">{selectedRole}</div>
-                            <div className="role-tooltip" style={{ position: "absolute", left: 0, top: "100%", marginTop: "8px", width: "380px", padding: "12px", borderRadius: "12px", border: "1px solid #e5e7eb", background: "#fff", color: "#111", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", opacity: 0, visibility: "hidden", transition: "opacity 0.2s, visibility 0.2s", zIndex: 50, pointerEvents: "none" }}>
+                            <div
+                                className="role-tooltip"
+                                style={{
+                                    position: "absolute",
+                                    left: 0,
+                                    top: "100%",
+                                    marginTop: "8px",
+                                    width: "380px",
+                                    padding: "12px",
+                                    borderRadius: "12px",
+                                    border: "1px solid #e5e7eb",
+                                    background: "#fff",
+                                    color: "#111",
+                                    boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                                    opacity: 0,
+                                    visibility: "hidden",
+                                    transition: "opacity 0.2s, visibility 0.2s",
+                                    zIndex: 50,
+                                    pointerEvents: "none",
+                                }}>
                                 <p style={{ fontSize: "12px", color: "#666", lineHeight: "1.5" }}>{ROLE_DESCRIPTIONS[selectedRole] || ""}</p>
                             </div>
                             <style>{`.role-tooltip-wrap:hover .role-tooltip { opacity: 1 !important; visibility: visible !important; }`}</style>
@@ -1159,10 +1176,7 @@ const TrainerControls = memo(function TrainerControls({
             </div>
             {taskVersion !== "v2" && (
                 <div className="flex gap-[0.5rem]">
-                    <Switcher
-                        value={who}
-                        onChange={onWhoChange}
-                        className="!w-full">
+                    <Switcher value={who} onChange={onWhoChange} className="!w-full">
                         <Switcher.Option value="im">Я</Switcher.Option>
                         <Switcher.Option value="we">Мы</Switcher.Option>
                     </Switcher>
@@ -1172,7 +1186,7 @@ const TrainerControls = memo(function TrainerControls({
             <div className="flex flex-col gap-[0.75rem]">
                 <div className="flex flex-col gap-[0.75rem]">
                     <div className="flex items-center gap-[0.5rem]">
-                        <span className="text-sm text-gray-500">Задание №{tasks.length > 0 && tasks[currentTaskIndex] ? (tasks[currentTaskIndex].number || currentTaskIndex + 1) : 0}</span>
+                        <span className="text-sm text-gray-500">Задание №{tasks.length > 0 && tasks[currentTaskIndex] ? tasks[currentTaskIndex].number || currentTaskIndex + 1 : 0}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex <= allowedMinIndex || isTaskRunning}>
@@ -1187,9 +1201,7 @@ const TrainerControls = memo(function TrainerControls({
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
                     {(isCurrentTaskAllowed || isTaskRunning) && (
                         <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
-                            {isTaskRunning
-                                ? (isIntroTask(currentTaskIndex) ? "Завершить" : `Завершить (${formatTaskTime(taskElapsedTime)})`)
-                                : "Начать задание"}
+                            {isTaskRunning ? (isIntroTask(currentTaskIndex) ? "Завершить" : `Завершить (${formatTaskTime(taskElapsedTime)})`) : "Начать задание"}
                         </Button>
                     )}
                     {instructionFileUrl && (
@@ -1248,71 +1260,88 @@ const TrainerControls = memo(function TrainerControls({
                             </Button>
                         </span>
                     )}
-                    {currentTask?.services && (() => {
-                        const items = currentTask.services.split(',').map(s => s.trim()).filter(Boolean);
-                        const serviceLinks = mayakData?.defaultLinks?.services || [];
-                        const parsed = items.map(item => {
-                            const parts = item.split('|');
-                            const name = parts.length > 1 ? parts[0].trim() : item;
-                            const url = parts.length > 1 ? parts[1].trim() : item;
-                            if (!/^https?:\/\//.test(url)) return null;
-                            const displayName = parts.length > 1 ? name : new URL(url).hostname.replace('www.', '');
-                            const linked = serviceLinks.find(s => s.url === url || s.name.toLowerCase() === displayName.toLowerCase());
-                            return { name: displayName, url, instructionImage: linked?.instructionImage || "" };
-                        }).filter(Boolean);
-                        if (parsed.length === 0) return null;
-                        return (
-                            <div className="w-full flex flex-col gap-2 mt-1">
-                                {parsed.map((svc, idx) => (
-                                    <div key={idx} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                                        <span className="font-semibold text-sm text-gray-900">{svc.name}</span>
-                                        <div className="flex gap-2 flex-shrink-0">
-                                            <Button inverted className={`!px-3 !py-1.5 !text-xs ${!isTaskRunning ? "!opacity-50 !cursor-not-allowed" : ""}`} disabled={!isTaskRunning} onClick={() => window.open(svc.url, "_blank")}>
-                                                Регистрация
-                                            </Button>
-                                            {svc.instructionImage && (
-                                                <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => onShowInstruction({ name: svc.name, image: svc.instructionImage })}>
-                                                    Инструкция
+                    {currentTask?.services &&
+                        (() => {
+                            const items = currentTask.services
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean);
+                            const serviceLinks = mayakData?.defaultLinks?.services || [];
+                            const parsed = items
+                                .map((item) => {
+                                    const parts = item.split("|");
+                                    const name = parts.length > 1 ? parts[0].trim() : item;
+                                    const url = parts.length > 1 ? parts[1].trim() : item;
+                                    if (!/^https?:\/\//.test(url)) return null;
+                                    const displayName = parts.length > 1 ? name : new URL(url).hostname.replace("www.", "");
+                                    const linked = serviceLinks.find((s) => s.url === url || s.name.toLowerCase() === displayName.toLowerCase());
+                                    return { name: displayName, url, instructionImage: linked?.instructionImage || "" };
+                                })
+                                .filter(Boolean);
+                            if (parsed.length === 0) return null;
+                            return (
+                                <div className="w-full flex flex-col gap-2 mt-1">
+                                    {parsed.map((svc, idx) => (
+                                        <div key={idx} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                                            <span className="font-semibold text-sm text-gray-900">{svc.name}</span>
+                                            <div className="flex gap-2 flex-shrink-0">
+                                                <Button inverted className={`!px-3 !py-1.5 !text-xs ${!isTaskRunning ? "!opacity-50 !cursor-not-allowed" : ""}`} disabled={!isTaskRunning} onClick={() => window.open(svc.url, "_blank")}>
+                                                    Регистрация
                                                 </Button>
-                                            )}
+                                                {svc.instructionImage && (
+                                                    <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => onShowInstruction({ name: svc.name, image: svc.instructionImage })}>
+                                                        Инструкция
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        );
-                    })()}
+                                    ))}
+                                </div>
+                            );
+                        })()}
                     {sourceUrl && (
-                    <span title={!isTaskRunning ? "Сначала начните задание" : "Источник / Доп. материал"}>
-                        <Button
-                            icon // Оставляем стиль иконки
-                            as="a" // Для семантики
-                            href={sourceUrl} // Чтобы при наведении виден был путь
-                            target="_blank"
-                            disabled={!isTaskRunning}
-                            className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
-                            onClick={(e) => {
-                                // 1. Всегда предотвращаем стандартное поведение, так как Button может вести себя непредсказуемо
-                                e.preventDefault();
-                                
-                                // 2. Если таймер запущен - открываем ссылку/файл принудительно
-                                if (isTaskRunning) {
-                                    window.open(sourceUrl, "_blank");
-                                }
-                            }}
-                        >
-                            <div className="w-full h-full flex items-center justify-center">
-                                <InfoIcon className="w-4 h-4 relative translate-x-[0.25px] -translate-y-[0.25px]" />
-                            </div>
-                        </Button>
-                    </span>
-                )}
-                    {(currentTaskIndex === 0 || currentTaskIndex === 200|| currentTaskIndex === 6000|| currentTaskIndex === 3000|| currentTaskIndex === 700|| currentTaskIndex === 300|| currentTaskIndex === 500|| currentTaskIndex === 600|| currentTaskIndex === 900|| currentTaskIndex === 800|| currentTaskIndex === 6100|| currentTaskIndex === 8000) && who === "im" && (
-                        <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
-                            <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
-                                Выбрать роль
+                        <span title={!isTaskRunning ? "Сначала начните задание" : "Источник / Доп. материал"}>
+                            <Button
+                                icon // Оставляем стиль иконки
+                                as="a" // Для семантики
+                                href={sourceUrl} // Чтобы при наведении виден был путь
+                                target="_blank"
+                                disabled={!isTaskRunning}
+                                className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
+                                onClick={(e) => {
+                                    // 1. Всегда предотвращаем стандартное поведение, так как Button может вести себя непредсказуемо
+                                    e.preventDefault();
+
+                                    // 2. Если таймер запущен - открываем ссылку/файл принудительно
+                                    if (isTaskRunning) {
+                                        window.open(sourceUrl, "_blank");
+                                    }
+                                }}>
+                                <div className="w-full h-full flex items-center justify-center">
+                                    <InfoIcon className="w-4 h-4 relative translate-x-[0.25px] -translate-y-[0.25px]" />
+                                </div>
                             </Button>
                         </span>
                     )}
+                    {(currentTaskIndex === 0 ||
+                        currentTaskIndex === 200 ||
+                        currentTaskIndex === 6000 ||
+                        currentTaskIndex === 3000 ||
+                        currentTaskIndex === 700 ||
+                        currentTaskIndex === 300 ||
+                        currentTaskIndex === 500 ||
+                        currentTaskIndex === 600 ||
+                        currentTaskIndex === 900 ||
+                        currentTaskIndex === 800 ||
+                        currentTaskIndex === 6100 ||
+                        currentTaskIndex === 8000) &&
+                        who === "im" && (
+                            <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
+                                <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
+                                    Выбрать роль
+                                </Button>
+                            </span>
+                        )}
                 </div>
             </div>
         </div>
@@ -1341,13 +1370,6 @@ export default function TrainerPage({ goTo }) {
     });
     const [showRolePopup, setShowRolePopup] = useState(false);
     const [taskVersion, setTaskVersion] = useState(localStorage.getItem(getStorageKey("taskVersion")) || "v2");
-
-    // Инициализация времени начала сессии при первом входе на страницу
-    useEffect(() => {
-        if (!localStorage.getItem(getStorageKey("sessionStartTime"))) {
-            localStorage.setItem(getStorageKey("sessionStartTime"), Date.now().toString());
-        }
-    }, []);
 
     useEffect(() => {
         localStorage.setItem(getStorageKey("taskVersion"), taskVersion);
@@ -1396,7 +1418,9 @@ export default function TrainerPage({ goTo }) {
             setRankingForceRetake(true);
             setShowRankingTestPopup(true);
         };
-        return () => { delete window.__openRankingTestPopup; };
+        return () => {
+            delete window.__openRankingTestPopup;
+        };
     }, []);
 
     const [completedTasks, setCompletedTasks] = useState({});
@@ -1415,7 +1439,27 @@ export default function TrainerPage({ goTo }) {
     const [openSubAccordionKey, setOpenSubAccordionKey] = useState(null);
     const [instructionModal, setInstructionModal] = useState(null);
 
-    const { tasks, currentTask, currentTaskIndex, isLoading, error, setError, timerState, startTimer, stopTimer, goToTask, nextTask, prevTask, instructionFileUrl, taskFileUrl, sourceUrl, tasksTexts, isCurrentTaskAllowed, allowedMinIndex, allowedMaxIndex } = useTaskManager({
+    const {
+        tasks,
+        currentTask,
+        currentTaskIndex,
+        isLoading,
+        error,
+        setError,
+        timerState,
+        startTimer,
+        stopTimer,
+        goToTask,
+        nextTask,
+        prevTask,
+        instructionFileUrl,
+        taskFileUrl,
+        sourceUrl,
+        tasksTexts,
+        isCurrentTaskAllowed,
+        allowedMinIndex,
+        allowedMaxIndex,
+    } = useTaskManager({
         userType,
         who,
         taskVersion,
@@ -1440,10 +1484,10 @@ export default function TrainerPage({ goTo }) {
             taskText: taskTextData?.task || "",
             time: "00:00",
             mayak: { m: "", a: "", y: "", k: "", o1: "", k2: "", o2: "" },
-            finalPrompt: "(вводное задание)"
+            finalPrompt: "(вводное задание)",
         };
         const currentLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
-        const filteredLog = currentLog.filter(item => item.number && String(item.number) !== String(logEntry.number));
+        const filteredLog = currentLog.filter((item) => item.number && String(item.number) !== String(logEntry.number));
         localStorage.setItem(getStorageKey("session_tasks_log"), JSON.stringify([...filteredLog, logEntry]));
 
         // Сохраняем на сервер
@@ -1507,11 +1551,169 @@ export default function TrainerPage({ goTo }) {
         o2: "",
     });
     const [prompt, setPrompt] = useState("");
+    const [qwenResponse, setQwenResponse] = useState("");
+    const [qwenLoading, setQwenLoading] = useState(false);
+    const [qwenZone, setQwenZone] = useState(null);
+    const [qwenStrongFields, setQwenStrongFields] = useState([]);
+    const [qwenWeakFields, setQwenWeakFields] = useState([]);
+    const [qwenChecksRemaining, setQwenChecksRemaining] = useState(QWEN_EVALUATION_LIMIT);
+    const [showMascotVideo, setShowMascotVideo] = useState(false);
+    const [activeQwenMascotAsset, setActiveQwenMascotAsset] = useState(null);
+    const [isPromptCopyAwaitingEvaluation, setIsPromptCopyAwaitingEvaluation] = useState(false);
+
+    const [mascotPlaybackKey, setMascotPlaybackKey] = useState(0);
+    const mascotHideTimeoutRef = useRef(null);
+
     const [isCopied, setIsCopied] = useState(false);
     const [buffer, setBuffer] = useState({});
     const [history, setHistory] = useState([]);
     const [showBuffer, setShowBuffer] = useState(false);
     const [currentField, setCurrentField] = useState(null);
+
+    const syncQwenEvaluationQuota = useCallback((sessionIdArg = null) => {
+        try {
+            const sessionId = sessionIdArg || localStorage.getItem(getStorageKey("sessionStartTime"));
+            if (!sessionId) {
+                setQwenChecksRemaining(QWEN_EVALUATION_LIMIT);
+                return QWEN_EVALUATION_LIMIT;
+            }
+
+            const rawQuota = localStorage.getItem(getStorageKey("qwenEvaluationQuota"));
+            if (rawQuota) {
+                const parsedQuota = JSON.parse(rawQuota);
+                const parsedRemaining = Number.parseInt(parsedQuota?.remaining, 10);
+                if (parsedQuota?.sessionId === sessionId && !Number.isNaN(parsedRemaining)) {
+                    const safeRemaining = Math.max(0, Math.min(QWEN_EVALUATION_LIMIT, parsedRemaining));
+                    setQwenChecksRemaining(safeRemaining);
+                    return safeRemaining;
+                }
+            }
+
+            const nextQuota = {
+                sessionId,
+                remaining: QWEN_EVALUATION_LIMIT,
+            };
+            localStorage.setItem(getStorageKey("qwenEvaluationQuota"), JSON.stringify(nextQuota));
+            setQwenChecksRemaining(QWEN_EVALUATION_LIMIT);
+            return QWEN_EVALUATION_LIMIT;
+        } catch (error) {
+            console.error("Ошибка синхронизации лимита Qwen:", error);
+            setQwenChecksRemaining(QWEN_EVALUATION_LIMIT);
+            return QWEN_EVALUATION_LIMIT;
+        }
+    }, []);
+
+    const consumeQwenEvaluationQuota = useCallback(() => {
+        const sessionId = localStorage.getItem(getStorageKey("sessionStartTime"));
+        if (!sessionId) {
+            return syncQwenEvaluationQuota();
+        }
+
+        const currentRemaining = syncQwenEvaluationQuota(sessionId);
+        const nextRemaining = Math.max(0, currentRemaining - 1);
+        localStorage.setItem(
+            getStorageKey("qwenEvaluationQuota"),
+            JSON.stringify({
+                sessionId,
+                remaining: nextRemaining,
+            })
+        );
+        setQwenChecksRemaining(nextRemaining);
+        return nextRemaining;
+    }, [syncQwenEvaluationQuota]);
+
+    // Инициализация времени начала сессии при первом входе на страницу
+    useEffect(() => {
+        const existingSessionStartTime = localStorage.getItem(getStorageKey("sessionStartTime"));
+        if (existingSessionStartTime) {
+            syncQwenEvaluationQuota(existingSessionStartTime);
+            return;
+        }
+
+        const nextSessionStartTime = Date.now().toString();
+        localStorage.setItem(getStorageKey("sessionStartTime"), nextSessionStartTime);
+        syncQwenEvaluationQuota(nextSessionStartTime);
+    }, [syncQwenEvaluationQuota]);
+
+    const resetQwenFeedback = useCallback(() => {
+        if (mascotHideTimeoutRef.current) {
+            clearTimeout(mascotHideTimeoutRef.current);
+            mascotHideTimeoutRef.current = null;
+        }
+        setQwenResponse("");
+        setQwenZone(null);
+        setQwenStrongFields([]);
+        setQwenWeakFields([]);
+        setShowMascotVideo(false);
+        setActiveQwenMascotAsset(null);
+    }, []);
+
+    const playMascotAnimation = useCallback((zone, overrideAsset = null) => {
+        if (mascotHideTimeoutRef.current) {
+            clearTimeout(mascotHideTimeoutRef.current);
+            mascotHideTimeoutRef.current = null;
+        }
+
+        const nextMascotAsset = overrideAsset ? { ...overrideAsset } : getRandomQwenMascotAsset(zone);
+        setActiveQwenMascotAsset(nextMascotAsset);
+        setShowMascotVideo(Boolean(nextMascotAsset));
+        if (nextMascotAsset) {
+            setMascotPlaybackKey((prev) => prev + 1);
+            if (typeof nextMascotAsset.hideAfterMs === "number" && nextMascotAsset.hideAfterMs > 0) {
+                mascotHideTimeoutRef.current = setTimeout(() => {
+                    setShowMascotVideo(false);
+                    setActiveQwenMascotAsset(null);
+                    mascotHideTimeoutRef.current = null;
+                }, nextMascotAsset.hideAfterMs);
+            }
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (mascotHideTimeoutRef.current) {
+                clearTimeout(mascotHideTimeoutRef.current);
+                mascotHideTimeoutRef.current = null;
+            }
+        };
+    }, []);
+
+    const savePromptToHistory = useCallback(
+        (promptValue) => {
+            const entry = { date: new Date().toISOString(), type, prompt: promptValue };
+            const newHist = [entry, ...JSON.parse(localStorage.getItem(getStorageKey("history")) || "[]")].slice(0, 50);
+            localStorage.setItem(getStorageKey("history"), JSON.stringify(newHist));
+            setHistory(newHist);
+        },
+        [type]
+    );
+
+    const buildPromptDraft = useCallback(() => {
+        const values = fields;
+        if (Object.values(values).some((v) => !v.trim())) {
+            setQwenLoading(false);
+            resetQwenFeedback();
+            setPrompt('Пожалуйста, заполните все поля (или используйте "кубики").');
+            return null;
+        }
+
+        const draftPrompt = `Представь, что ты ${values.y}. Твоя миссия — ${values.m.toLowerCase()}. Ты создаешь контент для следующей аудитории: ${values.a.toLowerCase()}. При работе ты должен учитывать такие ограничения: ${values.o1.toLowerCase()}. Готовый результат должен соответствовать следующим критериям: ${values.k.toLowerCase()}. Этот материал будет использоваться в следующем контексте: ${values.k2.toLowerCase()}. Финальное оформление должно быть таким: ${values.o2.toLowerCase()}.`;
+        const finalPrompt = cleanupPrompt(draftPrompt);
+        const taskNumber = currentTask?.number?.toString();
+        const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+        const taskContext = buildQwenTaskContext({
+            taskTextData,
+        });
+
+        setPrompt(finalPrompt);
+        savePromptToHistory(finalPrompt);
+
+        return {
+            values,
+            finalPrompt,
+            taskContext,
+        };
+    }, [currentTask?.number, fields, resetQwenFeedback, savePromptToHistory, tasksTexts]);
 
     useEffect(() => {
         const buf = getCookie(getStorageKey("buffer"));
@@ -1523,6 +1725,8 @@ export default function TrainerPage({ goTo }) {
             }
         }
     }, []);
+
+    useEffect(() => {}, []);
 
     useEffect(() => {
         // Проверяем, есть ли наш одноразовый флаг
@@ -1634,14 +1838,14 @@ export default function TrainerPage({ goTo }) {
                     k: fields.k,
                     o1: fields.o1,
                     k2: fields.k2,
-                    o2: fields.o2
+                    o2: fields.o2,
                 },
-                finalPrompt: prompt
+                finalPrompt: prompt,
             };
 
             const currentLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
             // Убираем дубликаты и пустые записи
-            const filteredLog = currentLog.filter(item => item.number && String(item.number) !== String(logEntry.number));
+            const filteredLog = currentLog.filter((item) => item.number && String(item.number) !== String(logEntry.number));
             localStorage.setItem(getStorageKey("session_tasks_log"), JSON.stringify([...filteredLog, logEntry]));
 
             // Этот try/catch для сохранения результата остается, он важен
@@ -1704,6 +1908,7 @@ export default function TrainerPage({ goTo }) {
         localStorage.removeItem(getStorageKey("sessionStartTime"));
         localStorage.removeItem(getStorageKey("session_tasks_log"));
         localStorage.removeItem(getStorageKey("completedTasks"));
+        localStorage.removeItem(getStorageKey("qwenEvaluationQuota"));
         localStorage.removeItem(getStorageKey("hasCompletedSecondQuestionnaire"));
         localStorage.removeItem(getStorageKey("taskVersion"));
         localStorage.removeItem("trainer_v2_rankingTestResults");
@@ -1716,6 +1921,11 @@ export default function TrainerPage({ goTo }) {
         setHasCompletedSecondQuestionnaire(false);
         setFields({ m: "", a: "", y: "", k: "", o1: "", k2: "", o2: "" });
         setPrompt("");
+        setQwenResponse("");
+        setQwenZone(null);
+        setQwenStrongFields([]);
+        setQwenWeakFields([]);
+        setQwenChecksRemaining(QWEN_EVALUATION_LIMIT);
         setCompletionTestingDone(false);
         setCompletionSurveyDone(false);
 
@@ -1737,6 +1947,10 @@ export default function TrainerPage({ goTo }) {
             o2: "",
         });
         setPrompt("");
+        setQwenResponse("");
+        setQwenZone(null);
+        setQwenStrongFields([]);
+        setQwenWeakFields([]);
     };
 
     const handleDownloadLogs = async () => {
@@ -1749,7 +1963,7 @@ export default function TrainerPage({ goTo }) {
             const currentRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults") || "{}");
             const prevRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults_previous") || "{}");
 
-            const rankingData = [1, 2, 3, 4, 5].map(lvl => {
+            const rankingData = [1, 2, 3, 4, 5].map((lvl) => {
                 const curData = currentRanking[`level${lvl}`];
                 const prevData = prevRanking[`level${lvl}`];
                 const cur = curData?.delta;
@@ -1762,9 +1976,14 @@ export default function TrainerPage({ goTo }) {
                 if (cur !== undefined && prev !== undefined) {
                     const diff = prev - cur;
                     progress = `${Math.abs(diff)}`;
-                    if (diff > 0) { color = "#28a745"; }
-                    else if (diff < 0) { color = "#dc3545"; }
-                    else { progress = "0"; color = "#6c757d"; }
+                    if (diff > 0) {
+                        color = "#28a745";
+                    } else if (diff < 0) {
+                        color = "#dc3545";
+                    } else {
+                        progress = "0";
+                        color = "#6c757d";
+                    }
                 }
 
                 return { in: prev ?? null, out: cur ?? null, inTime: prevTime, outTime: curTime, progress, color };
@@ -1772,7 +1991,7 @@ export default function TrainerPage({ goTo }) {
 
             // 2. Собираем данные по заданиям (фильтруем только реально выполненные)
             const rawLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
-            const completedTasksData = rawLog.filter(t => t.finalPrompt && t.finalPrompt !== "");
+            const completedTasksData = rawLog.filter((t) => t.finalPrompt && t.finalPrompt !== "");
 
             // 2.5. Подгружаем средние времена по разделу
             let avgTimes = {};
@@ -1788,7 +2007,7 @@ export default function TrainerPage({ goTo }) {
             }
 
             // Обогащаем данные средним временем
-            const enrichedTasks = completedTasksData.map(task => ({
+            const enrichedTasks = completedTasksData.map((task) => ({
                 ...task,
                 avgTime: avgTimes[String(task.number)] || null,
             }));
@@ -1797,21 +2016,12 @@ export default function TrainerPage({ goTo }) {
             const startTime = parseInt(localStorage.getItem(getStorageKey("sessionStartTime")) || Date.now().toString());
             const totalSessionSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-            const blobLogs = await pdf(
-                <SessionLogs
-                    userName={userName}
-                    userRole={selectedRole}
-                    date={dateStr}
-                    totalTime={formatTaskTime(totalSessionSeconds)}
-                    rankingData={rankingData}
-                    tasks={enrichedTasks}
-                />
-            ).toBlob();
+            const blobLogs = await pdf(<SessionLogs userName={userName} userRole={selectedRole} date={dateStr} totalTime={formatTaskTime(totalSessionSeconds)} rankingData={rankingData} tasks={enrichedTasks} />).toBlob();
 
             const urlLogs = URL.createObjectURL(blobLogs);
-            const linkLogs = document.createElement('a');
+            const linkLogs = document.createElement("a");
             linkLogs.href = urlLogs;
-            linkLogs.download = `Log_Mayak_${userName.replace(/\s+/g, '_')}_${dateStr}.pdf`;
+            linkLogs.download = `Log_Mayak_${userName.replace(/\s+/g, "_")}_${dateStr}.pdf`;
             document.body.appendChild(linkLogs);
             linkLogs.click();
             document.body.removeChild(linkLogs);
@@ -1838,13 +2048,13 @@ export default function TrainerPage({ goTo }) {
 
             // Скачивание файла
             const urlCert = URL.createObjectURL(blobCert);
-            const linkCert = document.createElement('a');
+            const linkCert = document.createElement("a");
             linkCert.href = urlCert;
-            linkCert.download = `Certificate_Mayak_${userName.replace(/\s+/g, '_')}.pdf`;
+            linkCert.download = `Certificate_Mayak_${userName.replace(/\s+/g, "_")}.pdf`;
             document.body.appendChild(linkCert);
             linkCert.click();
             document.body.removeChild(linkCert);
-            
+
             URL.revokeObjectURL(urlCert);
         } catch (error) {
             console.error("Ошибка при генерации сертификата:", error);
@@ -1869,45 +2079,39 @@ export default function TrainerPage({ goTo }) {
             // Собираем данные для лога (аналогично handleDownloadLogs)
             const currentRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults") || "{}");
             const prevRanking = JSON.parse(localStorage.getItem("trainer_v2_rankingTestResults_previous") || "{}");
-            const rankingData = [1, 2, 3, 4, 5].map(lvl => {
+            const rankingData = [1, 2, 3, 4, 5].map((lvl) => {
                 const curData = currentRanking[`level${lvl}`];
                 const prevData = prevRanking[`level${lvl}`];
                 return { in: prevData?.delta ?? null, out: curData?.delta ?? null, inTime: prevData?.time || 0, outTime: curData?.time || 0 };
             });
 
             const rawLog = JSON.parse(localStorage.getItem(getStorageKey("session_tasks_log")) || "[]");
-            const completedTasksData = rawLog.filter(t => t.finalPrompt && t.finalPrompt !== "");
+            const completedTasksData = rawLog.filter((t) => t.finalPrompt && t.finalPrompt !== "");
 
             let avgTimes = {};
             if (tokenSectionId) {
                 try {
                     const avgRes = await fetch(`/api/mayak/avg-times?sectionId=${tokenSectionId}`);
                     if (avgRes.ok) avgTimes = await avgRes.json();
-                } catch (e) { console.warn("Failed to fetch avg times:", e); }
+                } catch (e) {
+                    console.warn("Failed to fetch avg times:", e);
+                }
             }
 
-            const enrichedTasks = completedTasksData.map(task => ({ ...task, avgTime: avgTimes[String(task.number)] || null }));
+            const enrichedTasks = completedTasksData.map((task) => ({ ...task, avgTime: avgTimes[String(task.number)] || null }));
             const startTime = parseInt(localStorage.getItem(getStorageKey("sessionStartTime")) || Date.now().toString());
             const totalSessionSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-            const logBlob = await pdf(
-                <SessionLogs
-                    userName={userName}
-                    userRole={selectedRole}
-                    date={dateStr}
-                    totalTime={formatTaskTime(totalSessionSeconds)}
-                    rankingData={rankingData}
-                    tasks={enrichedTasks}
-                />
-            ).toBlob();
+            const logBlob = await pdf(<SessionLogs userName={userName} userRole={selectedRole} date={dateStr} totalTime={formatTaskTime(totalSessionSeconds)} rankingData={rankingData} tasks={enrichedTasks} />).toBlob();
 
             // Конвертируем blob -> base64
-            const blobToBase64 = (blob) => new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-            });
+            const blobToBase64 = (blob) =>
+                new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result.split(",")[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
 
             const certBase64 = await blobToBase64(certBlob);
             const logBase64 = await blobToBase64(logBlob);
@@ -1982,7 +2186,7 @@ export default function TrainerPage({ goTo }) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
-            }).catch(e => console.error("Ошибка сохранения (не критично):", e));
+            }).catch((e) => console.error("Ошибка сохранения (не критично):", e));
 
             // Скачиваем PDF локально
             await handleDownloadCertificate();
@@ -2004,6 +2208,7 @@ export default function TrainerPage({ goTo }) {
             localStorage.removeItem(getStorageKey("sessionStartTime"));
             localStorage.removeItem(getStorageKey("session_tasks_log"));
             localStorage.removeItem(getStorageKey("completedTasks"));
+            localStorage.removeItem(getStorageKey("qwenEvaluationQuota"));
             localStorage.removeItem("trainer_v2_rankingTestResults");
             localStorage.removeItem("trainer_v2_rankingTestResults_previous");
             sessionStorage.removeItem("trainer_v2_taskTimer");
@@ -2015,7 +2220,6 @@ export default function TrainerPage({ goTo }) {
             localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
 
             window.location.href = "/";
-
         } catch (error) {
             console.error("Ошибка в процессе завершения:", error);
             alert("Произошла ошибка. Если сертификат не скачался, проверьте папку загрузок.");
@@ -2289,24 +2493,84 @@ export default function TrainerPage({ goTo }) {
     };
 
     const createPrompt = () => {
-        const values = fields;
-        // Проверяем, что ни одно поле не пустое (с учетом пробелов)
-        if (Object.values(values).some((v) => !v.trim())) {
-            setPrompt('Пожалуйста, заполните все поля (или используйте "кубики").');
+        const promptDraft = buildPromptDraft();
+        if (!promptDraft) return;
+
+        setQwenLoading(false);
+        setIsPromptCopyAwaitingEvaluation(false);
+        resetQwenFeedback();
+    };
+
+    const createPromptWithEvaluation = () => {
+        if (isIntroTask(currentTaskIndex)) {
+            setQwenLoading(false);
+            setIsPromptCopyAwaitingEvaluation(false);
+            resetQwenFeedback();
+            setQwenResponse("Оценка недоступна на первых трех заданиях каждой колоды: это вводные задания для выбора роли, входной анкеты и тестирования.");
             return;
         }
 
-        // Используем предоставленный статичный шаблон
-        let draftPrompt = `Представь, что ты ${values.y}. Твоя миссия — ${values.m.toLowerCase()}. Ты создаешь контент для следующей аудитории: ${values.a.toLowerCase()}. При работе ты должен учитывать такие ограничения: ${values.o1.toLowerCase()}. Готовый результат должен соответствовать следующим критериям: ${values.k.toLowerCase()}. Этот материал будет использоваться в следующем контексте: ${values.k2.toLowerCase()}. Финальное оформление должно быть таким: ${values.o2.toLowerCase()}.`;
+        const promptDraft = buildPromptDraft();
+        if (!promptDraft) return;
 
-        let finalPrompt = cleanupPrompt(draftPrompt);
-        setPrompt(finalPrompt);
+        setIsPromptCopyAwaitingEvaluation(true);
+        const remainingChecks = syncQwenEvaluationQuota();
+        if (remainingChecks <= 0) {
+            setQwenLoading(false);
+            setIsPromptCopyAwaitingEvaluation(false);
+            resetQwenFeedback();
+            setQwenZone("red");
+            setQwenResponse("Лимит оценок от нейросети для этой сессии исчерпан. Завершите сессию и начните новую, чтобы снова получить 20 оценок.");
+            return;
+        }
 
-        // Сохраняем результат в историю
-        const entry = { date: new Date().toISOString(), type, prompt: finalPrompt };
-        const newHist = [entry, ...JSON.parse(localStorage.getItem(getStorageKey("history")) || "[]")].slice(0, 50);
-        localStorage.setItem(getStorageKey("history"), JSON.stringify(newHist));
-        setHistory(newHist);
+        resetQwenFeedback();
+        setQwenLoading(true);
+
+        fetch("/api/mayak/qwen-check", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                fields: promptDraft.values,
+                taskContext: promptDraft.taskContext,
+            }),
+        })
+            .then(async (r) => {
+                const data = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    throw new Error(data.message || data.error || "Не удалось получить оценку");
+                }
+                return data;
+            })
+            .then((data) => {
+                consumeQwenEvaluationQuota();
+                let msg = data.message || "Нет ответа";
+                setIsPromptCopyAwaitingEvaluation(false);
+                msg = msg.replace(/<details>.*?<\/details>/gs, "");
+                msg = msg.replace(/Response ID:.*?Request ID:[^\n]+/gs, "");
+                msg = msg.replace(/```.*?```/gs, "");
+                msg = msg.trim();
+                msg = msg.replace(/\btask_context\b/gi, "задания");
+                msg = msg.replace(/из\s+задания/gi, "задачи");
+                const nextZone = data.zone || null;
+                setQwenResponse(msg);
+                setQwenZone(nextZone);
+                setQwenStrongFields(Array.isArray(data.strongFields) ? data.strongFields : []);
+                setQwenWeakFields(Array.isArray(data.weakFields) ? data.weakFields : []);
+                if (nextZone) {
+                    playMascotAnimation(nextZone);
+                } else {
+                    setActiveQwenMascotAsset(null);
+                    setShowMascotVideo(false);
+                }
+            })
+            .catch((err) => {
+                resetQwenFeedback();
+                setQwenResponse(err?.message || "Проверка временно недоступна");
+                setQwenZone("red");
+                playMascotAnimation("red", QWEN_UNAVAILABLE_MASCOT_ASSET);
+            })
+            .finally(() => setQwenLoading(false));
     };
 
     function getCookie(name) {
@@ -2322,7 +2586,7 @@ export default function TrainerPage({ goTo }) {
         } catch (error) {
             console.error("Error setting cookie:", error);
         }
-    };
+    }
 
     useEffect(() => {
         // Выполняем стандартную проверку токена при загрузке страницы
@@ -2359,10 +2623,15 @@ export default function TrainerPage({ goTo }) {
                     setIsTokenValid(true);
 
                     // Устанавливаем время начала сессии, если оно еще не установлено
-                    if (!localStorage.getItem(getStorageKey("sessionStartTime"))) {
-                        localStorage.setItem(getStorageKey("sessionStartTime"), Date.now().toString());
+                    const existingSessionStartTime = localStorage.getItem(getStorageKey("sessionStartTime"));
+                    if (!existingSessionStartTime) {
+                        const nextSessionStartTime = Date.now().toString();
+                        localStorage.setItem(getStorageKey("sessionStartTime"), nextSessionStartTime);
                         // Очищаем старые логи при новой сессии (новом токене)
                         localStorage.removeItem(getStorageKey("session_tasks_log"));
+                        syncQwenEvaluationQuota(nextSessionStartTime);
+                    } else {
+                        syncQwenEvaluationQuota(existingSessionStartTime);
                     }
 
                     if (data.sectionId) {
@@ -2381,11 +2650,24 @@ export default function TrainerPage({ goTo }) {
             }
         }
         checkToken();
-    }, [goTo, setIsTokenValid]);
+    }, [goTo, setIsTokenValid, syncQwenEvaluationQuota]);
 
     const isCreateDisabled = Object.values(fields).some((v) => !v);
+    const isEvaluationBlockedForIntroTask = isIntroTask(currentTaskIndex);
+    const isCopyDisabled = !prompt || isCopied || prompt.includes("Пожалуйста, заполните") || isPromptCopyAwaitingEvaluation;
+    const copyDisabledReason = isPromptCopyAwaitingEvaluation ? "Дождитесь ответа нейросети" : !prompt ? "Сначала создайте промт" : prompt.includes("Пожалуйста, заполните") ? "Сначала заполните все поля" : "";
+    const createWithEvaluationDisabledReason = isEvaluationBlockedForIntroTask
+        ? "Оценка недоступна на первых трех заданиях каждой колоды"
+        : isCreateDisabled
+          ? "Сначала заполните все поля"
+          : qwenChecksRemaining <= 0
+            ? "Лимит оценок для этой сессии исчерпан"
+            : "";
+    const isCreateWithEvaluationDisabled = isCreateDisabled || isEvaluationBlockedForIntroTask || qwenLoading || qwenChecksRemaining <= 0;
     const miscCategory = (mayakData.defaultTypes || []).find((t) => t.key === "misc");
     const activeTypeKey = isMiscAccordionOpen ? (miscCategory ? miscCategory.key : type) : type;
+    const qwenZoneMeta = getQwenZoneMeta(qwenZone);
+    const shouldShowQwenMascot = !qwenLoading && activeQwenMascotAsset && showMascotVideo;
 
     const trainerControlsProps = {
         userType,
@@ -2409,7 +2691,7 @@ export default function TrainerPage({ goTo }) {
         onUserTypeChange: setUserType,
         onWhoChange: (value) => {
             // Сначала обновляем состояние, чтобы UI отреагировал
-            setWho(value); 
+            setWho(value);
             // Затем, если выбрали "Мы" и анкета не пройдена, показываем попап
             if (value === "we" && !hasCompletedSecondQuestionnaire) {
                 showSwitchToWeConfirmation();
@@ -2443,7 +2725,7 @@ export default function TrainerPage({ goTo }) {
 
                 if (tokenTaskRange) {
                     // С токеном: ищем по номеру задания (task.number)
-                    newIndex = tasks.findIndex(t => parseInt(t.number, 10) === inputNum);
+                    newIndex = tasks.findIndex((t) => parseInt(t.number, 10) === inputNum);
                 } else {
                     // Без токена: ввод = порядковый номер (1, 2, 3...)
                     newIndex = inputNum - 1;
@@ -2535,22 +2817,24 @@ export default function TrainerPage({ goTo }) {
                 />
             )}
 
-            {showThirdQuestionnaire && <ThirdQuestionnairePopup
-                onClose={() => setShowThirdQuestionnaire(false)}
-                testingDone={completionTestingDone}
-                surveyDone={completionSurveyDone}
-                certificateLoading={telegramLoading}
-                onOpenTesting={() => {
-                    window.__openRankingTestPopup && window.__openRankingTestPopup();
-                }}
-                onOpenSurvey={() => {
-                    window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
-                    setCompletionSurveyDone(true);
-                }}
-                onGetCertificate={() => {
-                    handleSaveSessionCompletion();
-                }}
-            />}
+            {showThirdQuestionnaire && (
+                <ThirdQuestionnairePopup
+                    onClose={() => setShowThirdQuestionnaire(false)}
+                    testingDone={completionTestingDone}
+                    surveyDone={completionSurveyDone}
+                    certificateLoading={telegramLoading}
+                    onOpenTesting={() => {
+                        window.__openRankingTestPopup && window.__openRankingTestPopup();
+                    }}
+                    onOpenSurvey={() => {
+                        window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
+                        setCompletionSurveyDone(true);
+                    }}
+                    onGetCertificate={() => {
+                        handleSaveSessionCompletion();
+                    }}
+                />
+            )}
 
             <div className="hero relative">
                 {isMobile && (
@@ -2629,11 +2913,20 @@ export default function TrainerPage({ goTo }) {
                                 ))}
                             </div>
                         </div>
-                        <span className="block w-full mt-4" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
-                            <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled}>
-                                Создать&nbsp;запрос
-                            </Button>
-                        </span>
+                        <div className="mt-4 flex w-full flex-col gap-2">
+                            <div className="flex w-full flex-col gap-2 sm:flex-row">
+                                <span className="block w-full" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
+                                    <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled || qwenLoading}>
+                                        Создать&nbsp;промт
+                                    </Button>
+                                </span>
+                                <span className="block w-full" title={createWithEvaluationDisabledReason}>
+                                    <Button className="w-full" type="button" onClick={createPromptWithEvaluation} disabled={isCreateWithEvaluationDisabled}>
+                                        Создать&nbsp;промт&nbsp;с&nbsp;оценкой&nbsp;({qwenChecksRemaining}/{QWEN_EVALUATION_LIMIT})
+                                    </Button>
+                                </span>
+                            </div>
+                        </div>
                     </form>
                 </Block>
 
@@ -2643,13 +2936,46 @@ export default function TrainerPage({ goTo }) {
                     <Block className="flex-grow !bg-slate-50 flex flex-col">
                         <h6 className="text-black mb-2">Ваш промт</h6>
                         <div className="flex-grow overflow-y-auto">
-                            <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать запрос"'}</p>
+                            <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать промт"'}</p>
                         </div>
                     </Block>
 
+                    {(qwenLoading || qwenResponse) && (
+                        <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} flex flex-col`}>
+                            <h6 className="mb-2 text-black">Оценка от нейросети</h6>
+                            <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
+                                <div className="flex-1">
+                                    {qwenLoading ? (
+                                        <p className="text-gray-500 animate-pulse">Анализирую промпт...</p>
+                                    ) : (
+                                        <div className="flex flex-col gap-3">
+                                            <p className="text-gray-700">{qwenResponse}</p>
+                                            {qwenStrongFields.length > 0 && (
+                                                <p className="text-sm text-gray-700">
+                                                    <span className="font-semibold text-black">Сильные поля:</span> {formatFieldList(qwenStrongFields)}
+                                                </p>
+                                            )}
+                                            {qwenWeakFields.length > 0 && (
+                                                <p className="text-sm text-gray-700">
+                                                    <span className="font-semibold text-black">Слабые поля:</span> {formatFieldList(qwenWeakFields)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                {shouldShowQwenMascot && (
+                                    <div className="flex shrink-0 flex-col items-center self-center">
+                                        <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
+                                            <img key={mascotPlaybackKey} src={`${activeQwenMascotAsset.animatedSrc}?v=${mascotPlaybackKey}`} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </Block>
+                    )}
                     <div className="flex flex-col gap-[1rem]">
                         <div className="flex flex-col gap-[0.5rem]">
-                            <Button onClick={() => handleCopy(prompt)} disabled={!prompt || isCopied || prompt.includes("Пожалуйста, заполните")}>
+                            <Button onClick={() => handleCopy(prompt)} disabled={isCopyDisabled} title={copyDisabledReason}>
                                 {isCopied ? "Скопировано!" : "Скопировать"}
                             </Button>
 
@@ -2692,46 +3018,48 @@ export default function TrainerPage({ goTo }) {
                                                     className={`${openSubAccordionKey === subItem.key ? "!bg-gray-100 !text-black" : ""}`}>
                                                     {subItem.label}
                                                 </Button>
-                                                {openSubAccordionKey === subItem.key && subItem.key === 'services' && (() => {
-                                                    const allServices = (mayakData.defaultLinks[subItem.key] || []).slice().sort(sortByOrder);
-                                                    const requiredServices = allServices.filter(s => s.required !== false);
-                                                    const optionalServices = allServices.filter(s => s.required === false);
-                                                    const renderServiceCard = (link, linkIndex) => (
-                                                        <div key={linkIndex} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className="font-semibold text-sm text-gray-900">{link.name}</span>
-                                                                {link.description && <span className="text-xs text-gray-500 truncate">{link.description}</span>}
-                                                            </div>
-                                                            <div className="flex gap-2 flex-shrink-0">
-                                                                <Button inverted className="!px-3 !py-1.5 !text-xs" disabled={!link.url} onClick={() => link.url && window.open(link.url, "_blank")}>
-                                                                    {link.buttonLabel || (link.url ? "Регистрация" : "Скачать")}
-                                                                </Button>
-                                                                {link.instructionImage && (
-                                                                    <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => setInstructionModal({ name: link.name, image: link.instructionImage })}>
-                                                                        Инструкция
+                                                {openSubAccordionKey === subItem.key &&
+                                                    subItem.key === "services" &&
+                                                    (() => {
+                                                        const allServices = (mayakData.defaultLinks[subItem.key] || []).slice().sort(sortByOrder);
+                                                        const requiredServices = allServices.filter((s) => s.required !== false);
+                                                        const optionalServices = allServices.filter((s) => s.required === false);
+                                                        const renderServiceCard = (link, linkIndex) => (
+                                                            <div key={linkIndex} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                                                                <div className="flex flex-col min-w-0">
+                                                                    <span className="font-semibold text-sm text-gray-900">{link.name}</span>
+                                                                    {link.description && <span className="text-xs text-gray-500 truncate">{link.description}</span>}
+                                                                </div>
+                                                                <div className="flex gap-2 flex-shrink-0">
+                                                                    <Button inverted className="!px-3 !py-1.5 !text-xs" disabled={!link.url} onClick={() => link.url && window.open(link.url, "_blank")}>
+                                                                        {link.buttonLabel || (link.url ? "Регистрация" : "Скачать")}
                                                                     </Button>
+                                                                    {link.instructionImage && (
+                                                                        <Button inverted className="!px-3 !py-1.5 !text-xs" onClick={() => setInstructionModal({ name: link.name, image: link.instructionImage })}>
+                                                                            Инструкция
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                        return (
+                                                            <div className="flex flex-col gap-4 pt-2">
+                                                                {requiredServices.length > 0 && (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Обязательные</span>
+                                                                        {requiredServices.map(renderServiceCard)}
+                                                                    </div>
+                                                                )}
+                                                                {optionalServices.length > 0 && (
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Необязательные</span>
+                                                                        {optionalServices.map(renderServiceCard)}
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                        </div>
-                                                    );
-                                                    return (
-                                                        <div className="flex flex-col gap-4 pt-2">
-                                                            {requiredServices.length > 0 && (
-                                                                <div className="flex flex-col gap-2">
-                                                                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Обязательные</span>
-                                                                    {requiredServices.map(renderServiceCard)}
-                                                                </div>
-                                                            )}
-                                                            {optionalServices.length > 0 && (
-                                                                <div className="flex flex-col gap-2">
-                                                                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Необязательные</span>
-                                                                    {optionalServices.map(renderServiceCard)}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })()}
-                                                {openSubAccordionKey === subItem.key && subItem.key !== 'services' && (
+                                                        );
+                                                    })()}
+                                                {openSubAccordionKey === subItem.key && subItem.key !== "services" && (
                                                     <div className="flex flex-nowrap gap-2 pt-2 overflow-x-auto">
                                                         {(mayakData.defaultLinks[subItem.key] || [])
                                                             .slice()
@@ -2774,10 +3102,7 @@ export default function TrainerPage({ goTo }) {
                         <div className="relative bg-white rounded-2xl shadow-2xl max-w-[95vw] max-h-[95vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
                             <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 bg-white border-b border-gray-100 rounded-t-2xl">
                                 <h3 className="text-base font-semibold text-gray-900">Инструкция: {instructionModal.name}</h3>
-                                <Button
-                                    icon
-                                    className="!bg-transparent !text-black hover:!bg-black/5"
-                                    onClick={() => setInstructionModal(null)}>
+                                <Button icon className="!bg-transparent !text-black hover:!bg-black/5" onClick={() => setInstructionModal(null)}>
                                     <CloseIcon />
                                 </Button>
                             </div>
@@ -2788,10 +3113,10 @@ export default function TrainerPage({ goTo }) {
                                     className="w-full max-w-[900px] rounded-xl"
                                     onError={(e) => {
                                         const src = e.target.src;
-                                        if (src.endsWith('.jpg')) {
-                                            e.target.src = src.replace('.jpg', '.png');
-                                        } else if (src.endsWith('.png')) {
-                                            e.target.src = src.replace('.png', '.jpg');
+                                        if (src.endsWith(".jpg")) {
+                                            e.target.src = src.replace(".jpg", ".png");
+                                        } else if (src.endsWith(".png")) {
+                                            e.target.src = src.replace(".png", ".jpg");
                                         }
                                     }}
                                 />
