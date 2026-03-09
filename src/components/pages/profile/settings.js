@@ -37,7 +37,7 @@ export default function SettingsPage({ goTo }) {
                 setRegion(data.data.Region || "");
 
                 setFormData({
-                    Organization: data.data.Organization.id || null, // ID организации (число/строка)
+                    Organization: data.data?.Organization?.id || null, // ID организации (число/строка)
                     Region: data.data.Region || "",
                     Surname: data.data.Surname || "",
                     NameIRL: data.data.NameIRL || "",

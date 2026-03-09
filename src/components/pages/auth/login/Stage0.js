@@ -9,6 +9,7 @@ import Input from "@/components/ui/Input/Input";
 import Yandex from "@/assets/general/yandex.svg";
 import VK from "@/assets/general/vk.svg";
 import VKWidget from "@/components/features/auth/VKWidget";
+import Link from "next/link";
 
 export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1 }) {
     const router = useRouter();
@@ -140,6 +141,12 @@ export default function LoginStage0({ onForgotPassword, pageVariants, custom = 1
                         <VKWidget />
                     </div>
                 </div>
+                <p className="w-full text-center text-gray">
+                    Забыли пароль?{" "}
+                    <span className="link cursor-pointer" onClick={() => onForgotPassword()}>
+                        Восстановите
+                    </span>
+                </p>
             </div>
         </motion.div>
     );

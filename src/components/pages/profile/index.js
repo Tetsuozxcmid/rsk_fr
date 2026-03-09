@@ -142,6 +142,7 @@ export default function ProfileIndexPage({ goTo }) {
                         <div className="flex gap-[0.5rem] flex-wrap">
                             <Tags
                                 tags={[
+                                    { name: userData.data?.username || "username отсутствует", color: "blue" },
                                     {
                                         name: `${userData.data.Type === "teacher" ? "Сотрудник" : userData.data.Type === "student" ? "Студент" : userData.data.Type === "moder" ? "Модератор" : userData.data.Type === "admin" ? "Эндминистратор" : "Ошибка данных"}`,
                                         color: "blue",
