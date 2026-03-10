@@ -79,6 +79,29 @@ const QWEN_MASCOT_ASSET_PRELOAD_LIST = Array.from(
     ])
 );
 const formatFieldList = (labels) => (Array.isArray(labels) ? labels.filter(Boolean).join(", ") : "");
+const getQwenScoreMeta = (greenCount, totalFields = 7) => {
+    const safeGreenCount = Number.isFinite(greenCount) ? greenCount : 0;
+    const safeTotalFields = Number.isFinite(totalFields) && totalFields > 0 ? totalFields : 7;
+
+    if (safeGreenCount >= 6) {
+        return {
+            text: `${safeGreenCount}/${safeTotalFields}`,
+            textClass: "text-[var(--color-green-peace)]",
+        };
+    }
+
+    if (safeGreenCount >= 3) {
+        return {
+            text: `${safeGreenCount}/${safeTotalFields}`,
+            textClass: "text-yellow-700",
+        };
+    }
+
+    return {
+        text: `${safeGreenCount}/${safeTotalFields}`,
+        textClass: "text-[var(--color-red)]",
+    };
+};
 const buildQwenTaskContext = ({ taskTextData }) => ({
     description: taskTextData?.description || "",
     task: taskTextData?.task || "",
@@ -171,6 +194,7 @@ const usePopups = () => {
 const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRange, tokenSectionId }) => {
     const [tasks, setTasks] = useState([]);
     const [tasksTexts, setTasksTexts] = useState([]);
+    const loadedTextRangesRef = useRef(new Set());
     const [currentTaskIndex, setCurrentTaskIndex] = useState(() => {
         try {
             const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
@@ -302,7 +326,9 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
             setError(null);
             try {
                 let tasksData;
-                let tasksTextsData;
+                let tasksTextsData = [];
+
+                loadedTextRangesRef.current = new Set();
 
                 if (taskVersion === "v2") {
                     const cacheBust = `?t=${Date.now()}`;
@@ -358,10 +384,8 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
                             }
                         }
 
-                        // Параллельно загружаем TaskText.json из каждого диапазона
-                        const textPromises = ranges.map((range) => fetch(`${basePath}/${range}/TaskText.json${cacheBust}`, fetchOpts).then((r) => (r.ok ? r.json() : [])));
-                        const allTextArrays = await Promise.all(textPromises);
-                        tasksTextsData = allTextArrays.flat();
+                        // Для v2 без sectionId тексты подгружаем лениво только для активного диапазона.
+                        tasksTextsData = [];
                     }
                 } else {
                     // Старая логика для не-v2 версий
@@ -423,6 +447,44 @@ const useTaskManager = ({ userType, who, taskVersion, isTokenValid, tokenTaskRan
         };
         loadTasks();
     }, [userType, who, taskVersion, isTokenValid, basePath, tokenSectionId]);
+
+    useEffect(() => {
+        const loadActiveRangeTexts = async () => {
+            if (!isTokenValid) return;
+            if (taskVersion !== "v2") return;
+            if (!currentTask?._range) return;
+
+            const activeRange = currentTask._range;
+            if (loadedTextRangesRef.current.has(activeRange)) {
+                return;
+            }
+
+            try {
+                const textRes = await fetch(`${basePath}/${activeRange}/TaskText.json?t=${Date.now()}`, { cache: "no-store" });
+                if (!textRes.ok) {
+                    throw new Error(`Не удалось загрузить TaskText.json для раздела ${activeRange}: ${textRes.status}`);
+                }
+
+                const rangeTexts = await textRes.json();
+                loadedTextRangesRef.current.add(activeRange);
+                setTasksTexts((prev) => {
+                    const next = Array.isArray(prev) ? [...prev] : [];
+                    const knownNumbers = new Set(next.map((item) => String(item.number || "")));
+                    for (const item of Array.isArray(rangeTexts) ? rangeTexts : []) {
+                        const numberKey = String(item?.number || "");
+                        if (!numberKey || knownNumbers.has(numberKey)) continue;
+                        knownNumbers.add(numberKey);
+                        next.push(item);
+                    }
+                    return next;
+                });
+            } catch (err) {
+                console.error("Failed to load active range TaskText:", err);
+            }
+        };
+
+        loadActiveRangeTexts();
+    }, [basePath, currentTask?._range, isTokenValid, taskVersion]);
 
     const startTimer = useCallback(() => {
         const now = Date.now();
@@ -1565,6 +1627,8 @@ export default function TrainerPage({ goTo }) {
     const [qwenZone, setQwenZone] = useState(null);
     const [qwenStrongFields, setQwenStrongFields] = useState([]);
     const [qwenWeakFields, setQwenWeakFields] = useState([]);
+    const [qwenGreenCount, setQwenGreenCount] = useState(null);
+    const [qwenTotalFields, setQwenTotalFields] = useState(7);
     const [qwenChecksRemaining, setQwenChecksRemaining] = useState(QWEN_EVALUATION_LIMIT);
     const [showMascotVideo, setShowMascotVideo] = useState(false);
     const [activeQwenMascotAsset, setActiveQwenMascotAsset] = useState(null);
@@ -1672,6 +1736,8 @@ export default function TrainerPage({ goTo }) {
         setQwenZone(null);
         setQwenStrongFields([]);
         setQwenWeakFields([]);
+        setQwenGreenCount(null);
+        setQwenTotalFields(7);
         setShowMascotVideo(false);
         setActiveQwenMascotAsset(null);
     }, []);
@@ -2585,6 +2651,8 @@ export default function TrainerPage({ goTo }) {
                 setQwenZone(nextZone);
                 setQwenStrongFields(Array.isArray(data.strongFields) ? data.strongFields : []);
                 setQwenWeakFields(Array.isArray(data.weakFields) ? data.weakFields : []);
+                setQwenGreenCount(Number.isFinite(data.greenCount) ? data.greenCount : 0);
+                setQwenTotalFields(Number.isFinite(data.totalFields) && data.totalFields > 0 ? data.totalFields : 7);
                 if (nextZone) {
                     playMascotAnimation(nextZone);
                 } else {
@@ -2695,6 +2763,7 @@ export default function TrainerPage({ goTo }) {
     const miscCategory = (mayakData.defaultTypes || []).find((t) => t.key === "misc");
     const activeTypeKey = isMiscAccordionOpen ? (miscCategory ? miscCategory.key : type) : type;
     const qwenZoneMeta = getQwenZoneMeta(qwenZone);
+    const qwenScoreMeta = qwenGreenCount === null ? null : getQwenScoreMeta(qwenGreenCount, qwenTotalFields);
     const shouldShowQwenMascot = !qwenLoading && activeQwenMascotAsset && showMascotVideo;
 
     const trainerControlsProps = {
@@ -2969,7 +3038,12 @@ export default function TrainerPage({ goTo }) {
                     </Block>
 
                     {(qwenLoading || qwenResponse) && (
-                        <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} flex flex-col`}>
+                        <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} relative flex flex-col`}>
+                            {!qwenLoading && qwenScoreMeta && (
+                                <div className={`absolute right-4 top-4 text-lg font-bold sm:text-xl ${qwenScoreMeta.textClass}`}>
+                                    {qwenScoreMeta.text}
+                                </div>
+                            )}
                             <h6 className="mb-2 text-black">Оценка от нейросети</h6>
                             <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
                                 <div className="flex-1">

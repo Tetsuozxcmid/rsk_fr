@@ -159,3 +159,10 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: the UI restarted the mascot by appending a changing `?v=...` query to the animated WebP URL, which forced the browser to treat each playback as a new resource and re-decode the heavy asset.
 - Fix: restart the mascot by remounting the `<img>` with a React `key`, keep the URL stable, and preload the mascot assets once on page load.
 - Prevention: for MAYAK animated mascot playback, do not use cache-busting query params as the replay mechanism unless a real asset version change is intended.
+
+### 2026-03-10 - MAYAK empty ranges break when index.json loses task numbers
+
+- Problem: some MAYAK sections opened in the content admin without row numbering because the range looked empty even though index.json still had 100 entries.
+- Root cause: those index.json files had been saved with truncated task objects that no longer included the required `number` field, and the admin tasks API trusted that malformed payload on save.
+- Fix: restore the missing `number` values in the broken section files and reject future saves in `/api/admin/mayak-content/tasks` when any task row has an empty number.
+- Prevention: when creating or bulk-editing MAYAK ranges, verify that every index.json row keeps its `number` before saving; do not accept partial task objects as valid section content.

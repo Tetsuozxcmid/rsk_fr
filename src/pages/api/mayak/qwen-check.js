@@ -29,6 +29,8 @@ function toClientPayload(evaluation) {
         zone: evaluation.overallZone,
         strongFields: evaluation.strongFields,
         weakFields: evaluation.weakFields,
+        greenCount: evaluation?.counts?.green || 0,
+        totalFields: Array.isArray(evaluation?.fieldAssessments) ? evaluation.fieldAssessments.length : 7,
     };
 }
 

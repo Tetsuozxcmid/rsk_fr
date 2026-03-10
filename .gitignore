@@ -60,6 +60,7 @@ data/botAdmins.json
 data/tokenRequests.json
 data/mayak-settings.json
 public/prep-uploads/
+public/tasks-2/v2/
 
 # local product context
 docs/local-product-context/*

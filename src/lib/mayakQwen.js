@@ -489,7 +489,7 @@ export function deriveQwenOverallZone(fieldAssessments) {
         return { overallZone: "green", counts };
     }
 
-    if (counts.green >= 4) {
+    if (counts.green >= 3) {
         return { overallZone: "yellow", counts };
     }
 
