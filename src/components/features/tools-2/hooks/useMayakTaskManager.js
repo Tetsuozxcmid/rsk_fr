@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useRef, useCallback } from "react";
 
 const getRange = (taskNumber) => {
     const start = Math.floor((taskNumber - 1) / 100) * 100 + 1;
@@ -162,6 +162,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
             try {
                 let tasksData;
                 let tasksTextsData = [];
+                let defaultStartIndex = 0;
 
                 loadedTextRangesRef.current = new Set();
 
@@ -180,6 +181,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                         const rangeEnd = getSectionRangeEnd(sectionSlug, data, bundle.meta);
 
                         const startPos = rangeStart - 1;
+                        defaultStartIndex = startPos;
                         tasksData = new Array(rangeEnd).fill(null).map(() => ({ ...EMPTY_TASK }));
                         for (let i = 0; i < data.length; i++) {
                             tasksData[startPos + i] = { ...data[i], _range: sectionSlug };
@@ -233,23 +235,27 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                             const start = parseInt(startStr, 10);
                             if (!isNaN(start)) {
                                 const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
-                                setCurrentTaskIndex(startIndex !== -1 ? startIndex : 0);
+                                setCurrentTaskIndex(startIndex !== -1 ? startIndex : defaultStartIndex);
                             } else {
-                                setCurrentTaskIndex(0);
+                                setCurrentTaskIndex(defaultStartIndex);
                             }
+                        } else if (tokenSectionId) {
+                            setCurrentTaskIndex(defaultStartIndex);
                         } else {
-                            setCurrentTaskIndex(0);
+                            setCurrentTaskIndex(defaultStartIndex);
                         }
                     } else if (tokenTaskRange) {
                         const [startStr] = tokenTaskRange.split("-");
                         const start = parseInt(startStr, 10);
                         if (!isNaN(start)) {
                             const startIndex = tasksData.findIndex((t) => parseInt(t.number, 10) >= start);
-                            setCurrentTaskIndex(startIndex !== -1 ? startIndex : 0);
+                            setCurrentTaskIndex(startIndex !== -1 ? startIndex : defaultStartIndex);
                         }
+                    } else if (tokenSectionId) {
+                        setCurrentTaskIndex(defaultStartIndex);
                     }
                 } catch {
-                    setCurrentTaskIndex(0);
+                    setCurrentTaskIndex(defaultStartIndex);
                 }
 
                 if (tasksData.length === 0) {
@@ -380,3 +386,5 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
         allowedMaxIndex,
     };
 };
+
+
