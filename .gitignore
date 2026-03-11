@@ -79,3 +79,5 @@ tmp_qwen_eval_results.json
 tmp_qwen_eval_results_v2.json
 
 public/tasks-2/v2/
+
+data/mayak-content/

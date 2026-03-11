@@ -1,14 +1,9 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import path from "path";
+import { requireMayakAdmin } from "../../../lib/mayakAdminAuth.js";
 import { maskSecret, normalizeQwenTokenEntries, normalizeQwenTokens } from "../../../lib/mayakQwen.js";
 
-const ADMIN_PASSWORD = "a12345";
 const SETTINGS_FILE = path.join(process.cwd(), "data", "mayak-settings.json");
-
-function checkAuth(req) {
-    const password = req.query.password || req.body?.password;
-    return password === ADMIN_PASSWORD;
-}
 
 async function readSettings() {
     try {
@@ -27,8 +22,8 @@ async function saveSettings(settings) {
 }
 
 export default async function handler(req, res) {
-    if (!checkAuth(req)) {
-        return res.status(403).json({ success: false, error: "Неверный пароль" });
+    if (!requireMayakAdmin(req, res)) {
+        return;
     }
 
     if (req.method === "GET") {
@@ -149,3 +144,5 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ success: false, error: "Method not allowed" });
 }
+
+

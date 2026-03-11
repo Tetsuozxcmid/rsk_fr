@@ -66,3 +66,7 @@ export async function removeKeyCookie() {
     // Устанавливаем дату истечения в прошлое, чтобы удалить куку
     document.cookie = "activated_key=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
 }
+
+export async function clearUserCookie() {
+    document.cookie = "active_user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 
 export async function getServerSideProps() {
     return { props: {} };
@@ -10,7 +10,6 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
 import Notify from "@/assets/general/notify.svg";
 
-const ADMIN_PASSWORD = "a12345";
 const AUTH_STORAGE_KEY = "mayak_admin_auth";
 
 export default function AdminMayakTokens() {
@@ -95,23 +94,41 @@ export default function AdminMayakTokens() {
     // Проверка авторизации при загрузке
     useEffect(() => {
         const savedAuth = sessionStorage.getItem(AUTH_STORAGE_KEY);
-        if (savedAuth === "true") {
-            setIsAuthenticated(true);
-        } else {
+        async function checkAuth() {
+            try {
+                const res = await fetch("/api/admin/mayak-auth");
+                const json = await res.json();
+                if (savedAuth === "true" && json.authenticated) {
+                    setIsAuthenticated(true);
+                } else {
+                    sessionStorage.removeItem(AUTH_STORAGE_KEY);
+                }
+            } catch {}
             setLoading(false);
         }
+        checkAuth();
     }, []);
 
     // Обработка входа
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (password === ADMIN_PASSWORD) {
+        setAuthError("");
+        try {
+            const res = await fetch("/api/admin/mayak-auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                setAuthError(json.error || "Неверный пароль");
+                setPassword("");
+                return;
+            }
             setIsAuthenticated(true);
             sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-            setAuthError("");
-        } else {
-            setAuthError("Неверный пароль");
-            setPassword("");
+        } catch {
+            setAuthError("Ошибка входа");
         }
     };
 
@@ -119,7 +136,7 @@ export default function AdminMayakTokens() {
     const fetchTokens = async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/admin/mayak-tokens?password=" + ADMIN_PASSWORD, {
+            const res = await fetch("/api/admin/mayak-tokens", {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
@@ -159,7 +176,7 @@ export default function AdminMayakTokens() {
     const fetchRequests = async () => {
         try {
             setRequestsLoading(true);
-            const res = await fetch("/api/admin/mayak-tokens/requests?password=" + ADMIN_PASSWORD);
+            const res = await fetch("/api/admin/mayak-tokens/requests");
             const data = await res.json();
             if (data.success) {
                 setTokenRequests(data.data || []);
@@ -174,7 +191,7 @@ export default function AdminMayakTokens() {
     // Загрузка админов бота
     const fetchBotAdmins = async () => {
         try {
-            const res = await fetch("/api/admin/bot-admins?password=" + ADMIN_PASSWORD);
+            const res = await fetch("/api/admin/bot-admins");
             const data = await res.json();
             if (data.success) {
                 setBotAdmins(data.data || []);
@@ -188,7 +205,7 @@ export default function AdminMayakTokens() {
     // Загрузка настроек API-ключей
     const fetchSettings = async () => {
         try {
-            const res = await fetch("/api/admin/mayak-settings?password=" + ADMIN_PASSWORD);
+            const res = await fetch("/api/admin/mayak-settings");
             if (!res.ok) return;
             const text = await res.text();
             if (!text.startsWith("{")) return;
@@ -229,7 +246,7 @@ export default function AdminMayakTokens() {
 
     // Сохранение настройки
     const handleSaveSettings = async (field) => {
-        const body = { password: ADMIN_PASSWORD };
+        const body = {};
         const fieldMap = {
             telegramBotToken: { value: settingsTgToken, clear: () => setSettingsTgToken(""), emptyMsg: "Введите токен бота", successMsg: (d) => (d.botRestarted ? "Токен сохранён, бот перезапущен" : "Токен сохранён") },
             openrouterApiKey: { value: settingsOrKey, clear: () => setSettingsOrKey(""), emptyMsg: "Введите API-ключ", successMsg: () => "API-ключ сохранён" },
@@ -266,7 +283,7 @@ export default function AdminMayakTokens() {
             return;
         }
 
-        await saveSettingsRequest({ password: ADMIN_PASSWORD, qwenTokenAdd: { name: tokenName, token: tokenToAdd } }, "Qwen-токен добавлен", () => {
+        await saveSettingsRequest({ qwenTokenAdd: { name: tokenName, token: tokenToAdd } }, "Qwen-токен добавлен", () => {
             setSettingsQwenTokenName("");
             setSettingsQwenTokens("");
         });
@@ -274,7 +291,7 @@ export default function AdminMayakTokens() {
 
     const handleRemoveQwenToken = async (index) => {
         if (!window.confirm("Удалить этот Qwen-токен из пула?")) return;
-        await saveSettingsRequest({ password: ADMIN_PASSWORD, qwenTokenRemoveIndex: index }, "Qwen-токен удалён");
+        await saveSettingsRequest({ qwenTokenRemoveIndex: index }, "Qwen-токен удалён");
     };
 
     const handleSaveBackupToken = async () => {
@@ -291,7 +308,7 @@ export default function AdminMayakTokens() {
             return;
         }
 
-        await saveSettingsRequest({ password: ADMIN_PASSWORD, qwenBackupToken: { name: tokenName, token: tokenValue } }, "Резервный токен сохранён", () => {
+        await saveSettingsRequest({ qwenBackupToken: { name: tokenName, token: tokenValue } }, "Резервный токен сохранён", () => {
             setSettingsQwenBackupTokenName("");
             setSettingsQwenBackupToken("");
         });
@@ -299,7 +316,7 @@ export default function AdminMayakTokens() {
 
     const handleRemoveBackupToken = async () => {
         if (!window.confirm("Удалить резервный токен?")) return;
-        await saveSettingsRequest({ password: ADMIN_PASSWORD, qwenBackupToken: "" }, "Резервный токен удалён");
+        await saveSettingsRequest({ qwenBackupToken: "" }, "Резервный токен удалён");
     };
 
     // Добавление админа бота
@@ -312,7 +329,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/bot-admins", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ telegramId: newAdminId.trim(), name: newAdminName.trim(), password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ telegramId: newAdminId.trim(), name: newAdminName.trim() }),
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
@@ -331,7 +348,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/bot-admins", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ telegramId, password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ telegramId }),
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error);
@@ -352,7 +369,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/mayak-tokens/requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ requestId, action: "approve", tokenId, password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ requestId, action: "approve", tokenId }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -383,7 +400,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/mayak-tokens/requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "manual_assign", telegramId: manualTelegramId.trim(), tokenId: manualTokenId, name: manualName.trim() || null, password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ action: "manual_assign", telegramId: manualTelegramId.trim(), tokenId: manualTokenId, name: manualName.trim() || null }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -406,7 +423,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/mayak-tokens/requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ requestId, action: "reject", password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ requestId, action: "reject" }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -425,7 +442,7 @@ export default function AdminMayakTokens() {
             const res = await fetch("/api/admin/mayak-tokens/requests", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ requestId, action: "delete", password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ requestId, action: "delete" }),
             });
             if (!res.ok) {
                 const errorData = await res.json();
@@ -440,7 +457,7 @@ export default function AdminMayakTokens() {
     // Загрузка разделов для выпадающего списка
     const fetchRanges = async () => {
         try {
-            const res = await fetch("/api/admin/mayak-content/ranges?password=" + ADMIN_PASSWORD);
+            const res = await fetch("/api/admin/mayak-content/ranges");
             const data = await res.json();
             if (data.success && data.data) {
                 setRangesList(data.data);
@@ -478,7 +495,7 @@ export default function AdminMayakTokens() {
                     taskRange: selectedSection ? selectedSection.range : newTokenRange.trim() || null,
                     sectionId: selectedSection ? selectedSection.sectionId : null,
                     customToken: newCustomToken.trim() || null, // Отправляем кастомный токен
-                    password: ADMIN_PASSWORD,
+                    
                 }),
             });
 
@@ -511,7 +528,7 @@ export default function AdminMayakTokens() {
             const res = await fetch(`/api/admin/mayak-tokens/${tokenId}/add-attempts`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ attempts: parseInt(attemptsToAdd, 10), password: ADMIN_PASSWORD }),
+                body: JSON.stringify({ attempts: parseInt(attemptsToAdd, 10) }),
             });
 
             if (!res.ok) {
@@ -538,7 +555,7 @@ export default function AdminMayakTokens() {
             const res = await fetch(`/api/admin/mayak-tokens/${tokenId}`, {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password: ADMIN_PASSWORD }),
+                body: JSON.stringify({}),
             });
 
             if (!res.ok) {
@@ -561,7 +578,7 @@ export default function AdminMayakTokens() {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    password: ADMIN_PASSWORD,
+                    
                     sectionId: section ? section.sectionId : rebindValue || null,
                     taskRange: section ? section.range : rebindValue || null,
                 }),
@@ -1423,3 +1440,5 @@ export default function AdminMayakTokens() {
         </Layout>
     );
 }
+
+

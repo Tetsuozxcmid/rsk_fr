@@ -1,10 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 
-const ADMIN_PASSWORD = "a12345";
 const AUTH_KEY = "mayak_content_admin_auth";
 
 function fileToBase64(file) {
@@ -21,14 +20,25 @@ function LoginForm({ onLogin }) {
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (password === ADMIN_PASSWORD) {
+        setError("");
+        try {
+            const res = await fetch("/api/admin/mayak-auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                setError(json.error || "Неверный пароль");
+                setPassword("");
+                return;
+            }
             sessionStorage.setItem(AUTH_KEY, "true");
             onLogin();
-        } else {
-            setError("Неверный пароль");
-            setPassword("");
+        } catch (error) {
+            setError("Ошибка входа");
         }
     };
 
@@ -196,7 +206,7 @@ const Cell = memo(function Cell({ value, onChange, onCellChange, readOnly, multi
 
         // Путь к файлу для открытия
         const fileSubdir = fileCol === "instructions" ? "Instructions" : "Files";
-        const fileUrl = value && fileExists ? `/tasks-2/v2/${range}/${fileSubdir}/${value}` : null;
+        const fileUrl = value && fileExists ? `/api/mayak/content-file?sectionId=${encodeURIComponent(range)}&type=${fileCol === "instructions" ? "instructions" : "files"}&filename=${encodeURIComponent(value)}` : null;
 
         const formatSize = (s) => s < 1024 ? `${s} Б` : s < 1024 * 1024 ? `${(s / 1024).toFixed(0)} КБ` : `${(s / 1024 / 1024).toFixed(1)} МБ`;
 
@@ -360,7 +370,7 @@ function BulkUploadDropZone({ onUploadInstructions, onUploadFiles, uploading }) 
 }
 
 // ============ Редактор раздела (Google Sheets стиль) ============
-function RangeEditor({ range, password, onBack }) {
+function RangeEditor({ range, onBack }) {
     const [tasks, setTasks] = useState([]);
     const [texts, setTexts] = useState([]);
     const [existingFiles, setExistingFiles] = useState([]);
@@ -603,7 +613,7 @@ function RangeEditor({ range, password, onBack }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/admin/mayak-content/tasks?range=${range}&password=${password}`);
+            const res = await fetch(`/api/admin/mayak-content/tasks?range=${range}`);
             const json = await res.json();
             if (json.success) {
                 const loadedTasks = json.data.tasks || [];
@@ -627,19 +637,19 @@ function RangeEditor({ range, password, onBack }) {
             }
         } catch (err) { console.error(err); }
         setLoading(false);
-    }, [range, password]);
+    }, [range]);
 
     // Загрузка привязанных токенов
     const loadBoundTokens = useCallback(async () => {
         try {
-            const res = await fetch(`/api/admin/mayak-tokens?password=${password}`);
+            const res = await fetch(`/api/admin/mayak-tokens`);
             const json = await res.json();
             if (json.data) {
                 const tokens = json.data.filter((t) => t.sectionId === range || (!t.sectionId && t.taskRange === range));
                 setBoundTokens(tokens);
             }
         } catch (err) { console.error(err); }
-    }, [range, password]);
+    }, [range]);
 
     useEffect(() => { loadData(); loadBoundTokens(); }, [loadData, loadBoundTokens]);
 
@@ -773,7 +783,7 @@ function RangeEditor({ range, password, onBack }) {
             await fetch("/api/admin/mayak-content/upload", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password, range, type, filename: finalName, data: base64 }),
+                body: JSON.stringify({ range, type, filename: finalName, data: base64 }),
             });
             // Загрузка успешна — теперь безопасно удалить старый файл
             if (oldFilename && oldFilename !== finalName) {
@@ -781,7 +791,7 @@ function RangeEditor({ range, password, onBack }) {
                     await fetch("/api/admin/mayak-content/upload", {
                         method: "DELETE",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ password, range, type, filename: oldFilename }),
+                        body: JSON.stringify({ range, type, filename: oldFilename }),
                     });
                 } catch {}
                 if (type === "files") {
@@ -799,7 +809,7 @@ function RangeEditor({ range, password, onBack }) {
             // Обновляем размер файла в state
             setFileSizes((prev) => ({ ...prev, [finalName]: file.size }));
         } catch (err) { console.error(err); }
-    }, [password, range]);
+    }, [range]);
 
     // --- Удаление файла ---
     const handleDeleteFile = useCallback(async (type, filename) => {
@@ -807,7 +817,7 @@ function RangeEditor({ range, password, onBack }) {
             await fetch("/api/admin/mayak-content/upload", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password, range, type, filename }),
+                body: JSON.stringify({ range, type, filename }),
             });
         } catch (err) { console.error(err); }
 
@@ -827,7 +837,7 @@ function RangeEditor({ range, password, onBack }) {
             return t;
         }));
         isDirty.current = true;
-    }, [password, range]);
+    }, [range]);
 
     // --- Массовая загрузка ---
     const handleBulkUpload = async (files, type) => {
@@ -844,7 +854,7 @@ function RangeEditor({ range, password, onBack }) {
                 await fetch("/api/admin/mayak-content/upload", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ password, range, type, filename: file.name, data: base64 }),
+                    body: JSON.stringify({ range, type, filename: file.name, data: base64 }),
                 });
                 uploaded++;
                 if (type === "files") {
@@ -943,7 +953,7 @@ function RangeEditor({ range, password, onBack }) {
             const res = await fetch("/api/admin/mayak-content/tasks", {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password, range, tasks: tasksToSend, texts, rangeName }),
+                body: JSON.stringify({ range, tasks: tasksToSend, texts, rangeName }),
             });
             const json = await res.json();
             if (json.success) {
@@ -1210,15 +1220,26 @@ export default function AdminMayakContent() {
     const [tokensBySection, setTokensBySection] = useState({});
 
     useEffect(() => {
-        const saved = sessionStorage.getItem(AUTH_KEY);
-        if (saved === "true") setIsAuth(true);
-        setLoading(false);
+                const saved = sessionStorage.getItem(AUTH_KEY);
+        async function checkAuth() {
+            try {
+                const res = await fetch("/api/admin/mayak-auth");
+                const json = await res.json();
+                if (saved === "true" && json.authenticated) {
+                    setIsAuth(true);
+                } else {
+                    sessionStorage.removeItem(AUTH_KEY);
+                }
+            } catch {}
+            setLoading(false);
+        }
+        checkAuth();
     }, []);
 
     const fetchRanges = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/admin/mayak-content/ranges?password=${ADMIN_PASSWORD}`);
+            const res = await fetch(`/api/admin/mayak-content/ranges`);
             const json = await res.json();
             if (json.success) setRanges(json.data || []);
         } catch (err) { console.error(err); }
@@ -1228,7 +1249,7 @@ export default function AdminMayakContent() {
     // Подгрузка токенов по разделам
     const fetchTokensBySection = useCallback(async () => {
         try {
-            const res = await fetch(`/api/admin/mayak-tokens?password=${ADMIN_PASSWORD}`);
+            const res = await fetch(`/api/admin/mayak-tokens`);
             const json = await res.json();
             if (json.data) {
                 const grouped = {};
@@ -1255,7 +1276,7 @@ export default function AdminMayakContent() {
             const res = await fetch("/api/admin/mayak-content/ranges", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password: ADMIN_PASSWORD, range: newRange.trim(), rangeName: newRangeName.trim() }),
+                body: JSON.stringify({ range: newRange.trim(), rangeName: newRangeName.trim() }),
             });
             const json = await res.json();
             if (json.success) { setNewRange(""); setNewRangeName(""); await fetchRanges(); }
@@ -1333,9 +1354,11 @@ export default function AdminMayakContent() {
                         </div>
                     </div>
                 ) : (
-                    <RangeEditor range={selectedRange} password={ADMIN_PASSWORD} onBack={goBack} />
+                    <RangeEditor range={selectedRange} onBack={goBack} />
                 )}
             </div>
         </>
     );
 }
+
+
