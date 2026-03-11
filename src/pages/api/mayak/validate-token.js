@@ -5,7 +5,8 @@ const DEV_BYPASS_TOKEN = "fffff";
 function isLocalMayakBypassEnabled(req) {
     const host = String(req.headers.host || "").toLowerCase();
     const isLocalHost = host.includes("localhost") || host.includes("127.0.0.1");
-    return process.env.NODE_ENV !== "production" && isLocalHost;
+    const isServerBypassEnabled = String(process.env.MAYAK_ENABLE_SERVER_BYPASS || "").toLowerCase() === "true";
+    return (process.env.NODE_ENV !== "production" && isLocalHost) || isServerBypassEnabled;
 }
 
 function buildBypassValidationResponse() {
@@ -113,3 +114,4 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ success: false, error: "Method not allowed" });
 }
+
