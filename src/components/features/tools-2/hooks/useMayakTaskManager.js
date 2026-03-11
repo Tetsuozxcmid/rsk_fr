@@ -228,7 +228,8 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                     const saved = sessionStorage.getItem(getStorageKey("currentTaskIndex"));
                     if (saved !== null) {
                         const savedIdx = parseInt(saved, 10);
-                        if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tasksData.length) {
+                        const isSavedIndexInActiveSection = !tokenSectionId || tasksData[savedIdx]?._range === tokenSectionId;
+                        if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < tasksData.length && isSavedIndexInActiveSection) {
                             setCurrentTaskIndex(savedIdx);
                         } else if (tokenTaskRange) {
                             const [startStr] = tokenTaskRange.split("-");
@@ -386,5 +387,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
         allowedMaxIndex,
     };
 };
+
+
 
 
