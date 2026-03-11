@@ -367,7 +367,7 @@ export default function SettingsPage({ goTo }) {
                                 />
                                 {bypassPasswordError && <span className="small text-red-600 block text-center">{bypassPasswordError}</span>}
                                 <Button onClick={enterWithDevBypass} className="w-full">
-                                    ????? ? ????????
+                                    {"\u0412\u043e\u0439\u0442\u0438 \u0432 \u0442\u0440\u0435\u043d\u0430\u0436\u0435\u0440"}
                                 </Button>
                             </div>
                         )}
