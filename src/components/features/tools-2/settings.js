@@ -1,19 +1,14 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 
 import Header from "@/components/layout/Header";
-import { addKeyToCookies, addUserToCookies, getKeyFromCookies } from "./actions";
+import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, removeKeyCookie } from "./actions";
 import { v4 as uuidv4 } from "uuid";
 
-import TimeIcon from "@/assets/general/time.svg";
-import SettsIcon from "@/assets/general/setts.svg";
-import InfoIcon from "@/assets/general/info.svg";
-import CourseIcon from "@/assets/nav/course.svg";
 import CloseIcon from "@/assets/general/close.svg";
 
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
 
-// Функция для проверки токена через API
 async function validateTokenAPI(tokenValue) {
     try {
         const response = await fetch(`/api/mayak/validate-token?token=${encodeURIComponent(tokenValue)}`, {
@@ -23,18 +18,29 @@ async function validateTokenAPI(tokenValue) {
         const data = await response.json();
         return {
             valid: data.valid || false,
+            isActive: data.isActive || false,
+            isExhausted: data.isExhausted || false,
             remainingAttempts: data.remainingAttempts || 0,
             usageLimit: data.usageLimit || 0,
             usedCount: data.usedCount || 0,
             error: data.error || null,
+            isBypass: data.isBypass || false,
         };
     } catch (error) {
         console.error("Ошибка проверки токена:", error);
-        return { valid: false, remainingAttempts: 0, usageLimit: 0, usedCount: 0, error: "Ошибка сервера" };
+        return {
+            valid: false,
+            isActive: false,
+            isExhausted: false,
+            remainingAttempts: 0,
+            usageLimit: 0,
+            usedCount: 0,
+            error: "Ошибка сервера",
+            isBypass: false,
+        };
     }
 }
 
-// Функция для использования токена (увеличение счетчика)
 async function useTokenAPI(tokenValue) {
     try {
         const response = await fetch("/api/mayak/validate-token", {
@@ -47,24 +53,41 @@ async function useTokenAPI(tokenValue) {
             success: data.success || false,
             remainingAttempts: data.remainingAttempts || 0,
             error: data.error || null,
+            isBypass: data.isBypass || false,
         };
     } catch (error) {
         console.error("Ошибка использования токена:", error);
-        return { success: false, remainingAttempts: 0, error: "Ошибка сервера" };
+        return { success: false, remainingAttempts: 0, error: "Ошибка сервера", isBypass: false };
+    }
+}
+
+async function loginMayakAdmin(password) {
+    try {
+        const response = await fetch("/api/admin/mayak-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password }),
+        });
+        const data = await response.json().catch(() => ({}));
+        return {
+            success: response.ok && Boolean(data.success),
+            error: data.error || null,
+        };
+    } catch (error) {
+        console.error("?????? ??????????? ??????????????:", error);
+        return { success: false, error: "?????? ???????" };
     }
 }
 
 export default function SettingsPage({ goTo }) {
-    // Токен и его валидация
     const [token, setToken] = useState("");
     const [isTokenValid, setIsTokenValid] = useState(false);
-    const [tokenExists, setTokenExists] = useState(false); // Новое состояние
+    const [tokenExists, setTokenExists] = useState(false);
     const [showNotification, setShowNotification] = useState(false);
-    const [showAdminLogin, setShowAdminLogin] = useState(false);
-    const [adminPassword, setAdminPassword] = useState("");
-    const [adminLoginError, setAdminLoginError] = useState("");
+    const [isDevBypass, setIsDevBypass] = useState(false);
+    const [bypassPassword, setBypassPassword] = useState("");
+    const [bypassPasswordError, setBypassPasswordError] = useState("");
 
-    // Данные пользователя
     const [userData, setUserData] = useState({
         lastName: "",
         firstName: "",
@@ -74,11 +97,9 @@ export default function SettingsPage({ goTo }) {
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
-    // Токен usage - теперь динамические значения
     const [max, setMax] = useState(180);
     const [value, setValue] = useState(0);
 
-    // Состояние для отображения оставшихся попыток токена
     const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
     const [tokenError, setTokenError] = useState("");
     const [isValidating, setIsValidating] = useState(false);
@@ -90,8 +111,7 @@ export default function SettingsPage({ goTo }) {
                 throw new Error("Не удалось получить количество записей");
             }
             const data = await response.json();
-            console.log(data);
-            return data.count; //|| 0
+            return data.count;
         } catch (error) {
             console.error("Ошибка при получении количества записей:", error);
             return 0;
@@ -104,32 +124,35 @@ export default function SettingsPage({ goTo }) {
         return "range-high";
     };
 
-    // Асинхронная функция валидации токена через API
     const validateToken = async (tokenToValidate) => {
         if (!tokenToValidate || tokenToValidate.trim() === "") {
             setIsTokenValid(false);
             setShowNotification(false);
             setTokenError("");
+            setIsDevBypass(false);
+            setBypassPasswordError("");
             return;
         }
 
         setIsValidating(true);
-        // Не сбрасываем ошибку здесь, мы уже сбросили её при вводе (onChange)
-
         const result = await validateTokenAPI(tokenToValidate);
+        const isAccessible = result.valid || (result.isExhausted && result.isActive);
 
-        setIsTokenValid(result.valid);
+        setIsTokenValid(isAccessible);
         setTokenRemainingAttempts(result.remainingAttempts);
+        setIsDevBypass(Boolean(result.isBypass));
+        if (!result.isBypass) {
+            setBypassPassword("");
+            setBypassPasswordError("");
+        }
 
-        // Устанавливаем значения для шкалы на основе данных токена
         if (result.usageLimit > 0) {
             setMax(result.usageLimit);
             setValue(result.remainingAttempts);
         }
 
-        if (result.valid) {
+        if (isAccessible) {
             setShowNotification(true);
-            // Если токен валиден, очищаем ошибку
             setTokenError("");
         } else {
             setTokenError(result.error || "Токен недействителен");
@@ -139,22 +162,32 @@ export default function SettingsPage({ goTo }) {
         setIsValidating(false);
     };
 
-    // Получаем токен из cookies при монтировании компонента
     useEffect(() => {
         async function fetchTokenAndUsage() {
-            const KeyInCookies = await getKeyFromCookies();
-            if (KeyInCookies && KeyInCookies.text) {
-                setToken(KeyInCookies.text);
+            const keyInCookies = await getKeyFromCookies();
+            if (keyInCookies && keyInCookies.text) {
+                if (keyInCookies.text === "ADMIN-BYPASS-TOKEN") {
+                    await removeKeyCookie();
+                    await clearUserCookie();
+                    setToken("");
+                    setTokenExists(false);
+                    setShowNotification(false);
+                    setIsTokenValid(false);
+                    setIsDevBypass(false);
+                    return;
+                }
+                setToken(keyInCookies.text);
                 setTokenExists(true);
-                // Валидируем токен напрямую
-                const result = await validateTokenAPI(KeyInCookies.text);
-                setIsTokenValid(result.valid);
+                const result = await validateTokenAPI(keyInCookies.text);
+                const isAccessible = result.valid || (result.isExhausted && result.isActive);
+                setIsTokenValid(isAccessible);
                 setTokenRemainingAttempts(result.remainingAttempts);
+                setIsDevBypass(Boolean(result.isBypass));
                 if (result.usageLimit > 0) {
                     setMax(result.usageLimit);
                     setValue(result.remainingAttempts);
                 }
-                if (result.valid) {
+                if (isAccessible) {
                     setShowNotification(true);
                 }
             }
@@ -162,29 +195,51 @@ export default function SettingsPage({ goTo }) {
         fetchTokenAndUsage();
     }, []);
 
-    // Реализация Debounce (задержки) для ввода токена
     useEffect(() => {
-        // Если токена нет или это админский код, не запускаем валидацию
-        if (!token || token.trim() === "" || token.trim().toLowerCase() === "fffff") {
-            return;
+        if (!token || token.trim() === "") {
+            return undefined;
         }
 
         const delayDebounceFn = setTimeout(() => {
             validateToken(token);
-        }, 500); // Ждем 800мс после последнего ввода символа
+        }, 500);
 
         return () => clearTimeout(delayDebounceFn);
     }, [token]);
 
     const handleUserDataChange = (e) => {
-        const { name, value } = e.target;
+        const { name, value: fieldValue } = e.target;
         setUserData((prev) => ({
             ...prev,
-            [name]: value,
+            [name]: fieldValue,
         }));
     };
 
+    const enterWithDevBypass = async () => {
+        setBypassPasswordError("");
+
+        if (!bypassPassword) {
+            setBypassPasswordError("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430");
+            return;
+        }
+
+        const authResult = await loginMayakAdmin(bypassPassword);
+        if (!authResult.success) {
+            setBypassPasswordError(authResult.error || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0430\u0432\u0442\u043e\u0440\u0438\u0437\u043e\u0432\u0430\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434");
+            return;
+        }
+
+        await addKeyToCookies(token);
+        await addUserToCookies("dev-bypass", "\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434");
+        goTo("trainer");
+    };
+
     const saveData = async () => {
+        if (isDevBypass) {
+            await enterWithDevBypass();
+            return;
+        }
+
         if (!isTokenValid) {
             alert("Пожалуйста, введите корректный токен для активации тренажера");
             return;
@@ -198,7 +253,6 @@ export default function SettingsPage({ goTo }) {
         setIsLoading(true);
 
         try {
-            // Используем токен (увеличиваем счётчик использований)
             const useResult = await useTokenAPI(token);
             if (!useResult.success) {
                 alert(useResult.error || "Ошибка при использовании токена");
@@ -207,7 +261,6 @@ export default function SettingsPage({ goTo }) {
             }
 
             const userId = uuidv4();
-
             const userRecord = {
                 id: userId,
                 userData,
@@ -227,51 +280,29 @@ export default function SettingsPage({ goTo }) {
                 body: JSON.stringify(dataToSave),
             });
 
-            if (response.ok) {
-                setSaveSuccess(true);
-                setTimeout(() => setSaveSuccess(false), 3000);
-                await addKeyToCookies(token);
-                await addUserToCookies(userId, userData.lastName + " " + userData.firstName);
-
-                // Обновляем количество использований
-                const updatedRecordsCount = await getRecordsCount();
-
-                setValue(max - updatedRecordsCount);
-
-                setUserData({
-                    lastName: "",
-                    firstName: "",
-                    college: "",
-                });
-            } else {
+            if (!response.ok) {
                 throw new Error("Ошибка при сохранении данных");
             }
+
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 3000);
+            await addKeyToCookies(token);
+            await addUserToCookies(userId, `${userData.lastName} ${userData.firstName}`);
+
+            const updatedRecordsCount = await getRecordsCount();
+            setValue(max - updatedRecordsCount);
+
+            setUserData({
+                lastName: "",
+                firstName: "",
+                college: "",
+            });
         } catch (error) {
             console.error("Ошибка:", error);
             alert("Произошла ошибка при сохранении данных");
         } finally {
             setIsLoading(false);
             goTo("trainer");
-        }
-    };
-    
-    const handleAdminLogin = async (e) => {
-        e.preventDefault();
-        // !!! ВАЖНО: Замените 'mayak-power-2024' на свой надежный пароль !!!
-        const CORRECT_ADMIN_PASSWORD = "a12345";
-
-        if (adminPassword === CORRECT_ADMIN_PASSWORD) {
-            // Используем специальный админ-токен для обхода проверки
-            const ADMIN_BYPASS_TOKEN = "ADMIN-BYPASS-TOKEN";
-
-            await addKeyToCookies(ADMIN_BYPASS_TOKEN);
-            await addUserToCookies("admin-id", "Администратор");
-
-            goTo("trainer"); // Переходим в тренажер
-        } else {
-            setAdminLoginError("Неверный пароль");
-            setAdminPassword("");
-            setTimeout(() => setAdminLoginError(""), 3000);
         }
     };
 
@@ -300,54 +331,58 @@ export default function SettingsPage({ goTo }) {
                             placeholder="Введите ваш токен"
                             value={token}
                             onChange={(e) => {
-                                const value = e.target.value;
-                                setToken(value);
-                                
-                                // Сбрасываем состояния ошибок и успеха ПРИ ВВОДЕ, чтобы не мигало
+                                const nextToken = e.target.value;
+                                setToken(nextToken);
                                 setTokenError("");
                                 setShowNotification(false);
                                 setIsTokenValid(false);
-
-                                // Наша новая логика
-                                if (value.trim().toLowerCase() === "fffff") {
-                                    setShowAdminLogin(true);
-                                } else {
-                                    setShowAdminLogin(false);
-                                }
+                                setIsDevBypass(false);
+                                setBypassPasswordError("");
                             }}
                         />
 
                         {isValidating && <span className="small text-blue-600 block text-center">Проверка токена...</span>}
 
-                        {showNotification && tokenExists && (
+                        {showNotification && tokenExists && !isDevBypass && (
                             <div className="flex flex-col gap-[1rem] items-center">
                                 <span className="big p-3 bg-green-100 text-green-700 rounded-md">Тренажер активирован</span>
-                                <span className="small text-(--color-gray-black)">
-                                    Осталось попыток: {tokenRemainingAttempts}
-                                </span>
-                                <Button
-                                    onClick={() => goTo("trainer")}
-                                    className="w-full"
-                                >
+                                <span className="small text-(--color-gray-black)">Осталось попыток: {tokenRemainingAttempts}</span>
+                                <Button onClick={() => goTo("trainer")} className="w-full">
                                     Войти в тренажер
                                 </Button>
                             </div>
                         )}
 
-                        {showNotification && !tokenExists && 
-                          <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">
-                            Токен подходит. Заполните форму ниже для активации тренажера.
-                          </span>
-                        }
+                        {showNotification && isDevBypass && (
+                            <div className="flex flex-col gap-[1rem] items-center">
+                                <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">{"\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d. \u0414\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430."}</span>
+                                <Input
+                                    type="password"
+                                    placeholder={"\u041f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430"}
+                                    value={bypassPassword}
+                                    onChange={(e) => {
+                                        setBypassPassword(e.target.value);
+                                        setBypassPasswordError("");
+                                    }}
+                                />
+                                {bypassPasswordError && <span className="small text-red-600 block text-center">{bypassPasswordError}</span>}
+                                <Button onClick={enterWithDevBypass} className="w-full">
+                                    ????? ? ????????
+                                </Button>
+                            </div>
+                        )}
 
-                        {tokenError && !showNotification && !isValidating && (
-                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">
-                                {tokenError}
+                        {showNotification && !tokenExists && !isDevBypass && (
+                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">
+                                Токен подходит. Заполните форму ниже для активации тренажера.
                             </span>
                         )}
 
-                        {/* Шкала показывается если токен валиден */}
-                        {isTokenValid && (
+                        {tokenError && !showNotification && !isValidating && (
+                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{tokenError}</span>
+                        )}
+
+                        {isTokenValid && !isDevBypass && (
                             <div className="flex flex-col gap-[0.25rem]">
                                 <span className={getRangeClass(value)}>
                                     {value}/{max}
@@ -357,83 +392,68 @@ export default function SettingsPage({ goTo }) {
                         )}
                     </div>
 
-                    {showAdminLogin ? (
-                        // --- СЕКРЕТНАЯ ФОРМА ДЛЯ ПАРОЛЯ ---
-                        <form onSubmit={handleAdminLogin} className="flex flex-col gap-4 w-full mt-4">
-                            <span className="big">Вход для администратора</span>
-                            <Input type="password" placeholder="Введите пароль" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} autoFocus />
-                            {adminLoginError && <p className="text-red-500 text-sm text-center">{adminLoginError}</p>}
-                            <Button type="submit" className="blue w-full">
-                                Войти
-                            </Button>
-                        </form>
-                    ) : (
-                        // --- ОБЫЧНАЯ ФОРМА ДЛЯ ПОЛЬЗОВАТЕЛЯ ---
+                    {!tokenExists && showNotification && !isDevBypass && (
                         <>
-                            {!tokenExists && showNotification && (
-                                <>
-                                    <div className="flex flex-col gap-[0.75rem] w-full">
-                                        <span className="big">Личные данные</span>
-                                        <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                                            <div>
-                                                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Фамилия *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    id="lastName"
-                                                    name="lastName"
-                                                    value={userData.lastName}
-                                                    onChange={handleUserDataChange}
-                                                    className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Имя *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    id="firstName"
-                                                    name="firstName"
-                                                    value={userData.firstName}
-                                                    onChange={handleUserDataChange}
-                                                    className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Организация *
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    id="college"
-                                                    name="college"
-                                                    value={userData.college}
-                                                    onChange={handleUserDataChange}
-                                                    className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                    required
-                                                />
-                                            </div>
-                                        </div>
+                            <div className="flex flex-col gap-[0.75rem] w-full">
+                                <span className="big">Личные данные</span>
+                                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
+                                    <div>
+                                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Фамилия *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="lastName"
+                                            name="lastName"
+                                            value={userData.lastName}
+                                            onChange={handleUserDataChange}
+                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
                                     </div>
-
-                                    <div className="flex justify-center w-full">
-                                        <button
-                                            onClick={saveData}
-                                            disabled={isLoading}
-                                            className={`px-8 py-3 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                                isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
-                                            }`}>
-                                            {isLoading ? "Сохранение..." : "Сохранить результаты"}
-                                        </button>
+                                    <div>
+                                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Имя *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="firstName"
+                                            name="firstName"
+                                            value={userData.firstName}
+                                            onChange={handleUserDataChange}
+                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
                                     </div>
+                                    <div>
+                                        <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-1">
+                                            Организация *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            id="college"
+                                            name="college"
+                                            value={userData.college}
+                                            onChange={handleUserDataChange}
+                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
 
-                                    {saveSuccess && <div className="mt-6 p-3 bg-green-100 text-green-700 text-center rounded-md">Данные успешно сохранены!</div>}
-                                </>
-                            )}
+                            <div className="flex justify-center w-full">
+                                <button
+                                    onClick={saveData}
+                                    disabled={isLoading}
+                                    className={`px-8 py-3 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                        isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
+                                    }`}>
+                                    {isLoading ? "Сохранение..." : "Сохранить результаты"}
+                                </button>
+                            </div>
+
+                            {saveSuccess && <div className="mt-6 p-3 bg-green-100 text-green-700 text-center rounded-md">Данные успешно сохранены!</div>}
                         </>
                     )}
                 </div>

@@ -1,7 +1,6 @@
+﻿import { requireMayakAdmin } from '../../../../lib/mayakAdminAuth.js';
 import { getAllRequests, updateRequest, deleteRequest, createRequest, submitCode } from '../../../../utils/tokenRequests.js';
 import { getTokenById } from '../../../../utils/mayakTokens.js';
-
-const ADMIN_PASSWORD = 'a12345';
 
 async function notifyUser(chatId, text) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -16,9 +15,8 @@ async function notifyUser(chatId, text) {
 }
 
 export default async function handler(req, res) {
-    const password = req.query.password || req.body?.password;
-    if (password !== ADMIN_PASSWORD) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    if (!requireMayakAdmin(req, res)) {
+        return;
     }
 
     if (req.method === 'GET') {
@@ -114,3 +112,4 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ error: 'Method not allowed' });
 }
+

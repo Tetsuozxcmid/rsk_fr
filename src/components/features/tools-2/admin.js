@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import Block from "@/components/features/public/Block";
 import Button from "@/components/ui/Button";
@@ -112,7 +112,6 @@ const AccordionItem = ({ type, links, onLinkChange, onAddLink, onDeleteLink, onT
     );
 };
 
-const ADMIN_PASSWORD = "a12345"; // В реальном проекте пароль должен храниться в переменных окружения
 
 export default function AdminPanel({ goTo }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -200,13 +199,23 @@ export default function AdminPanel({ goTo }) {
         });
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (password === ADMIN_PASSWORD) {
+        setLoginError("");
+        try {
+            const res = await fetch("/api/admin/mayak-auth", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ password }),
+            });
+            const json = await res.json();
+            if (!json.success) {
+                setLoginError(json.error || "Неверный пароль");
+                return;
+            }
             setIsAuthenticated(true);
-            setLoginError("");
-        } else {
-            setLoginError("Неверный пароль");
+        } catch {
+            setLoginError("Ошибка входа");
         }
     };
 
@@ -374,3 +383,5 @@ export default function AdminPanel({ goTo }) {
         </div>
     );
 }
+
+

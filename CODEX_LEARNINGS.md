@@ -160,9 +160,47 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: restart the mascot by remounting the `<img>` with a React `key`, keep the URL stable, and preload the mascot assets once on page load.
 - Prevention: for MAYAK animated mascot playback, do not use cache-busting query params as the replay mechanism unless a real asset version change is intended.
 
+
+### 2026-03-11 - Live MAYAK content should not be served to the trainer directly from public JSON files
+
+- Problem: editable MAYAK v2 content could load slowly and become inconsistent after admin edits because the trainer fetched many public JSON files directly and the running Next process could keep serving stale or missing files.
+- Root cause: the trainer treated live MAYAK content as static web assets in `public/tasks-2/v2`, while that content is actually server-managed runtime data that changes through the admin panel.
+- Fix: move the runtime contract behind server APIs and a shared MAYAK content storage module, then let the trainer and admin previews read files through those APIs instead of direct `/tasks-2/v2/...` URLs.
+- Prevention: for MAYAK content that is editable in production, do not couple the trainer runtime to direct public-file fetches; use a server-side storage path plus API facade from the start.
+
 ### 2026-03-10 - MAYAK empty ranges break when index.json loses task numbers
 
 - Problem: some MAYAK sections opened in the content admin without row numbering because the range looked empty even though index.json still had 100 entries.
 - Root cause: those index.json files had been saved with truncated task objects that no longer included the required `number` field, and the admin tasks API trusted that malformed payload on save.
 - Fix: restore the missing `number` values in the broken section files and reject future saves in `/api/admin/mayak-content/tasks` when any task row has an empty number.
 - Prevention: when creating or bulk-editing MAYAK ranges, verify that every index.json row keeps its `number` before saving; do not accept partial task objects as valid section content.
+
+### 2026-03-11 - MAYAK admin auth should use server env plus httpOnly cookie, not hardcoded passwords in UI or API
+
+- Problem: MAYAK admin pages and API routes kept the same hardcoded password in multiple client and server files, which made the secret part of the bundle and forced every admin request to resend it.
+- Root cause: admin access had grown from local page-level checks instead of a shared server-side auth contract.
+- Fix: move MAYAK admin password to `MAYAK_ADMIN_PASSWORD`, add a dedicated `/api/admin/mayak-auth` login route that sets an httpOnly cookie, and let MAYAK admin pages and APIs trust that cookie instead of query/body passwords.
+- Prevention: for MAYAK admin flows, never keep the admin password in frontend code or duplicate it across API handlers; use one shared server auth helper.
+
+### 2026-03-11 - MAYAK token validation must not keep server-side bypass tokens after client cleanup
+
+- Problem: even after removing fixed and bypass token logic from the MAYAK client, `/api/mayak/validate-token` could still accept a hardcoded admin bypass token and skip the real token storage rules.
+- Root cause: token-flow cleanup only touched the frontend first, while the API still had a legacy special-case branch.
+- Fix: remove `ADMIN_BYPASS_TOKEN` handling from the MAYAK token validation API and let both token checks and token usage go only through `validateToken()` and `useToken()` from the shared token store.
+- Prevention: when cleaning MAYAK auth or token flows, audit both client and API layers; removing a bypass only on the frontend is incomplete.
+
+- 2026-03-11: PowerShell here-string -> node can corrupt Cyrillic in MAYAK JS files into question marks. Root cause: console/input encoding during inline script replacement. Fix: write Russian literals via Unicode escapes or verify UTF-8 content with Node after replacement. Prevention: after any inline script edit touching Cyrillic, read the resulting literal back via Node, not PowerShell output alone.
+
+### 2026-03-11 - MAYAK refactor progress should be tracked in a dedicated status file before context compression
+
+- Problem: long MAYAK refactor sessions can lose operational progress after context compression if the current state lives only in chat memory.
+- Root cause: `CODEX_LEARNINGS.md` stores reusable lessons, not the live status of what was refactored, what remains, and what still needs server follow-up.
+- Fix: keep a dedicated progress file at `docs/mayak-refactor-status.md`, update it after important MAYAK changes and before likely compression points, and read it first after compression.
+- Prevention: do not rely on conversational memory alone for long MAYAK refactors; preserve live execution status in the dedicated status file and reserve `CODEX_LEARNINGS.md` for reusable lessons only.
+
+### 2026-03-11 - Default MAYAK storage fallback must prefer a valid content root, not the first existing directory
+
+- Problem: MAYAK runtime could silently load empty content when `data/mayak-content` existed but did not actually contain valid MAYAK files, because that directory was chosen ahead of the real legacy content root.
+- Root cause: content storage fallback previously selected the first existing directory instead of checking whether it contained a valid MAYAK manifest or section data.
+- Fix: keep `MAYAK_CONTENT_DIR` as the explicit override, but otherwise choose the first valid MAYAK storage root and use atomic JSON writes for manifest/section saves.
+- Prevention: when MAYAK content can live in multiple candidate directories, treat directory existence and content validity as separate checks; do not let an empty placeholder directory win over a valid storage root.

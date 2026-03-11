@@ -1,10 +1,30 @@
-import { validateToken, useToken } from "@/utils/mayakTokens";
+﻿import { validateToken, useToken } from "@/utils/mayakTokens";
 
-// Специальный токен для обхода проверки администратором
-const ADMIN_BYPASS_TOKEN = "ADMIN-BYPASS-TOKEN";
+const DEV_BYPASS_TOKEN = "fffff";
+
+function isLocalMayakBypassEnabled(req) {
+    const host = String(req.headers.host || "").toLowerCase();
+    const isLocalHost = host.includes("localhost") || host.includes("127.0.0.1");
+    return process.env.NODE_ENV !== "production" && isLocalHost;
+}
+
+function buildBypassValidationResponse() {
+    return {
+        success: true,
+        valid: true,
+        error: null,
+        remainingAttempts: 1,
+        usageLimit: 1,
+        usedCount: 0,
+        taskRange: null,
+        sectionId: null,
+        isExhausted: false,
+        isActive: true,
+        isBypass: true,
+    };
+}
 
 export default async function handler(req, res) {
-    // GET - проверить токен без использования
     if (req.method === "GET") {
         try {
             const { token } = req.query;
@@ -13,20 +33,12 @@ export default async function handler(req, res) {
                 return res.status(400).json({
                     success: false,
                     valid: false,
-                    error: "Токен не указан"
+                    error: "Токен не указан",
                 });
             }
 
-            // Специальная обработка для админ-токена
-            if (token === ADMIN_BYPASS_TOKEN) {
-                return res.status(200).json({
-                    success: true,
-                    valid: true,
-                    error: null,
-                    remainingAttempts: 999999,
-                    usageLimit: 999999,
-                    usedCount: 0,
-                });
+            if (token === DEV_BYPASS_TOKEN && isLocalMayakBypassEnabled(req)) {
+                return res.status(200).json(buildBypassValidationResponse());
             }
 
             const result = validateToken(token);
@@ -40,20 +52,20 @@ export default async function handler(req, res) {
                 usedCount: result.token?.usedCount || 0,
                 taskRange: result.token?.taskRange || null,
                 sectionId: result.token?.sectionId || null,
-                isExhausted: result.token ? result.token.usedCount >= result.token.usageLimit : false, // Флаг исчерпанности
-                isActive: result.token?.isActive ?? false, // Флаг активности
+                isExhausted: result.token ? result.token.usedCount >= result.token.usageLimit : false,
+                isActive: result.token?.isActive ?? false,
+                isBypass: false,
             });
         } catch (error) {
             console.error("Error validating token:", error);
             return res.status(500).json({
                 success: false,
                 valid: false,
-                error: "Ошибка сервера"
+                error: "Ошибка сервера",
             });
         }
     }
 
-    // POST - использовать токен (увеличить счетчик)
     if (req.method === "POST") {
         try {
             const { token } = req.body;
@@ -61,16 +73,16 @@ export default async function handler(req, res) {
             if (!token || typeof token !== "string") {
                 return res.status(400).json({
                     success: false,
-                    error: "Токен не указан"
+                    error: "Токен не указан",
                 });
             }
 
-            // Специальная обработка для админ-токена - не увеличиваем счётчик
-            if (token === ADMIN_BYPASS_TOKEN) {
+            if (token === DEV_BYPASS_TOKEN && isLocalMayakBypassEnabled(req)) {
                 return res.status(200).json({
                     success: true,
-                    message: "Админ-токен использован",
-                    remainingAttempts: 999999,
+                    message: "Локальный bypass-токен использован",
+                    remainingAttempts: 1,
+                    isBypass: true,
                 });
             }
 
@@ -88,12 +100,13 @@ export default async function handler(req, res) {
                 success: true,
                 message: "Токен использован",
                 remainingAttempts: result.remainingAttempts,
+                isBypass: false,
             });
         } catch (error) {
             console.error("Error using token:", error);
             return res.status(500).json({
                 success: false,
-                error: "Ошибка сервера"
+                error: "Ошибка сервера",
             });
         }
     }
