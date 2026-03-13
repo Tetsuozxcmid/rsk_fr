@@ -184,7 +184,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                         defaultStartIndex = startPos;
                         tasksData = new Array(rangeEnd).fill(null).map(() => ({ ...EMPTY_TASK }));
                         for (let i = 0; i < data.length; i++) {
-                            tasksData[startPos + i] = { ...data[i], _range: sectionSlug };
+                            tasksData[startPos + i] = { ...data[i], _range: sectionSlug, _sectionStart: rangeStart };
                         }
 
                         tasksTextsData = texts;
@@ -205,7 +205,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                             const data = Array.isArray(bundle.tasks) ? bundle.tasks : [];
                             const startPos = getSectionRangeStart(range, bundle.meta) - 1;
                             for (let i = 0; i < data.length; i++) {
-                                tasksData[startPos + i] = { ...data[i], _range: range };
+                                tasksData[startPos + i] = { ...data[i], _range: range, _sectionStart: startPos + 1 };
                             }
                         }
 

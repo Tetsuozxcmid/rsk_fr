@@ -33,9 +33,11 @@ Stabilize MAYAK architecture around:
 - Added runtime content APIs:
   - `/api/mayak/content-bundle`
   - `/api/mayak/content-file`
+  - `/api/mayak/settings`
 - Switched MAYAK admin preview/file access to `content-file` API.
 - Switched MAYAK v2 runtime loading in `useMayakTaskManager` from direct `/tasks-2/v2/*.json` fetches to `content-bundle` and `content-file` APIs.
 - Local content was verified to work through `data/mayak-content`.
+- Added shared MAYAK questionnaire-link settings in `data/mayak-settings.json` with admin editing in `/admin/mayak-content`.
 
 
 ### Storage hardening
@@ -151,3 +153,4 @@ Stop this stage when:
 - Switched localhost bypass flow from plain `fffff` to `fffff + MAYAK admin password` through `/api/admin/mayak-auth`.
 - Added automatic cleanup of legacy `ADMIN-BYPASS-TOKEN` from `activated_key` cookie on MAYAK settings load.
 - Tightened `useMayakAccessGate` so bypass token access requires an authenticated MAYAK admin cookie before opening the trainer.
+

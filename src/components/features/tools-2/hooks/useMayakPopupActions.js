@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 export function useMayakPopupActions({
+    completionSurveyUrl,
     handleSaveSessionCompletion,
     saveQuestionnaire,
     setCompletionSurveyDone,
@@ -30,9 +31,14 @@ export function useMayakPopupActions({
     }, []);
 
     const handleOpenCompletionSurvey = useCallback(() => {
-        window.open("https://forms.yandex.ru/u/6891bb8002848f2a56f5e978/", "_blank");
+        const targetUrl = typeof completionSurveyUrl === "string" ? completionSurveyUrl.trim() : "";
+        if (!targetUrl) {
+            alert("Ссылка на выходную анкету не настроена.");
+            return;
+        }
+        window.open(targetUrl, "_blank");
         setCompletionSurveyDone(true);
-    }, [setCompletionSurveyDone]);
+    }, [completionSurveyUrl, setCompletionSurveyDone]);
 
     const handleGetCompletionCertificate = useCallback(() => {
         handleSaveSessionCompletion();

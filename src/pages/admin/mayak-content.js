@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import Link from "next/link";
@@ -1218,9 +1218,14 @@ export default function AdminMayakContent() {
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState("");
     const [tokensBySection, setTokensBySection] = useState({});
+    const [introQuestionnaireUrl, setIntroQuestionnaireUrl] = useState("");
+    const [completionSurveyUrl, setCompletionSurveyUrl] = useState("");
+    const [questionnaireSaving, setQuestionnaireSaving] = useState(false);
+    const [questionnaireError, setQuestionnaireError] = useState("");
+    const [questionnaireMessage, setQuestionnaireMessage] = useState("");
 
     useEffect(() => {
-                const saved = sessionStorage.getItem(AUTH_KEY);
+        const saved = sessionStorage.getItem(AUTH_KEY);
         async function checkAuth() {
             try {
                 const res = await fetch("/api/admin/mayak-auth");
@@ -1246,7 +1251,17 @@ export default function AdminMayakContent() {
         setLoading(false);
     }, []);
 
-    // Подгрузка токенов по разделам
+    const fetchQuestionnaireSettings = useCallback(async () => {
+        try {
+            const res = await fetch("/api/admin/mayak-settings");
+            const json = await res.json();
+            if (json.success && json.data) {
+                setIntroQuestionnaireUrl(json.data.introQuestionnaireUrl || "");
+                setCompletionSurveyUrl(json.data.completionSurveyUrl || "");
+            }
+        } catch (err) { console.error(err); }
+    }, []);
+
     const fetchTokensBySection = useCallback(async () => {
         try {
             const res = await fetch(`/api/admin/mayak-tokens`);
@@ -1263,10 +1278,36 @@ export default function AdminMayakContent() {
         } catch (err) { console.error(err); }
     }, []);
 
-    useEffect(() => { if (isAuth) { fetchRanges(); fetchTokensBySection(); } }, [isAuth, fetchRanges, fetchTokensBySection]);
+    useEffect(() => {
+        if (isAuth) {
+            fetchRanges();
+            fetchTokensBySection();
+            fetchQuestionnaireSettings();
+        }
+    }, [isAuth, fetchQuestionnaireSettings, fetchRanges, fetchTokensBySection]);
 
     const selectRange = (r) => { setSelectedRange(r); sessionStorage.setItem("mayak_admin_selected_range", r); };
     const goBack = () => { setSelectedRange(null); sessionStorage.removeItem("mayak_admin_selected_range"); fetchRanges(); };
+
+    const handleSaveQuestionnaireSettings = async () => {
+        setQuestionnaireSaving(true);
+        setQuestionnaireError("");
+        setQuestionnaireMessage("");
+        try {
+            const res = await fetch("/api/admin/mayak-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ introQuestionnaireUrl, completionSurveyUrl }),
+            });
+            const json = await res.json();
+            if (!json.success) throw new Error(json.error || "Не удалось сохранить ссылки анкет");
+            setQuestionnaireMessage("Ссылки анкет сохранены");
+            await fetchQuestionnaireSettings();
+        } catch (err) {
+            setQuestionnaireError(err.message || "Не удалось сохранить ссылки анкет");
+        }
+        setQuestionnaireSaving(false);
+    };
 
     const handleCreateRange = async () => {
         if (!newRange.trim()) return;
@@ -1352,6 +1393,40 @@ export default function AdminMayakContent() {
                                 );
                             })}
                         </div>
+
+                        <div style={{ marginTop: 24, padding: 16, border: "1px solid #e2e8f0", borderRadius: 12, background: "#fff" }}>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>Глобальные анкеты MAYAK</div>
+                            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
+                                Эти ссылки используются во всех колодах для вводной Яндекс-анкеты и анкеты обратной связи при завершении сессии. Trainer берёт их отсюда, а не из отдельных колод.
+                            </div>
+                            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>Входная анкета</label>
+                                    <input
+                                        value={introQuestionnaireUrl}
+                                        onChange={(e) => setIntroQuestionnaireUrl(e.target.value)}
+                                        placeholder="https://forms.yandex.ru/u/..."
+                                        style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14 }}
+                                    />
+                                </div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                    <label style={{ fontSize: 12, fontWeight: 600, color: "#334155" }}>Выходная анкета</label>
+                                    <input
+                                        value={completionSurveyUrl}
+                                        onChange={(e) => setCompletionSurveyUrl(e.target.value)}
+                                        placeholder="https://forms.yandex.ru/u/..."
+                                        style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ccc", fontSize: 14 }}
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, flexWrap: "wrap" }}>
+                                <button onClick={handleSaveQuestionnaireSettings} disabled={questionnaireSaving} style={btnStyle}>
+                                    {questionnaireSaving ? "..." : "Сохранить ссылки"}
+                                </button>
+                                {questionnaireMessage && <span style={{ fontSize: 12, color: "#16a34a" }}>{questionnaireMessage}</span>}
+                                {questionnaireError && <span style={{ fontSize: 12, color: "#dc2626" }}>{questionnaireError}</span>}
+                            </div>
+                        </div>
                     </div>
                 ) : (
                     <RangeEditor range={selectedRange} onBack={goBack} />
@@ -1360,5 +1435,3 @@ export default function AdminMayakContent() {
         </>
     );
 }
-
-

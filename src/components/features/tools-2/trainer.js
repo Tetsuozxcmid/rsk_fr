@@ -58,6 +58,11 @@ const TRAINER_PREFIX = "trainer_v2"; // Уникальный префикс дл
 const QWEN_EVALUATION_LIMIT = 20;
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
 const isIntroTask = (index) => index % 100 < 3;
+const isRoleSelectionTask = (task) => {
+    const taskNumber = parseInt(task?.number, 10);
+    const sectionStart = Number.isFinite(task?._sectionStart) ? task._sectionStart : null;
+    return Number.isFinite(taskNumber) && Number.isFinite(sectionStart) && taskNumber === sectionStart;
+};
 const formatTaskTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -152,6 +157,7 @@ export default function TrainerPage({ goTo }) {
     const [hasCompletedSecondQuestionnaire, setHasCompletedSecondQuestionnaire] = useState(localStorage.getItem(getStorageKey("hasCompletedSecondQuestionnaire")) === "true");
     const [selectedRole, setSelectedRole] = useState(localStorage.getItem(getStorageKey("userRole")) || null);
     const [taskVersion, setTaskVersion] = useState(localStorage.getItem(getStorageKey("taskVersion")) || "v2");
+    const [questionnaireSettings, setQuestionnaireSettings] = useState({ introQuestionnaireUrl: "", completionSurveyUrl: "" });
 
     const [rankingDelta5, setRankingDelta5] = useState(() => {
         try {
@@ -167,6 +173,26 @@ export default function TrainerPage({ goTo }) {
     useEffect(() => {
         localStorage.setItem(getStorageKey("taskVersion"), taskVersion);
     }, [taskVersion]);
+    useEffect(() => {
+        let isMounted = true;
+        const loadQuestionnaireSettings = async () => {
+            try {
+                const res = await fetch("/api/mayak/settings", { cache: "no-store" });
+                const json = await res.json();
+                if (!isMounted || !json.success) return;
+                setQuestionnaireSettings({
+                    introQuestionnaireUrl: json.data?.questionnaires?.introQuestionnaireUrl || "",
+                    completionSurveyUrl: json.data?.questionnaires?.completionSurveyUrl || "",
+                });
+            } catch (error) {
+                console.error("Failed to load MAYAK questionnaire settings:", error);
+            }
+        };
+        loadQuestionnaireSettings();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
     const {
         confirmationConfig,
         currentTaskData,
@@ -507,6 +533,7 @@ export default function TrainerPage({ goTo }) {
         handleOpenCompletionTesting,
         handleSubmitSecondQuestionnaire,
     } = useMayakPopupActions({
+        completionSurveyUrl: questionnaireSettings.completionSurveyUrl,
         handleSaveSessionCompletion,
         saveQuestionnaire,
         setCompletionSurveyDone,
@@ -537,6 +564,7 @@ export default function TrainerPage({ goTo }) {
 
     const { handleCompleteSession, handleShowRolePopup, handleToolLink1Click } = useMayakTrainerControlActions({
         autoCompleteIntroTask,
+        introQuestionnaireUrl: questionnaireSettings.introQuestionnaireUrl,
         currentTask,
         currentTaskIndex,
         isIntroTask,
@@ -699,6 +727,7 @@ export default function TrainerPage({ goTo }) {
         mayakData,
         onShowInstruction: handleShowInstruction,
         isCurrentTaskIntro: isIntroTask(currentTaskIndex),
+        isCurrentTaskRoleSelection: isRoleSelectionTask(currentTask),
     };
 
     return (
@@ -910,4 +939,5 @@ export default function TrainerPage({ goTo }) {
         </>
     );
 }
+
 

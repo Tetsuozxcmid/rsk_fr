@@ -4,6 +4,7 @@ export function useMayakTrainerControlActions({
     autoCompleteIntroTask,
     currentTask,
     currentTaskIndex,
+    introQuestionnaireUrl,
     isIntroTask,
     setShowFirstQuestionnaire,
     setShowRankingTestPopup,
@@ -20,13 +21,17 @@ export function useMayakTrainerControlActions({
 
     const handleToolLink1Click = useCallback(
         (e) => {
-            if (!currentTask?.toolLink1) return;
+            const hasToolLink = !!currentTask?.toolLink1;
+            const introQuestionnaireLink = typeof introQuestionnaireUrl === "string" ? introQuestionnaireUrl.trim() : "";
+            const isIntroQuestionnaireTask = isIntroTask(currentTaskIndex) && currentTask?.toolName1 === "Входная анкета";
 
-            if (currentTask.toolName1 === "\u041f\u0440\u043e\u0439\u0442\u0438 \u0422\u0435\u0441\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435") {
+            if (currentTask?.toolName1 === "Пройти Тестирование") {
                 e.preventDefault();
                 setShowRankingTestPopup(true);
                 return;
             }
+
+            if (!hasToolLink && !isIntroQuestionnaireTask) return;
 
             if (currentTaskIndex + 1 === 1) {
                 e.preventDefault();
@@ -37,19 +42,22 @@ export function useMayakTrainerControlActions({
                 return;
             }
 
-            if (currentTaskIndex + 1 === 2) {
+            if (isIntroQuestionnaireTask) {
                 e.preventDefault();
-                window.open("https://forms.yandex.ru/u/689197c9eb6146293aca92fa/", "_blank");
-                if (isIntroTask(currentTaskIndex)) {
-                    autoCompleteIntroTask();
+                const targetUrl = introQuestionnaireLink;
+                if (!targetUrl) {
+                    alert("Ссылка на входную анкету не настроена.");
+                    return;
                 }
+                window.open(targetUrl, "_blank");
+                autoCompleteIntroTask();
                 return;
             }
 
             e.preventDefault();
             window.open(currentTask.toolLink1, "_blank");
         },
-        [autoCompleteIntroTask, currentTask, currentTaskIndex, isIntroTask, setShowFirstQuestionnaire, setShowRankingTestPopup]
+        [autoCompleteIntroTask, currentTask, currentTaskIndex, introQuestionnaireUrl, isIntroTask, setShowFirstQuestionnaire, setShowRankingTestPopup]
     );
 
     return {
@@ -58,3 +66,4 @@ export function useMayakTrainerControlActions({
         handleToolLink1Click,
     };
 }
+

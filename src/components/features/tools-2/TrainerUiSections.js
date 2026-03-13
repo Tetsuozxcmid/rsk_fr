@@ -116,6 +116,7 @@ export const TrainerControls = memo(function TrainerControls({
     mayakData,
     onShowInstruction,
     isCurrentTaskIntro,
+    isCurrentTaskRoleSelection,
 }) {
     const formatTaskTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -314,19 +315,8 @@ export const TrainerControls = memo(function TrainerControls({
                             </Button>
                         </span>
                     )}
-                    {(currentTaskIndex === 0 ||
-                        currentTaskIndex === 200 ||
-                        currentTaskIndex === 6000 ||
-                        currentTaskIndex === 3000 ||
-                        currentTaskIndex === 700 ||
-                        currentTaskIndex === 300 ||
-                        currentTaskIndex === 500 ||
-                        currentTaskIndex === 600 ||
-                        currentTaskIndex === 900 ||
-                        currentTaskIndex === 800 ||
-                        currentTaskIndex === 6100 ||
-                        currentTaskIndex === 8000) &&
-                        who === "im" && (
+                    {isCurrentTaskRoleSelection && who === "im" && (
+
                             <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                                 <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
                                     Выбрать роль
