@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import path from "path";
 import { requireMayakAdmin } from "../../../../lib/mayakAdminAuth.js";
 import {
@@ -29,6 +29,7 @@ export default async function handler(req, res) {
             let texts = await readSectionJson(sectionId, "TaskText.json", []);
             const existingFiles = await listSectionFiles(sectionId, "files");
             const existingInstructions = await listSectionFiles(sectionId, "instructions");
+            const existingMaps = await listSectionFiles(sectionId, "maps");
             const meta = await readSectionJson(sectionId, "meta.json", {});
             const rangeName = meta && typeof meta === "object" ? meta.rangeName || "" : "";
 
@@ -42,6 +43,10 @@ export default async function handler(req, res) {
                 if (!task.instruction) {
                     const match = existingInstructions.find((f) => f.replace(/\.[^.]+$/, "") === num);
                     if (match) task.instruction = match;
+                }
+                if (!task.map) {
+                    const match = existingMaps.find((f) => f.replace(/\.[^.]+$/, "") === num);
+                    if (match) task.map = match;
                 }
             }
 
@@ -58,10 +63,16 @@ export default async function handler(req, res) {
                     fileSizes[f] = st.size;
                 }
             } catch {}
+            try {
+                for (const f of existingMaps) {
+                    const st = await fs.stat(path.join(rangeDir, "Maps", f));
+                    fileSizes[f] = st.size;
+                }
+            } catch {}
 
             return res.status(200).json({
                 success: true,
-                data: { tasks, texts, existingFiles, existingInstructions, rangeName, fileSizes },
+                data: { tasks, texts, existingFiles, existingInstructions, existingMaps, rangeName, fileSizes },
             });
         } catch (error) {
             return res.status(500).json({ success: false, error: error.message });
@@ -77,6 +88,7 @@ export default async function handler(req, res) {
 
             const existingFiles = await listSectionFiles(sectionId, "files");
             const existingInstructions = await listSectionFiles(sectionId, "instructions");
+            const existingMaps = await listSectionFiles(sectionId, "maps");
             const warnings = [];
 
             const missingNumbers = tasks
@@ -98,11 +110,15 @@ export default async function handler(req, res) {
             tasks.forEach((task, i) => {
                 const instrName = (task.instruction || "").trim();
                 const fileName = (task.file || "").trim();
+                const mapName = (task.map || "").trim();
                 if (instrName && !existingInstructions.includes(instrName)) {
                     warnings.push({ index: i, field: "instruction", message: `Задание ${task.number}: файл инструкции не найден` });
                 }
                 if (fileName && !existingFiles.includes(fileName)) {
                     warnings.push({ index: i, field: "file", message: `Задание ${task.number}: файл доп. материала не найден` });
+                }
+                if (mapName && !existingMaps.includes(mapName)) {
+                    warnings.push({ index: i, field: "map", message: `Задание ${task.number}: файл карты не найден` });
                 }
             });
 
@@ -112,10 +128,13 @@ export default async function handler(req, res) {
                 contentType: t.contentType || "",
                 file: t.file && existingFiles.includes((t.file || "").trim()) ? t.file : "",
                 instruction: t.instruction && existingInstructions.includes((t.instruction || "").trim()) ? t.instruction : "",
+                map: t.map && existingMaps.includes((t.map || "").trim()) ? t.map : "",
                 instructionText: t.instructionText || "",
                 materialText: t.materialText || "",
+                mapText: t.mapText || "",
                 hasInstruction: !!(t.instructionText || "").trim(),
                 hasFile: !!(t.materialText || "").trim(),
+                hasMap: !!(t.mapText || "").trim(),
                 hasSource: !!(t.sourceLink || "").trim(),
                 sourceLink: t.sourceLink || "",
                 toolLink1: t.toolLink1 || "",

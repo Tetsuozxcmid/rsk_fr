@@ -4,6 +4,7 @@ import Buffer from "./addons/popup";
 import RankingTestPopup from "./addons/RankingTestPopup";
 import MayakServicesPanel from "./MayakServicesPanel";
 import InstructionImageModal from "./InstructionImageModal";
+import InstructionPreviewPanel from "./InstructionPreviewPanel";
 import { MayakField, TrainerControls } from "./TrainerUiSections";
 import { RoleSelectionPopup, ConfirmationPopup, FirstQuestionnairePopup, SecondQuestionnairePopup, ThirdQuestionnairePopup, SessionCompletionPopup, TaskCompletionPopup } from "./TrainerPopups";
 
@@ -248,6 +249,8 @@ export default function TrainerPage({ goTo }) {
     const [userType, setUserType] = useState("teacher");
     const [who, setWho] = useState("im");
     const [instructionModal, setInstructionModal] = useState(null);
+    const [isMapPreviewOpen, setIsMapPreviewOpen] = useState(false);
+    const [mapPreviewDismissedTaskKey, setMapPreviewDismissedTaskKey] = useState("");
 
     const {
         isAdmin,
@@ -275,6 +278,7 @@ export default function TrainerPage({ goTo }) {
         prevTask,
         instructionFileUrl,
         taskFileUrl,
+        mapFileUrl,
         sourceUrl,
         tasksTexts,
         isCurrentTaskAllowed,
@@ -386,6 +390,29 @@ export default function TrainerPage({ goTo }) {
     });
 
     const buildPromptDraftRef = useRef(null);
+    const resolveTaskIndexFromInput = useCallback(
+        (rawValue) => {
+            const inputNum = parseInt(String(rawValue).trim(), 10);
+            if (isNaN(inputNum)) {
+                return -1;
+            }
+
+            if (tokenTaskRange) {
+                const matchedIndex = tasks.findIndex((t) => parseInt(String(t?.number || "").trim(), 10) === inputNum);
+                if (matchedIndex !== -1) {
+                    return matchedIndex;
+                }
+            }
+
+            const fallbackIndex = inputNum - 1;
+            if (fallbackIndex >= 0 && fallbackIndex < tasks.length) {
+                return fallbackIndex;
+            }
+
+            return -1;
+        },
+        [tasks, tokenTaskRange]
+    );
 
     const savePromptToHistory = useCallback(
         (promptValue) => {
@@ -607,6 +634,43 @@ export default function TrainerPage({ goTo }) {
         [setFields]
     );
 
+    const activeMapTaskKey = timerState.isRunning && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
+
+    useEffect(() => {
+        if (!timerState.isRunning) {
+            setIsMapPreviewOpen(false);
+            setMapPreviewDismissedTaskKey("");
+            return;
+        }
+
+        if (!mapFileUrl || isMobile) {
+            setIsMapPreviewOpen(false);
+            return;
+        }
+
+        if (mapPreviewDismissedTaskKey !== activeMapTaskKey) {
+            setIsMapPreviewOpen(true);
+        }
+    }, [activeMapTaskKey, isMobile, mapFileUrl, mapPreviewDismissedTaskKey, timerState.isRunning]);
+
+    const handleToggleMapPreview = useCallback(() => {
+        if (!mapFileUrl || !timerState.isRunning || isMobile) return;
+        setIsMapPreviewOpen((prev) => {
+            const next = !prev;
+            setMapPreviewDismissedTaskKey(next ? "" : activeMapTaskKey);
+            return next;
+        });
+    }, [activeMapTaskKey, isMobile, mapFileUrl, timerState.isRunning]);
+
+    const handleCloseMapPreview = useCallback(() => {
+        setIsMapPreviewOpen(false);
+        setMapPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+    }, [activeMapTaskKey]);
+
+    const handleOpenMapSeparate = useCallback(() => {
+        if (!mapFileUrl || !timerState.isRunning) return;
+        window.open(mapFileUrl, "_blank", "noopener,noreferrer");
+    }, [mapFileUrl, timerState.isRunning]);
     const { createPrompt, handleCopy, handleRandom, handleResetFields } = useMayakPromptActions({
         buildPromptDraft,
         clearQwenState,
@@ -665,6 +729,9 @@ export default function TrainerPage({ goTo }) {
         taskElapsedTime: timerState.elapsedTime,
         instructionFileUrl,
         taskFileUrl,
+        mapFileUrl,
+        isMapPreviewOpen,
+        canToggleMapPreview: !!(mapFileUrl && timerState.isRunning && !isMobile),
         sourceUrl,
         currentTask,
         isCurrentTaskAllowed,
@@ -721,6 +788,7 @@ export default function TrainerPage({ goTo }) {
             }, 600);
         },
         onToggleTaskTimer: toggleTaskTimer,
+        onToggleMapPreview: handleToggleMapPreview,
         onCompleteSession: handleCompleteSession,
         onShowRolePopup: handleShowRolePopup,
         onToolLink1Click: handleToolLink1Click,
@@ -779,7 +847,7 @@ export default function TrainerPage({ goTo }) {
                         <TrainerControls {...trainerControlsProps} />
                     </div>
                 )}
-                <Block className="col-span-12 lg:col-span-6 !h-full">
+                <Block className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} !h-full`}>
                     <form className="flex flex-col h-full justify-between">
                         <div className="flex flex-col gap-[1.25rem]">
                             <div className="flex flex-col gap-[1rem]">
@@ -849,7 +917,7 @@ export default function TrainerPage({ goTo }) {
                     </form>
                 </Block>
 
-                <div className="col-span-12 lg:col-span-6 h-full flex flex-col gap-4">
+                <div className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-5" : "lg:col-span-6"} h-full flex flex-col gap-4`}>
                     {!isMobile && <TrainerControls {...trainerControlsProps} />}
 
                     <Block className="flex-grow !bg-slate-50 flex flex-col">
@@ -915,6 +983,11 @@ export default function TrainerPage({ goTo }) {
                     </div>
                 </div>
 
+                {isMapPreviewOpen && mapFileUrl && !isMobile && (
+                    <div className="col-span-12 lg:col-span-3 h-full min-h-[420px]">
+                        <InstructionPreviewPanel previewFileUrl={mapFileUrl} previewTitle={`Карта №${currentTask?.number || currentTaskIndex + 1}`} onClose={handleCloseMapPreview} />
+                    </div>
+                )}
                 {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
                 <InstructionImageModal instructionModal={instructionModal} onClose={handleCloseInstructionModal} />
             </div>
