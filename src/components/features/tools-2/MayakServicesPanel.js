@@ -34,17 +34,24 @@ export default function MayakServicesPanel({
     openSubAccordionKey,
     setOpenSubAccordionKey,
     type,
+    allowWrap = false,
 }) {
     const typeLinks = (defaultLinks[type] || []).slice().sort(sortByOrder);
 
+    const serviceContainerClass = allowWrap ? "flex flex-wrap gap-[0.5rem] transition-all duration-200 ease-out" : "flex flex-nowrap gap-[0.5rem] transition-all duration-200 ease-out";
+    const serviceButtonClass = allowWrap
+        ? "relative group stroke-gray-900 !flex !w-fit !flex-none !items-center !gap-2 whitespace-nowrap transition-all duration-200 ease-out"
+        : "relative group stroke-gray-900 !flex !flex-1 !min-w-0 !items-center !justify-center !gap-2 transition-all duration-200 ease-out";
+    const serviceLabelClass = allowWrap ? "whitespace-nowrap" : "truncate";
+
     return (
         <>
-            <div className="flex flex-wrap gap-[0.5rem]">
+            <div className={serviceContainerClass}>
                 {!isMiscAccordionOpen &&
                     typeLinks.map((service, index) => (
-                        <Button key={index} inverted className="relative group stroke-gray-900 !flex !w-fit !shrink-0 !items-center !gap-2 whitespace-nowrap" onClick={() => window.open(service.url, "_blank")}>
+                        <Button key={index} inverted className={serviceButtonClass} onClick={() => window.open(service.url, "_blank")}>
                             <ServiceIcon type={service.iconType} />
-                            <span>{service.name}</span>
+                            <span className={serviceLabelClass}>{service.name}</span>
                             {service.description && (
                                 <div className="absolute bottom-full right-0 mb-2 w-max max-w-xs invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 pointer-events-none z-10">
                                     <div className="bg-white text-gray-700 text-sm rounded-lg shadow-lg px-3 py-2 text-center border border-gray-200">{service.description}</div>
@@ -113,9 +120,9 @@ export default function MayakServicesPanel({
                                             .slice()
                                             .sort(sortByOrder)
                                             .map((link, linkIndex) => (
-                                                <Button key={linkIndex} inverted className="relative group stroke-gray-900 !flex !w-fit !shrink-0 !items-center !gap-2 whitespace-nowrap" onClick={() => window.open(link.url, "_blank")}>
+                                                <Button key={linkIndex} inverted className={serviceButtonClass} onClick={() => window.open(link.url, "_blank")}>
                                                     <ServiceIcon type={link.iconType} />
-                                                    <span>{link.name}</span>
+                                                    <span className={serviceLabelClass}>{link.name}</span>
                                                     {link.description && (
                                                         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-all duration-200 pointer-events-none z-10">
                                                             <div className="bg-white text-gray-700 text-sm rounded-lg shadow-lg px-3 py-2 text-center border border-gray-200">{link.description}</div>

@@ -978,6 +978,7 @@ export default function TrainerPage({ goTo }) {
                                 openSubAccordionKey={openSubAccordionKey}
                                 setOpenSubAccordionKey={setOpenSubAccordionKey}
                                 type={type}
+                                allowWrap={isMapPreviewOpen}
                             />
                         </div>
                     </div>
