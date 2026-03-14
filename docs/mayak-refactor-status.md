@@ -1,4 +1,4 @@
-# MAYAK Refactor Status
+﻿# MAYAK Refactor Status
 
 ## Rules
 
@@ -36,6 +36,7 @@ Stabilize MAYAK architecture around:
   - `/api/mayak/settings`
 - Switched MAYAK admin preview/file access to `content-file` API.
 - Switched MAYAK v2 runtime loading in `useMayakTaskManager` from direct `/tasks-2/v2/*.json` fetches to `content-bundle` and `content-file` APIs.
+- Added a dedicated MAYAK `maps` attachment channel in storage/admin/runtime with split-view PDF preview in the trainer.
 - Local content was verified to work through `data/mayak-content`.
 - Added shared MAYAK questionnaire-link settings in `data/mayak-settings.json` with admin editing in `/admin/mayak-content`.
 
@@ -106,6 +107,7 @@ Stabilize MAYAK architecture around:
 - MAYAK content admin is on the new auth model.
 - MAYAK v2 runtime content now goes through API instead of direct public JSON fetches.
 - `trainer.js` is much smaller and closer to orchestration-only, but still needs behavioral smoke-check.
+- MAYAK task maps now auto-open as a right-side desktop preview while a task is running and close automatically on task completion.
 - Storage directory selection now prefers an explicit MAYAK_CONTENT_DIR when set, otherwise the first valid MAYAK storage instead of the first merely existing directory.
 - The largest remaining trainer risk is behavioral regression, not syntax.
 

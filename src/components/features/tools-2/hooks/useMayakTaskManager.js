@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 const getRange = (taskNumber) => {
     const start = Math.floor((taskNumber - 1) / 100) * 100 + 1;
@@ -135,6 +135,15 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
                 : ""
             : currentTask?.hasFile && currentTask?.file
               ? `${rangePath}/Files/${currentTask.file}`
+              : "";
+
+    const mapFileUrl =
+        taskVersion === "v2"
+            ? currentTask?.hasMap && currentTask?.map && currentTask?._range
+                ? `/api/mayak/content-file?sectionId=${encodeURIComponent(currentTask._range)}&type=maps&filename=${encodeURIComponent(currentTask.map)}`
+                : ""
+            : currentTask?.hasMap && currentTask?.map
+              ? `${rangePath}/Maps/${currentTask.map}`
               : "";
 
     let sourceUrl = "";
@@ -378,6 +387,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
         prevTask,
         instructionFileUrl,
         taskFileUrl,
+        mapFileUrl,
         sourceUrl,
         basePath,
         tasksTexts,

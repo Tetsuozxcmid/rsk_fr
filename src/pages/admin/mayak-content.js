@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import Link from "next/link";
@@ -68,12 +68,15 @@ const COLUMNS = [
     { key: "services", label: "Сервисы", width: 200, source: "task" },
     { key: "instructionText", label: "Инструкция", width: 160, source: "task" },
     { key: "materialText", label: "Доп.материал", width: 160, source: "task" },
+    { key: "mapText", label: "Карта", width: 160, source: "task" },
     { key: "sourceLink", label: "Источник", width: 180, source: "task" },
     { key: "hasInstruction", label: "◉Инстр.", width: 50, source: "task", autoCheckbox: true, boundTo: "instructionText", needsFile: true, fileField: "instruction" },
     { key: "hasFile", label: "◉Доп.м.", width: 50, source: "task", autoCheckbox: true, boundTo: "materialText", needsFile: true, fileField: "file" },
+    { key: "hasMap", label: "◉Карта", width: 52, source: "task", autoCheckbox: true, boundTo: "mapText", needsFile: true, fileField: "map" },
     { key: "hasSource", label: "◉Ист.", width: 44, source: "task", autoCheckbox: true, boundTo: "sourceLink" },
     { key: "instruction", label: "Загр.инстр.", width: 160, source: "task", fileCol: "instructions" },
     { key: "file", label: "Загр.доп.мат.", width: 160, source: "task", fileCol: "files" },
+    { key: "map", label: "Загр.карту", width: 160, source: "task", fileCol: "maps" },
 ];
 
 // ============ Авторазмер textarea ============
@@ -205,8 +208,8 @@ const Cell = memo(function Cell({ value, onChange, onCellChange, readOnly, multi
         }
 
         // Путь к файлу для открытия
-        const fileSubdir = fileCol === "instructions" ? "Instructions" : "Files";
-        const fileUrl = value && fileExists ? `/api/mayak/content-file?sectionId=${encodeURIComponent(range)}&type=${fileCol === "instructions" ? "instructions" : "files"}&filename=${encodeURIComponent(value)}` : null;
+        const fileType = fileCol === "instructions" ? "instructions" : fileCol === "maps" ? "maps" : "files";
+        const fileUrl = value && fileExists ? `/api/mayak/content-file?sectionId=${encodeURIComponent(range)}&type=${fileType}&filename=${encodeURIComponent(value)}` : null;
 
         const formatSize = (s) => s < 1024 ? `${s} Б` : s < 1024 * 1024 ? `${(s / 1024).toFixed(0)} КБ` : `${(s / 1024 / 1024).toFixed(1)} МБ`;
 
@@ -307,11 +310,12 @@ const Cell = memo(function Cell({ value, onChange, onCellChange, readOnly, multi
 });
 
 // ============ Drag-and-drop зона загрузки ============
-function BulkUploadDropZone({ onUploadInstructions, onUploadFiles, uploading }) {
+function BulkUploadDropZone({ onUploadInstructions, onUploadFiles, onUploadMaps, uploading }) {
     const [dragOver, setDragOver] = useState(false);
-    const [dropTarget, setDropTarget] = useState(null); // "instructions" | "files"
+    const [dropTarget, setDropTarget] = useState(null); // "instructions" | "files" | "maps"
     const instrRef = useRef(null);
     const filesRef = useRef(null);
+    const mapsRef = useRef(null);
 
     const handleDragOver = (e, target) => { e.preventDefault(); e.stopPropagation(); setDragOver(true); setDropTarget(target); };
     const handleDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); setDragOver(false); setDropTarget(null); };
@@ -320,6 +324,7 @@ function BulkUploadDropZone({ onUploadInstructions, onUploadFiles, uploading }) 
         const files = Array.from(e.dataTransfer.files);
         if (files.length === 0) return;
         if (target === "instructions") await onUploadInstructions(files);
+        else if (target === "maps") await onUploadMaps(files);
         else await onUploadFiles(files);
     };
 
@@ -365,6 +370,18 @@ function BulkUploadDropZone({ onUploadInstructions, onUploadFiles, uploading }) 
                 <span style={{ fontSize: 10, color: "#94a3b8" }}>Перетащите файлы или нажмите</span>
                 <input ref={filesRef} type="file" multiple onChange={async (e) => { const f = Array.from(e.target.files); e.target.value = ""; if (f.length) await onUploadFiles(f); }} style={{ display: "none" }} />
             </div>
+            <div
+                style={zoneStyle("maps")}
+                onDragOver={(e) => handleDragOver(e, "maps")}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, "maps")}
+                onClick={() => !uploading && mapsRef.current?.click()}
+            >
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3v10M10 3L6 7M10 3l4 4M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2" stroke="#8b5cf6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "#6d28d9" }}>{uploading ? "Загрузка..." : "Карты"}</span>
+                <span style={{ fontSize: 10, color: "#94a3b8" }}>Перетащите PDF или нажмите</span>
+                <input ref={mapsRef} type="file" multiple accept="application/pdf,.pdf" onChange={async (e) => { const f = Array.from(e.target.files); e.target.value = ""; if (f.length) await onUploadMaps(f); }} style={{ display: "none" }} />
+            </div>
         </div>
     );
 }
@@ -375,6 +392,7 @@ function RangeEditor({ range, onBack }) {
     const [texts, setTexts] = useState([]);
     const [existingFiles, setExistingFiles] = useState([]);
     const [existingInstructions, setExistingInstructions] = useState([]);
+    const [existingMaps, setExistingMaps] = useState([]);
     const [saving, setSaving] = useState(false);
     const [saveMsg, setSaveMsg] = useState(null);
     const [validationErrors, setValidationErrors] = useState([]);
@@ -619,6 +637,7 @@ function RangeEditor({ range, onBack }) {
                 const loadedTasks = json.data.tasks || [];
                 const ef = json.data.existingFiles || [];
                 const ei = json.data.existingInstructions || [];
+                const em = json.data.existingMaps || [];
 
                 // Инициализируем новые текстовые поля
                 const tasksWithFlags = loadedTasks.map((t) => ({
@@ -626,12 +645,14 @@ function RangeEditor({ range, onBack }) {
                     sourceLink: t.sourceLink || "",
                     instructionText: t.instructionText || "",
                     materialText: t.materialText || "",
+                    mapText: t.mapText || "",
                 }));
 
                 setTasks(tasksWithFlags);
                 setTexts(json.data.texts || []);
                 setExistingFiles(ef);
                 setExistingInstructions(ei);
+                setExistingMaps(em);
                 setRangeName(json.data.rangeName || "");
                 setFileSizes(json.data.fileSizes || {});
             }
@@ -678,7 +699,9 @@ function RangeEditor({ range, onBack }) {
         instrLoaded: tasks.filter((t) => (t.instructionText || "").trim() && (t.instruction || "").trim() && existingInstructions.includes((t.instruction || "").trim())).length,
         matNeeded: tasks.filter((t) => (t.materialText || "").trim()).length,
         matLoaded: tasks.filter((t) => (t.materialText || "").trim() && (t.file || "").trim() && existingFiles.includes((t.file || "").trim())).length,
-    }), [tasks, existingInstructions, existingFiles]);
+        mapNeeded: tasks.filter((t) => (t.mapText || "").trim()).length,
+        mapLoaded: tasks.filter((t) => (t.mapText || "").trim() && (t.map || "").trim() && existingMaps.includes((t.map || "").trim())).length,
+    }), [tasks, existingInstructions, existingFiles, existingMaps]);
 
     // Сохранить снимок состояния перед групповой операцией (для Ctrl+Z)
     const saveSnapshot = () => {
@@ -796,6 +819,8 @@ function RangeEditor({ range, onBack }) {
                 } catch {}
                 if (type === "files") {
                     setExistingFiles((prev) => prev.filter((f) => f !== oldFilename));
+                } else if (type === "maps") {
+                    setExistingMaps((prev) => prev.filter((f) => f !== oldFilename));
                 } else {
                     setExistingInstructions((prev) => prev.filter((f) => f !== oldFilename));
                 }
@@ -803,6 +828,8 @@ function RangeEditor({ range, onBack }) {
             }
             if (type === "files") {
                 setExistingFiles((prev) => prev.includes(finalName) ? prev : [...prev, finalName]);
+            } else if (type === "maps") {
+                setExistingMaps((prev) => prev.includes(finalName) ? prev : [...prev, finalName]);
             } else {
                 setExistingInstructions((prev) => prev.includes(finalName) ? prev : [...prev, finalName]);
             }
@@ -824,12 +851,14 @@ function RangeEditor({ range, onBack }) {
         // Всегда убираем из state — даже если файл уже удалён с диска
         if (type === "files") {
             setExistingFiles((prev) => prev.filter((f) => f !== filename));
+        } else if (type === "maps") {
+            setExistingMaps((prev) => prev.filter((f) => f !== filename));
         } else {
             setExistingInstructions((prev) => prev.filter((f) => f !== filename));
         }
 
         // Очистить имя файла в задании (флаги вычисляются из текстовых полей автоматически)
-        const field = type === "files" ? "file" : "instruction";
+        const field = type === "files" ? "file" : type === "maps" ? "map" : "instruction";
         setTasks((prev) => prev.map((t) => {
             if (t[field] === filename) {
                 return { ...t, [field]: "" };
@@ -859,10 +888,12 @@ function RangeEditor({ range, onBack }) {
                 uploaded++;
                 if (type === "files") {
                     setExistingFiles((prev) => prev.includes(file.name) ? prev : [...prev, file.name]);
+                } else if (type === "maps") {
+                    setExistingMaps((prev) => prev.includes(file.name) ? prev : [...prev, file.name]);
                 } else {
                     setExistingInstructions((prev) => prev.includes(file.name) ? prev : [...prev, file.name]);
                 }
-                const field = type === "files" ? "file" : "instruction";
+                const field = type === "files" ? "file" : type === "maps" ? "map" : "instruction";
                 setTasks((prev) => {
                     const copy = [...prev];
                     copy[taskIdx] = { ...copy[taskIdx], [field]: file.name };
@@ -890,8 +921,10 @@ function RangeEditor({ range, onBack }) {
         tasks.forEach((task, i) => {
             const instrFileName = (task.instruction || "").trim();
             const fileFileName = (task.file || "").trim();
+            const mapFileName = (task.map || "").trim();
             const instrText = (task.instructionText || "").trim();
             const materialText = (task.materialText || "").trim();
+            const mapText = (task.mapText || "").trim();
 
             // Если загружен файл инструкции, но текстовое поле пусто — ошибка
             if (instrFileName && !instrText) {
@@ -924,6 +957,20 @@ function RangeEditor({ range, onBack }) {
                     errors.push({ index: i, field: "file", message: `Задание ${task.number}: номер файла (${stem}) ≠ задание` });
                 }
             }
+
+            if (mapFileName && !mapText) {
+                errors.push({ index: i, field: "mapText", message: `Задание ${task.number}: файл карты загружен, но описание пустое` });
+            }
+
+            if (mapFileName) {
+                if (!existingMaps.includes(mapFileName)) {
+                    errors.push({ index: i, field: "map", message: `Задание ${task.number}: карта не загружена` });
+                }
+                const stem = mapFileName.replace(/\.[^.]+$/, "");
+                if (task.number && stem !== String(task.number)) {
+                    errors.push({ index: i, field: "map", message: `Задание ${task.number}: номер файла карты (${stem}) ≠ задание` });
+                }
+            }
         });
 
         setValidationErrors(errors);
@@ -946,6 +993,7 @@ function RangeEditor({ range, onBack }) {
             ...t,
             hasInstruction: !!(t.instructionText || "").trim(),
             hasFile: !!(t.materialText || "").trim(),
+            hasMap: !!(t.mapText || "").trim(),
             hasSource: !!(t.sourceLink || "").trim(),
         }));
 
@@ -1011,6 +1059,7 @@ function RangeEditor({ range, onBack }) {
                             <span style={{ fontSize: 12, color: "#64748b", display: "flex", gap: 12 }}>
                                 <span>Инструкций: <b style={{ color: toolbarCounts.instrLoaded === toolbarCounts.instrNeeded && toolbarCounts.instrNeeded > 0 ? "#16a34a" : toolbarCounts.instrNeeded > 0 ? "#dc2626" : "#64748b" }}>{toolbarCounts.instrLoaded}/{toolbarCounts.instrNeeded}</b></span>
                                 <span>Доп.материалов: <b style={{ color: toolbarCounts.matLoaded === toolbarCounts.matNeeded && toolbarCounts.matNeeded > 0 ? "#16a34a" : toolbarCounts.matNeeded > 0 ? "#dc2626" : "#64748b" }}>{toolbarCounts.matLoaded}/{toolbarCounts.matNeeded}</b></span>
+                                <span>Карт: <b style={{ color: toolbarCounts.mapLoaded === toolbarCounts.mapNeeded && toolbarCounts.mapNeeded > 0 ? "#16a34a" : toolbarCounts.mapNeeded > 0 ? "#dc2626" : "#64748b" }}>{toolbarCounts.mapLoaded}/{toolbarCounts.mapNeeded}</b></span>
                             </span>
                         );
                     })()}
@@ -1027,6 +1076,7 @@ function RangeEditor({ range, onBack }) {
             <BulkUploadDropZone
                 onUploadInstructions={(f) => handleBulkUpload(f, "instructions")}
                 onUploadFiles={(f) => handleBulkUpload(f, "files")}
+                onUploadMaps={(f) => handleBulkUpload(f, "maps")}
                 uploading={bulkUploading}
             />
 
@@ -1100,9 +1150,9 @@ function RangeEditor({ range, onBack }) {
                                             if (boundVal) {
                                                 if (col.needsFile) {
                                                     // Проверяем есть ли загруженный файл в соответствующей файловой колонке
-                                                    const fileFieldKey = col.fileField; // "instruction" или "file"
+                                                    const fileFieldKey = col.fileField; // "instruction" | "file" | "map"
                                                     const fileVal = (task[fileFieldKey] || "").trim();
-                                                    const list = fileFieldKey === "instruction" ? existingInstructions : existingFiles;
+                                                    const list = fileFieldKey === "instruction" ? existingInstructions : fileFieldKey === "map" ? existingMaps : existingFiles;
                                                     acState = fileVal && list.includes(fileVal) ? "green" : "yellow";
                                                 } else {
                                                     acState = "green";
@@ -1125,7 +1175,7 @@ function RangeEditor({ range, onBack }) {
                                         }
 
                                         if (col.checkbox) {
-                                            const fileLabel = col.key === "hasInstruction" ? (task.instruction || "") : col.key === "hasFile" ? (task.file || "") : "";
+                                            const fileLabel = col.key === "hasInstruction" ? (task.instruction || "") : col.key === "hasFile" ? (task.file || "") : col.key === "hasMap" ? (task.map || "") : "";
                                             return (
                                                 <Cell
                                                     key={ci}
@@ -1143,10 +1193,10 @@ function RangeEditor({ range, onBack }) {
                                         }
 
                                         if (col.fileCol) {
-                                            const list = col.fileCol === "instructions" ? existingInstructions : existingFiles;
+                                            const list = col.fileCol === "instructions" ? existingInstructions : col.fileCol === "maps" ? existingMaps : existingFiles;
                                             const exists = val ? list.includes(val) : undefined;
                                             // checkboxEnabled: текстовое поле заполнено ИЛИ файл уже привязан (старые данные)
-                                            const textField = col.fileCol === "instructions" ? "instructionText" : "materialText";
+                                            const textField = col.fileCol === "instructions" ? "instructionText" : col.fileCol === "maps" ? "mapText" : "materialText";
                                             const hasBoundValue = !!(task[textField] || "").trim() || !!val;
                                             const fSize = val && exists ? (fileSizes[val] ?? null) : null;
                                             return (

@@ -1,4 +1,4 @@
-﻿import { memo } from "react";
+import { memo } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import Button from "@/components/ui/Button";
@@ -88,6 +88,20 @@ export const MayakField = memo(function MayakField({ field, value, isMobile, dis
     );
 });
 
+const EyeOpenIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M2 12C3.9 7.8 7.4 5 12 5s8.1 2.8 10 7c-1.9 4.2-5.4 7-10 7S3.9 16.2 2 12Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
+    </svg>
+);
+
+const EyeClosedIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M3 3l18 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M10.6 5.2A10.7 10.7 0 0 1 12 5c4.6 0 8.1 2.8 10 7a11.8 11.8 0 0 1-4 4.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M6.7 6.7A11.8 11.8 0 0 0 2 12c1.9 4.2 5.4 7 10 7 1.7 0 3.2-.4 4.6-1.1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
 export const TrainerControls = memo(function TrainerControls({
     who,
     taskVersion,
@@ -98,6 +112,9 @@ export const TrainerControls = memo(function TrainerControls({
     taskElapsedTime,
     instructionFileUrl,
     taskFileUrl,
+    mapFileUrl,
+    isMapPreviewOpen,
+    canToggleMapPreview,
     sourceUrl,
     currentTask,
     isCurrentTaskAllowed,
@@ -110,6 +127,7 @@ export const TrainerControls = memo(function TrainerControls({
     onNextTask,
     onTaskInputChange,
     onToggleTaskTimer,
+    onToggleMapPreview,
     onCompleteSession,
     onShowRolePopup,
     onToolLink1Click,
@@ -191,6 +209,13 @@ export const TrainerControls = memo(function TrainerControls({
                         <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= allowedMaxIndex || isTaskRunning}>
                             →
                         </Button>
+                        {mapFileUrl && (
+                            <span title={!canToggleMapPreview ? "Карта недоступна" : isMapPreviewOpen ? "Скрыть карту" : "Показать карту"}>
+                                <Button icon type="button" className="!w-10 !h-10 !p-0 flex items-center justify-center !text-black" onClick={onToggleMapPreview} disabled={!canToggleMapPreview}>
+                                    {isMapPreviewOpen ? <EyeOpenIcon /> : <EyeClosedIcon />}
+                                </Button>
+                            </span>
+                        )}
                     </div>
                 </div>
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">

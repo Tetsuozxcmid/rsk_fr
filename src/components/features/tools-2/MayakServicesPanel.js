@@ -1,4 +1,4 @@
-﻿import { memo } from "react";
+import { memo } from "react";
 import Block from "@/components/features/public/Block";
 import Button from "@/components/ui/Button";
 import LinkIcon from "@/assets/general/link.svg";
@@ -39,10 +39,10 @@ export default function MayakServicesPanel({
 
     return (
         <>
-            <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem]">
+            <div className="flex flex-wrap gap-[0.5rem]">
                 {!isMiscAccordionOpen &&
                     typeLinks.map((service, index) => (
-                        <Button key={index} inverted className="relative group stroke-gray-900 !flex !items-center !gap-2" onClick={() => window.open(service.url, "_blank")}>
+                        <Button key={index} inverted className="relative group stroke-gray-900 !flex !w-fit !shrink-0 !items-center !gap-2 whitespace-nowrap" onClick={() => window.open(service.url, "_blank")}>
                             <ServiceIcon type={service.iconType} />
                             <span>{service.name}</span>
                             {service.description && (
@@ -113,7 +113,7 @@ export default function MayakServicesPanel({
                                             .slice()
                                             .sort(sortByOrder)
                                             .map((link, linkIndex) => (
-                                                <Button key={linkIndex} inverted className="relative group stroke-gray-900 !flex !items-center !gap-2" onClick={() => window.open(link.url, "_blank")}>
+                                                <Button key={linkIndex} inverted className="relative group stroke-gray-900 !flex !w-fit !shrink-0 !items-center !gap-2 whitespace-nowrap" onClick={() => window.open(link.url, "_blank")}>
                                                     <ServiceIcon type={link.iconType} />
                                                     <span>{link.name}</span>
                                                     {link.description && (

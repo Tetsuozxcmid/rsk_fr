@@ -5,6 +5,12 @@ const LEGACY_PUBLIC_DIR = path.join(process.cwd(), "public", "tasks-2", "v2");
 const DEFAULT_DATA_DIR = path.join(process.cwd(), "data", "mayak-content");
 const MANIFEST_FILENAME = "manifest.json";
 
+function getSectionSubdir(type) {
+    if (type === "instructions") return "Instructions";
+    if (type === "maps") return "Maps";
+    return "Files";
+}
+
 function normalizeConfiguredDir(value) {
     if (!value || typeof value !== "string") return "";
     return path.isAbsolute(value) ? value : path.join(process.cwd(), value);
@@ -145,6 +151,7 @@ export async function ensureSectionDir(sectionId) {
     await fs.mkdir(sectionDir, { recursive: true });
     await fs.mkdir(path.join(sectionDir, "Files"), { recursive: true });
     await fs.mkdir(path.join(sectionDir, "Instructions"), { recursive: true });
+    await fs.mkdir(path.join(sectionDir, "Maps"), { recursive: true });
     return sectionDir;
 }
 
@@ -167,7 +174,7 @@ export async function writeSectionJson(sectionId, filename, value) {
 
 export async function listSectionFiles(sectionId, type) {
     const sectionDir = await getSectionDir(sectionId);
-    const subdir = type === "instructions" ? "Instructions" : "Files";
+    const subdir = getSectionSubdir(type);
     try {
         const entries = await fs.readdir(path.join(sectionDir, subdir), { withFileTypes: true });
         return entries.filter((entry) => entry.isFile()).map((entry) => entry.name);
@@ -182,7 +189,7 @@ export async function getSectionFilePath(sectionId, type, filename) {
         throw new Error("Invalid filename");
     }
     const sectionDir = await getSectionDir(sectionId);
-    const subdir = type === "instructions" ? "Instructions" : "Files";
+    const subdir = getSectionSubdir(type);
     return path.join(sectionDir, subdir, safeFilename);
 }
 
@@ -192,7 +199,7 @@ export async function writeSectionFile(sectionId, type, filename, buffer) {
         throw new Error("Invalid filename");
     }
     const sectionDir = await ensureSectionDir(sectionId);
-    const subdir = type === "instructions" ? "Instructions" : "Files";
+    const subdir = getSectionSubdir(type);
     const dirPath = path.join(sectionDir, subdir);
     await fs.mkdir(dirPath, { recursive: true });
     const filePath = path.join(dirPath, safeFilename);
