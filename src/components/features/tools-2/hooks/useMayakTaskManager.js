@@ -131,7 +131,7 @@ export const useMayakTaskManager = ({ userType, who, taskVersion, isTokenValid, 
     const taskFileUrl =
         taskVersion === "v2"
             ? currentTask?.hasFile && currentTask?.file && currentTask?._range
-                ? `/api/mayak/content-file?sectionId=${encodeURIComponent(currentTask._range)}&type=files&filename=${encodeURIComponent(currentTask.file)}`
+                ? `/api/mayak/content-file?sectionId=${encodeURIComponent(currentTask._range)}&type=files&filename=${encodeURIComponent(currentTask.file)}&download=1`
                 : ""
             : currentTask?.hasFile && currentTask?.file
               ? `${rangePath}/Files/${currentTask.file}`

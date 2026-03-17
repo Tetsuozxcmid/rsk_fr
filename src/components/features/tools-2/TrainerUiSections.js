@@ -144,6 +144,18 @@ export const TrainerControls = memo(function TrainerControls({
         return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
     };
 
+    const handleDownloadTaskFile = () => {
+        if (!taskFileUrl || !isTaskRunning || typeof document === "undefined") return;
+
+        const link = document.createElement("a");
+        link.href = taskFileUrl;
+        link.download = "";
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="flex flex-col gap-[1.6rem]">
             <div className="flex justify-between items-center w-full">
@@ -236,13 +248,8 @@ export const TrainerControls = memo(function TrainerControls({
                     {taskFileUrl && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
                             <Button
-                                as="a"
-                                href={taskFileUrl}
-                                download
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    window.open(taskFileUrl, "_blank");
-                                }}
+                                type="button"
+                                onClick={handleDownloadTaskFile}
                                 disabled={!isTaskRunning}
                                 className="w-full">
                                 Доп.материал
