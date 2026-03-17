@@ -1,4 +1,4 @@
-﻿# MAYAK Refactor Status
+# MAYAK Refactor Status
 
 ## Rules
 
@@ -108,6 +108,8 @@ Stabilize MAYAK architecture around:
 - MAYAK v2 runtime content now goes through API instead of direct public JSON fetches.
 - `trainer.js` is much smaller and closer to orchestration-only, but still needs behavioral smoke-check.
 - MAYAK task maps now auto-open as a right-side desktop preview while a task is running and close automatically on task completion.
+- MAYAK instructions can now reuse the same right-side preview panel: map opens by default, and the `Инструкция` button toggles instruction preview / return to map.
+- The desktop right-side preview panel is now resizable by drag with saved width and desktop-only min/max constraints.
 - Storage directory selection now prefers an explicit MAYAK_CONTENT_DIR when set, otherwise the first valid MAYAK storage instead of the first merely existing directory.
 - The largest remaining trainer risk is behavioral regression, not syntax.
 

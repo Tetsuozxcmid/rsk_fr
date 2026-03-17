@@ -114,6 +114,7 @@ export const TrainerControls = memo(function TrainerControls({
     taskFileUrl,
     mapFileUrl,
     isMapPreviewOpen,
+    isInstructionPreviewOpen,
     canToggleMapPreview,
     sourceUrl,
     currentTask,
@@ -128,6 +129,7 @@ export const TrainerControls = memo(function TrainerControls({
     onTaskInputChange,
     onToggleTaskTimer,
     onToggleMapPreview,
+    onToggleInstructionPreview,
     onCompleteSession,
     onShowRolePopup,
     onToolLink1Click,
@@ -226,17 +228,8 @@ export const TrainerControls = memo(function TrainerControls({
                     )}
                     {instructionFileUrl && (
                         <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
-                            <Button
-                                as="a"
-                                href={instructionFileUrl}
-                                download
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    window.open(instructionFileUrl, "_blank");
-                                }}
-                                disabled={!isTaskRunning}
-                                className="w-full">
-                                Инструкция
+                            <Button type="button" onClick={onToggleInstructionPreview} disabled={!isTaskRunning} className="w-full">
+                                {isInstructionPreviewOpen ? "Закрыть инструкцию" : "Инструкция"}
                             </Button>
                         </span>
                     )}

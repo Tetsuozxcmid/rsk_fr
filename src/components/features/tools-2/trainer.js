@@ -55,6 +55,9 @@ import { useMayakPopupState } from "./hooks/useMayakPopupState";
 import { useMayakTypeUiState } from "./hooks/useMayakTypeUiState";
 
 const TRAINER_PREFIX = "trainer_v2"; // Уникальный префикс для этого тренажера
+const PREVIEW_WIDTH_MIN = 320;
+const PREVIEW_WIDTH_MAX = 560;
+const PREVIEW_WIDTH_DEFAULT = 520;
 
 const QWEN_EVALUATION_LIMIT = 20;
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
@@ -151,9 +154,18 @@ export default function TrainerPage({ goTo }) {
     const [savedField, setSavedField] = useState(null);
 
     const isMobile = useMediaQuery("(max-width: 1023px)");
+    const previewResizeStateRef = useRef(null);
+    const previewResizeCleanupRef = useRef(null);
 
     const [taskInputValue, setTaskInputValue] = useState("");
     const debounceTimeoutRef = useRef(null);
+    const [isPreviewResizing, setIsPreviewResizing] = useState(false);
+    const [previewWidth, setPreviewWidth] = useState(() => {
+        if (typeof window === "undefined") return PREVIEW_WIDTH_DEFAULT;
+        const raw = window.localStorage.getItem(getStorageKey("previewWidth"));
+        const parsed = parseInt(raw || "", 10);
+        return Number.isFinite(parsed) ? parsed : PREVIEW_WIDTH_DEFAULT;
+    });
 
     const [hasCompletedSecondQuestionnaire, setHasCompletedSecondQuestionnaire] = useState(localStorage.getItem(getStorageKey("hasCompletedSecondQuestionnaire")) === "true");
     const [selectedRole, setSelectedRole] = useState(localStorage.getItem(getStorageKey("userRole")) || null);
@@ -249,8 +261,8 @@ export default function TrainerPage({ goTo }) {
     const [userType, setUserType] = useState("teacher");
     const [who, setWho] = useState("im");
     const [instructionModal, setInstructionModal] = useState(null);
-    const [isMapPreviewOpen, setIsMapPreviewOpen] = useState(false);
-    const [mapPreviewDismissedTaskKey, setMapPreviewDismissedTaskKey] = useState("");
+    const [previewMode, setPreviewMode] = useState(null);
+    const [previewDismissedTaskKey, setPreviewDismissedTaskKey] = useState("");
 
     const {
         isAdmin,
@@ -635,42 +647,151 @@ export default function TrainerPage({ goTo }) {
     );
 
     const activeMapTaskKey = timerState.isRunning && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
+    const previewFileUrl = previewMode === "instruction" ? instructionFileUrl : previewMode === "map" ? mapFileUrl : "";
+    const previewTitle =
+        previewMode === "instruction"
+            ? `Инструкция №${currentTask?.number || currentTaskIndex + 1}`
+            : `Карта №${currentTask?.number || currentTaskIndex + 1}`;
+    const isPreviewOpen = !!(previewMode && previewFileUrl && !isMobile);
+
+    const clampPreviewWidth = useCallback((nextWidth) => {
+        if (typeof window === "undefined") {
+            return Math.min(Math.max(nextWidth, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);
+        }
+
+        const viewportMax = Math.max(PREVIEW_WIDTH_MIN, Math.min(PREVIEW_WIDTH_MAX, Math.floor(window.innerWidth * 0.5)));
+        return Math.min(Math.max(nextWidth, PREVIEW_WIDTH_MIN), viewportMax);
+    }, []);
 
     useEffect(() => {
         if (!timerState.isRunning) {
-            setIsMapPreviewOpen(false);
-            setMapPreviewDismissedTaskKey("");
+            setPreviewMode(null);
+            setPreviewDismissedTaskKey("");
             return;
         }
 
-        if (!mapFileUrl || isMobile) {
-            setIsMapPreviewOpen(false);
+        if (isMobile) {
+            setPreviewMode(null);
             return;
         }
 
-        if (mapPreviewDismissedTaskKey !== activeMapTaskKey) {
-            setIsMapPreviewOpen(true);
+        if (mapFileUrl) {
+            if (previewDismissedTaskKey !== activeMapTaskKey && previewMode !== "instruction") {
+                setPreviewMode("map");
+            }
+            return;
         }
-    }, [activeMapTaskKey, isMobile, mapFileUrl, mapPreviewDismissedTaskKey, timerState.isRunning]);
+
+        if (previewMode === "map") {
+            setPreviewMode(null);
+        }
+    }, [activeMapTaskKey, isMobile, mapFileUrl, previewDismissedTaskKey, previewMode, timerState.isRunning]);
 
     const handleToggleMapPreview = useCallback(() => {
         if (!mapFileUrl || !timerState.isRunning || isMobile) return;
-        setIsMapPreviewOpen((prev) => {
-            const next = !prev;
-            setMapPreviewDismissedTaskKey(next ? "" : activeMapTaskKey);
-            return next;
+        setPreviewMode((prev) => {
+            if (prev === "map") {
+                setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+                return null;
+            }
+
+            setPreviewDismissedTaskKey("");
+            return "map";
         });
     }, [activeMapTaskKey, isMobile, mapFileUrl, timerState.isRunning]);
 
-    const handleCloseMapPreview = useCallback(() => {
-        setIsMapPreviewOpen(false);
-        setMapPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+    const handleToggleInstructionPreview = useCallback(() => {
+        if (!instructionFileUrl || !timerState.isRunning) return;
+
+        if (isMobile) {
+            window.open(instructionFileUrl, "_blank", "noopener,noreferrer");
+            return;
+        }
+
+        setPreviewMode((prev) => {
+            if (prev === "instruction") {
+                setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+                return null;
+            }
+
+            setPreviewDismissedTaskKey("");
+            return "instruction";
+        });
+    }, [activeMapTaskKey, instructionFileUrl, isMobile, timerState.isRunning]);
+
+    const handleClosePreview = useCallback(() => {
+        setPreviewMode(null);
+        setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
     }, [activeMapTaskKey]);
 
-    const handleOpenMapSeparate = useCallback(() => {
-        if (!mapFileUrl || !timerState.isRunning) return;
-        window.open(mapFileUrl, "_blank", "noopener,noreferrer");
-    }, [mapFileUrl, timerState.isRunning]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(getStorageKey("previewWidth"), String(clampPreviewWidth(previewWidth)));
+    }, [clampPreviewWidth, previewWidth]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handleResize = () => {
+            setPreviewWidth((prev) => clampPreviewWidth(prev));
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [clampPreviewWidth]);
+
+    const stopPreviewResize = useCallback(() => {
+        previewResizeStateRef.current = null;
+        if (previewResizeCleanupRef.current) {
+            previewResizeCleanupRef.current();
+            previewResizeCleanupRef.current = null;
+        }
+        setIsPreviewResizing(false);
+    }, []);
+
+    useEffect(() => () => stopPreviewResize(), [stopPreviewResize]);
+
+    const handlePreviewResizeStart = useCallback(
+        (event) => {
+            if (isMobile || !isPreviewOpen) return;
+
+            event.preventDefault();
+
+            const previousUserSelect = document.body.style.userSelect;
+            const previousCursor = document.body.style.cursor;
+
+            previewResizeStateRef.current = {
+                startX: event.clientX,
+                startWidth: previewWidth,
+            };
+            setIsPreviewResizing(true);
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "col-resize";
+
+            const handlePointerMove = (moveEvent) => {
+                const state = previewResizeStateRef.current;
+                if (!state) return;
+
+                const deltaX = state.startX - moveEvent.clientX;
+                setPreviewWidth(clampPreviewWidth(state.startWidth + deltaX));
+            };
+
+            const handlePointerUp = () => {
+                stopPreviewResize();
+            };
+
+            previewResizeCleanupRef.current = () => {
+                document.body.style.userSelect = previousUserSelect;
+                document.body.style.cursor = previousCursor;
+                window.removeEventListener("pointermove", handlePointerMove);
+                window.removeEventListener("pointerup", handlePointerUp);
+            };
+
+            window.addEventListener("pointermove", handlePointerMove);
+            window.addEventListener("pointerup", handlePointerUp, { once: true });
+        },
+        [clampPreviewWidth, isMobile, isPreviewOpen, previewWidth, stopPreviewResize]
+    );
     const { createPrompt, handleCopy, handleRandom, handleResetFields } = useMayakPromptActions({
         buildPromptDraft,
         clearQwenState,
@@ -730,7 +851,8 @@ export default function TrainerPage({ goTo }) {
         instructionFileUrl,
         taskFileUrl,
         mapFileUrl,
-        isMapPreviewOpen,
+        isMapPreviewOpen: previewMode === "map" && !!previewFileUrl,
+        isInstructionPreviewOpen: previewMode === "instruction" && !!previewFileUrl,
         canToggleMapPreview: !!(mapFileUrl && timerState.isRunning && !isMobile),
         sourceUrl,
         currentTask,
@@ -769,16 +891,7 @@ export default function TrainerPage({ goTo }) {
 
             // Устанавливаем новый таймер
             debounceTimeoutRef.current = setTimeout(() => {
-                const inputNum = parseInt(value, 10);
-                let newIndex;
-
-                if (tokenTaskRange) {
-                    // С токеном: ищем по номеру задания (task.number)
-                    newIndex = tasks.findIndex((t) => parseInt(t.number, 10) === inputNum);
-                } else {
-                    // Без токена: ввод = порядковый номер (1, 2, 3...)
-                    newIndex = inputNum - 1;
-                }
+                const newIndex = resolveTaskIndexFromInput(value);
 
                 // Если задание найдено и в пределах допустимого диапазона — переключаем
                 if (newIndex >= 0 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex && newIndex < tasks.length) {
@@ -789,6 +902,7 @@ export default function TrainerPage({ goTo }) {
         },
         onToggleTaskTimer: toggleTaskTimer,
         onToggleMapPreview: handleToggleMapPreview,
+        onToggleInstructionPreview: handleToggleInstructionPreview,
         onCompleteSession: handleCompleteSession,
         onShowRolePopup: handleShowRolePopup,
         onToolLink1Click: handleToolLink1Click,
@@ -797,6 +911,162 @@ export default function TrainerPage({ goTo }) {
         isCurrentTaskIntro: isIntroTask(currentTaskIndex),
         isCurrentTaskRoleSelection: isRoleSelectionTask(currentTask),
     };
+
+    const trainerFieldsBlock = (
+        <Block className="!h-full flex-1 min-w-0 self-stretch">
+            <form className="flex flex-col h-full justify-between">
+                <div className="flex flex-col gap-[1.25rem]">
+                    <div className="flex flex-col gap-[1rem]">
+                        <Switcher
+                            value={activeTypeKey}
+                            onChange={handleTypeSwitch}
+                            className="!w-full !flex-wrap">
+                            {mayakData.defaultTypes.map((t) => (
+                                <Switcher.Option key={t.key} value={t.key}>
+                                    {t.label}
+                                </Switcher.Option>
+                            ))}
+                        </Switcher>
+                    </div>
+                    <div className="flex flex-col gap-[0.5rem]">
+                        <div className="flex justify-between items-center">
+                            <span className="big">Цели и целевая направленность</span>
+                            <Button icon type="button" onClick={handleResetFields} className="!w-auto !h-auto !p-1 !bg-transparent" title="Сбросить все поля">
+                                <ResetIcon className="!text-black" />
+                            </Button>
+                        </div>
+                        {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
+                            <MayakField
+                                key={f.code}
+                                field={f}
+                                value={fields[f.code]}
+                                isMobile={isMobile}
+                                onChange={handleChange}
+                                onShowBuffer={handleShowBufferForField}
+                                onAddToBuffer={handleAddToBuffer}
+                                onRandom={handleRandom}
+                                savedField={savedField}
+                            />
+                        ))}
+                    </div>
+                    <div className="flex flex-col gap-[0.5rem]">
+                        <span className="big">Условия реализации и параметры оформления</span>
+                        {(mayakData.fieldsList || []).slice(4).map((f) => (
+                            <MayakField
+                                key={f.code}
+                                field={f}
+                                value={fields[f.code]}
+                                isMobile={isMobile}
+                                onChange={handleChange}
+                                onShowBuffer={handleShowBufferForField}
+                                onAddToBuffer={handleAddToBuffer}
+                                onRandom={handleRandom}
+                                savedField={savedField}
+                            />
+                        ))}
+                    </div>
+                </div>
+                <div className="mt-4 flex w-full flex-col gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row">
+                        <span className="block w-full" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
+                            <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled || qwenLoading}>
+                                Создать&nbsp;промт
+                            </Button>
+                        </span>
+                        <span className="block w-full" title={createWithEvaluationDisabledReason}>
+                            <Button className="w-full" type="button" onClick={createPromptWithEvaluation} disabled={isCreateWithEvaluationDisabled}>
+                                Создать&nbsp;промт&nbsp;с&nbsp;оценкой&nbsp;({qwenChecksRemaining}/{evaluationLimit})
+                            </Button>
+                        </span>
+                    </div>
+                </div>
+            </form>
+        </Block>
+    );
+
+    const trainerOutputBlock = (
+        <div className="flex h-full min-h-0 flex-1 min-w-0 flex-col gap-4 self-stretch">
+            {!isMobile && <TrainerControls {...trainerControlsProps} />}
+
+            <Block className="flex min-h-0 flex-grow flex-col !bg-slate-50">
+                <h6 className="text-black mb-2">Ваш промт</h6>
+                <div className="flex-grow overflow-y-auto">
+                    <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать промт"'}</p>
+                </div>
+            </Block>
+
+            {(qwenLoading || qwenResponse) && (
+                <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} relative flex flex-col`}>
+                    {!qwenLoading && qwenScoreMeta && (
+                        <div className={`absolute right-4 top-4 text-lg font-bold sm:text-xl ${qwenScoreMeta.textClass}`}>
+                            {qwenScoreMeta.text}
+                        </div>
+                    )}
+                    <h6 className="mb-2 text-black">Оценка от нейросети</h6>
+                    <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
+                        <div className="flex-1">
+                            {qwenLoading ? (
+                                <p className="text-gray-500 animate-pulse">Анализирую промпт...</p>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-gray-700">{qwenResponse}</p>
+                                    {qwenStrongFields.length > 0 && (
+                                        <p className="text-sm text-gray-700">
+                                            <span className="font-semibold text-black">Сильные поля:</span> {formatFieldList(qwenStrongFields)}
+                                        </p>
+                                    )}
+                                    {qwenWeakFields.length > 0 && (
+                                        <p className="text-sm text-gray-700">
+                                            <span className="font-semibold text-black">Слабые поля:</span> {formatFieldList(qwenWeakFields)}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {shouldShowQwenMascot && (
+                            <div className="flex shrink-0 flex-col items-center self-center">
+                                <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
+                                    <img key={mascotPlaybackKey} src={activeQwenMascotAsset.animatedSrc} alt="" aria-hidden="true" decoding="sync" fetchPriority="high" className="h-full w-full object-contain" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Block>
+            )}
+            <div className="mt-auto flex flex-col gap-[1rem]">
+                <div className="flex flex-col gap-[0.5rem]">
+                    <Button onClick={() => handleCopy(prompt)} disabled={isCopyDisabled} title={copyDisabledReason}>
+                        {isCopied ? "Скопировано!" : "Скопировать"}
+                    </Button>
+                    <MayakServicesPanel
+                        defaultLinks={mayakData.defaultLinks}
+                        isMiscAccordionOpen={isMiscAccordionOpen}
+                        miscCategory={miscCategory}
+                        onOpenInstruction={handleShowInstruction}
+                        openSubAccordionKey={openSubAccordionKey}
+                        setOpenSubAccordionKey={setOpenSubAccordionKey}
+                        type={type}
+                        allowWrap={isPreviewOpen}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    const previewPanel = isPreviewOpen && previewFileUrl && !isMobile && (
+        <div className="relative h-full min-h-[420px] shrink-0 self-stretch pl-3" style={{ width: `${previewWidth}px` }}>
+            <div
+                className="absolute left-0 top-1/2 z-10 hidden h-24 w-4 -translate-x-1/2 -translate-y-1/2 cursor-col-resize items-center justify-center lg:flex"
+                onPointerDown={handlePreviewResizeStart}
+                title="Изменить ширину панели"
+                aria-label="Изменить ширину панели"
+                role="separator"
+                aria-orientation="vertical">
+                <span className={`h-14 w-[3px] rounded-full transition-colors ${isPreviewResizing ? "bg-slate-500" : "bg-slate-300"}`} />
+            </div>
+            <InstructionPreviewPanel previewFileUrl={previewFileUrl} previewTitle={previewTitle} onClose={handleClosePreview} />
+        </div>
+    );
 
     return (
         <>
@@ -847,148 +1117,20 @@ export default function TrainerPage({ goTo }) {
                         <TrainerControls {...trainerControlsProps} />
                     </div>
                 )}
-                <Block className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} !h-full`}>
-                    <form className="flex flex-col h-full justify-between">
-                        <div className="flex flex-col gap-[1.25rem]">
-                            <div className="flex flex-col gap-[1rem]">
-                                <Switcher
-                                    value={activeTypeKey} // Используем activeTypeKey для правильного выделения
-                                    onChange={handleTypeSwitch}
-                                    className="!w-full !flex-wrap">
-                                    {mayakData.defaultTypes.map((t) => (
-                                        <Switcher.Option key={t.key} value={t.key}>
-                                            {t.label}
-                                        </Switcher.Option>
-                                    ))}
-                                </Switcher>
-                            </div>
-                            <div className="flex flex-col gap-[0.5rem]">
-                                <div className="flex justify-between items-center">
-                                    <span className="big">Цели и целевая направленность</span>
-                                    <Button icon type="button" onClick={handleResetFields} className="!w-auto !h-auto !p-1 !bg-transparent" title="Сбросить все поля">
-                                        <ResetIcon className="!text-black" />
-                                    </Button>
-                                </div>
-                                {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
-                                    <MayakField
-                                        key={f.code}
-                                        field={f}
-                                        value={fields[f.code]}
-                                        isMobile={isMobile}
-                                        onChange={handleChange}
-                                        onShowBuffer={handleShowBufferForField}
-                                        onAddToBuffer={handleAddToBuffer}
-                                        onRandom={handleRandom}
-                                        savedField={savedField}
-                                    />
-                                ))}
-                            </div>
-                            <div className="flex flex-col gap-[0.5rem]">
-                                <span className="big">Условия реализации и параметры оформления</span>
-                                {(mayakData.fieldsList || []).slice(4).map((f) => (
-                                    <MayakField
-                                        key={f.code}
-                                        field={f}
-                                        value={fields[f.code]}
-                                        isMobile={isMobile}
-                                        onChange={handleChange}
-                                        onShowBuffer={handleShowBufferForField}
-                                        onAddToBuffer={handleAddToBuffer}
-                                        onRandom={handleRandom}
-                                        savedField={savedField}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mt-4 flex w-full flex-col gap-2">
-                            <div className="flex w-full flex-col gap-2 sm:flex-row">
-                                <span className="block w-full" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
-                                    <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled || qwenLoading}>
-                                        Создать&nbsp;промт
-                                    </Button>
-                                </span>
-                                <span className="block w-full" title={createWithEvaluationDisabledReason}>
-                                    <Button className="w-full" type="button" onClick={createPromptWithEvaluation} disabled={isCreateWithEvaluationDisabled}>
-                                        Создать&nbsp;промт&nbsp;с&nbsp;оценкой&nbsp;({qwenChecksRemaining}/{evaluationLimit})
-                                    </Button>
-                                </span>
-                            </div>
-                        </div>
-                    </form>
-                </Block>
-
-                <div className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-5" : "lg:col-span-6"} h-full flex flex-col gap-4`}>
-                    {!isMobile && <TrainerControls {...trainerControlsProps} />}
-
-                    <Block className="flex-grow !bg-slate-50 flex flex-col">
-                        <h6 className="text-black mb-2">Ваш промт</h6>
-                        <div className="flex-grow overflow-y-auto">
-                            <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать промт"'}</p>
-                        </div>
-                    </Block>
-
-                    {(qwenLoading || qwenResponse) && (
-                        <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} relative flex flex-col`}>
-                            {!qwenLoading && qwenScoreMeta && (
-                                <div className={`absolute right-4 top-4 text-lg font-bold sm:text-xl ${qwenScoreMeta.textClass}`}>
-                                    {qwenScoreMeta.text}
-                                </div>
-                            )}
-                            <h6 className="mb-2 text-black">Оценка от нейросети</h6>
-                            <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
-                                <div className="flex-1">
-                                    {qwenLoading ? (
-                                        <p className="text-gray-500 animate-pulse">Анализирую промпт...</p>
-                                    ) : (
-                                        <div className="flex flex-col gap-3">
-                                            <p className="text-gray-700">{qwenResponse}</p>
-                                            {qwenStrongFields.length > 0 && (
-                                                <p className="text-sm text-gray-700">
-                                                    <span className="font-semibold text-black">Сильные поля:</span> {formatFieldList(qwenStrongFields)}
-                                                </p>
-                                            )}
-                                            {qwenWeakFields.length > 0 && (
-                                                <p className="text-sm text-gray-700">
-                                                    <span className="font-semibold text-black">Слабые поля:</span> {formatFieldList(qwenWeakFields)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                {shouldShowQwenMascot && (
-                                    <div className="flex shrink-0 flex-col items-center self-center">
-                                        <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
-                                            <img key={mascotPlaybackKey} src={activeQwenMascotAsset.animatedSrc} alt="" aria-hidden="true" decoding="sync" fetchPriority="high" className="h-full w-full object-contain" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </Block>
-                    )}
-                    <div className="flex flex-col gap-[1rem]">
-                        <div className="flex flex-col gap-[0.5rem]">
-                            <Button onClick={() => handleCopy(prompt)} disabled={isCopyDisabled} title={copyDisabledReason}>
-                                {isCopied ? "Скопировано!" : "Скопировать"}
-                            </Button>
-                            <MayakServicesPanel
-                                defaultLinks={mayakData.defaultLinks}
-                                isMiscAccordionOpen={isMiscAccordionOpen}
-                                miscCategory={miscCategory}
-                                onOpenInstruction={handleShowInstruction}
-                                openSubAccordionKey={openSubAccordionKey}
-                                setOpenSubAccordionKey={setOpenSubAccordionKey}
-                                type={type}
-                                allowWrap={isMapPreviewOpen}
-                            />
-                        </div>
+                {!isMobile && isPreviewOpen ? (
+                    <div className="col-span-12 hidden h-full min-h-0 lg:flex gap-4 items-stretch">
+                        {trainerFieldsBlock}
+                        {trainerOutputBlock}
+                        {previewPanel}
                     </div>
-                </div>
-
-                {isMapPreviewOpen && mapFileUrl && !isMobile && (
-                    <div className="col-span-12 lg:col-span-3 h-full min-h-[420px]">
-                        <InstructionPreviewPanel previewFileUrl={mapFileUrl} previewTitle={`Карта №${currentTask?.number || currentTaskIndex + 1}`} onClose={handleCloseMapPreview} />
-                    </div>
+                ) : (
+                    <>
+                        <div className={`col-span-12 ${isPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} !h-full`}>{trainerFieldsBlock}</div>
+                        <div className={`col-span-12 ${isPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} h-full`}>{trainerOutputBlock}</div>
+                        {previewPanel && <div className="col-span-12 lg:col-span-4 h-full min-h-[420px]">{previewPanel}</div>}
+                    </>
                 )}
+                {isPreviewResizing && <div className="fixed inset-0 z-40 cursor-col-resize" aria-hidden="true" />}
                 {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
                 <InstructionImageModal instructionModal={instructionModal} onClose={handleCloseInstructionModal} />
             </div>
