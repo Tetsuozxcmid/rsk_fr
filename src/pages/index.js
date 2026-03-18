@@ -1,4 +1,6 @@
 import Image from "next/image";
+import { useEffect } from "react";
+import { useRouter } from "next/router";
 
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
@@ -6,6 +8,14 @@ import Link_icon from "@/assets/general/link.svg";
 import Link from "next/link";
 
 export default function Home() {
+    const router = useRouter();
+
+    useEffect(() => {
+        if (router.isReady && router.query.restart !== undefined) {
+            window.location.replace("/tools/mayak-oko?restart=1");
+        }
+    }, [router.isReady, router.query.restart]);
+
     return (
         <Layout>
             <Header>

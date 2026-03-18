@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from "react";
 
 import Header from "@/components/layout/Header";
-import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, removeKeyCookie } from "./actions";
+import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
 import { v4 as uuidv4 } from "uuid";
 
 import CloseIcon from "@/assets/general/close.svg";
@@ -25,6 +25,10 @@ async function validateTokenAPI(tokenValue) {
             usedCount: data.usedCount || 0,
             error: data.error || null,
             isBypass: data.isBypass || false,
+            tokenType: data.tokenType || "legacy",
+            sessionId: data.sessionId || null,
+            sessionName: data.sessionName || null,
+            tableCount: data.tableCount || 0,
         };
     } catch (error) {
         console.error("Ошибка проверки токена:", error);
@@ -37,6 +41,10 @@ async function validateTokenAPI(tokenValue) {
             usedCount: 0,
             error: "Ошибка сервера",
             isBypass: false,
+            tokenType: "legacy",
+            sessionId: null,
+            sessionName: null,
+            tableCount: 0,
         };
     }
 }
@@ -92,7 +100,15 @@ export default function SettingsPage({ goTo }) {
         lastName: "",
         firstName: "",
         college: "",
+        tableNumber: "",
     });
+    const [sessionInfo, setSessionInfo] = useState({
+        tokenType: "legacy",
+        sessionId: null,
+        sessionName: "",
+        tableCount: 0,
+    });
+    const [hasRegisteredUser, setHasRegisteredUser] = useState(false);
 
     const [isLoading, setIsLoading] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -103,6 +119,28 @@ export default function SettingsPage({ goTo }) {
     const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
     const [tokenError, setTokenError] = useState("");
     const [isValidating, setIsValidating] = useState(false);
+
+    const syncRegisteredUserState = (nextSessionInfo, nextTokenValue = token) => {
+        const activeUser = getUserFromCookies();
+        if (!activeUser?.id) {
+            setHasRegisteredUser(false);
+            return false;
+        }
+
+        const isSessionToken = (nextSessionInfo?.tokenType || "legacy") === "session";
+        if (isSessionToken) {
+            const isSameSession = !!nextSessionInfo?.sessionId && activeUser.sessionId === nextSessionInfo.sessionId;
+            const hasTable = !!String(activeUser.tableNumber || "").trim();
+            const hasTokenType = activeUser.tokenType === "session";
+            const registered = isSameSession && hasTable && hasTokenType;
+            setHasRegisteredUser(registered);
+            return registered;
+        }
+
+        const registered = activeUser.tokenType !== "session" || !String(activeUser.sessionId || "").trim();
+        setHasRegisteredUser(registered && !!String(nextTokenValue || "").trim());
+        return registered;
+    };
 
     async function getRecordsCount() {
         try {
@@ -141,9 +179,21 @@ export default function SettingsPage({ goTo }) {
         setIsTokenValid(isAccessible);
         setTokenRemainingAttempts(result.remainingAttempts);
         setIsDevBypass(Boolean(result.isBypass));
+        const nextSessionInfo = {
+            tokenType: result.tokenType || "legacy",
+            sessionId: result.sessionId || null,
+            sessionName: result.sessionName || "",
+            tableCount: Number(result.tableCount) || 0,
+        };
+        setSessionInfo(nextSessionInfo);
+        syncRegisteredUserState(nextSessionInfo, tokenToValidate);
         if (!result.isBypass) {
             setBypassPassword("");
             setBypassPasswordError("");
+        }
+
+        if ((result.tokenType || "legacy") !== "session") {
+            setUserData((prev) => ({ ...prev, tableNumber: "" }));
         }
 
         if (result.usageLimit > 0) {
@@ -174,6 +224,8 @@ export default function SettingsPage({ goTo }) {
                     setShowNotification(false);
                     setIsTokenValid(false);
                     setIsDevBypass(false);
+                    setSessionInfo({ tokenType: "legacy", sessionId: null, sessionName: "", tableCount: 0 });
+                    setHasRegisteredUser(false);
                     return;
                 }
                 setToken(keyInCookies.text);
@@ -183,6 +235,14 @@ export default function SettingsPage({ goTo }) {
                 setIsTokenValid(isAccessible);
                 setTokenRemainingAttempts(result.remainingAttempts);
                 setIsDevBypass(Boolean(result.isBypass));
+                const nextSessionInfo = {
+                    tokenType: result.tokenType || "legacy",
+                    sessionId: result.sessionId || null,
+                    sessionName: result.sessionName || "",
+                    tableCount: Number(result.tableCount) || 0,
+                };
+                setSessionInfo(nextSessionInfo);
+                syncRegisteredUserState(nextSessionInfo, keyInCookies.text);
                 if (result.usageLimit > 0) {
                     setMax(result.usageLimit);
                     setValue(result.remainingAttempts);
@@ -190,6 +250,18 @@ export default function SettingsPage({ goTo }) {
                 if (isAccessible) {
                     setShowNotification(true);
                 }
+            } else {
+                setToken("");
+                setTokenExists(false);
+                setShowNotification(false);
+                setIsTokenValid(false);
+                setIsDevBypass(false);
+                setBypassPassword("");
+                setBypassPasswordError("");
+                setTokenRemainingAttempts(0);
+                setTokenError("");
+                setSessionInfo({ tokenType: "legacy", sessionId: null, sessionName: "", tableCount: 0 });
+                setHasRegisteredUser(false);
             }
         }
         fetchTokenAndUsage();
@@ -250,6 +322,11 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
+        if (sessionInfo.tokenType === "session" && !userData.tableNumber) {
+            alert("Пожалуйста, выберите ваш стол");
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -264,6 +341,8 @@ export default function SettingsPage({ goTo }) {
             const userRecord = {
                 id: userId,
                 userData,
+                sessionId: sessionInfo.sessionId,
+                tokenType: sessionInfo.tokenType,
             };
 
             const dataToSave = {
@@ -284,10 +363,36 @@ export default function SettingsPage({ goTo }) {
                 throw new Error("Ошибка при сохранении данных");
             }
 
+            if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
+                const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionInfo.sessionId,
+                        userId,
+                        name: `${userData.lastName} ${userData.firstName}`.trim(),
+                        organization: userData.college,
+                        tableNumber: userData.tableNumber,
+                    }),
+                });
+
+                const participantPayload = await participantResponse.json().catch(() => ({}));
+                if (!participantResponse.ok || !participantPayload.success) {
+                    throw new Error(participantPayload.error || "Не удалось зарегистрировать участника в сессии");
+                }
+            }
+
             setSaveSuccess(true);
             setTimeout(() => setSaveSuccess(false), 3000);
             await addKeyToCookies(token);
-            await addUserToCookies(userId, `${userData.lastName} ${userData.firstName}`);
+            await addUserToCookies(userId, `${userData.lastName} ${userData.firstName}`, {
+                sessionId: sessionInfo.sessionId,
+                tableNumber: userData.tableNumber || "",
+                tokenType: sessionInfo.tokenType,
+            });
+            setHasRegisteredUser(true);
 
             const updatedRecordsCount = await getRecordsCount();
             setValue(max - updatedRecordsCount);
@@ -296,6 +401,7 @@ export default function SettingsPage({ goTo }) {
                 lastName: "",
                 firstName: "",
                 college: "",
+                tableNumber: "",
             });
         } catch (error) {
             console.error("Ошибка:", error);
@@ -326,6 +432,11 @@ export default function SettingsPage({ goTo }) {
                         <div className="flex flex-col gap-[0.5rem]">
                             <span className="big">Данные токена</span>
                             <p className="small text-(--color-gray-black)">Это ваш токен доступа. Он имеет ограниченное количество использований. На шкале под полем отображается, сколько запросов уже израсходовано</p>
+                            {sessionInfo.tokenType === "session" && sessionInfo.sessionName && (
+                                <p className="small text-(--color-gray-black)">
+                                    Сессионный вход: <b>{sessionInfo.sessionName}</b>. После регистрации выбор стола обязателен.
+                                </p>
+                            )}
                         </div>
                         <Input
                             placeholder="Введите ваш токен"
@@ -343,7 +454,7 @@ export default function SettingsPage({ goTo }) {
 
                         {isValidating && <span className="small text-blue-600 block text-center">Проверка токена...</span>}
 
-                        {showNotification && tokenExists && !isDevBypass && (
+                        {showNotification && tokenExists && !isDevBypass && hasRegisteredUser && (
                             <div className="flex flex-col gap-[1rem] items-center">
                                 <span className="big p-3 bg-green-100 text-green-700 rounded-md">Тренажер активирован</span>
                                 <span className="small text-(--color-gray-black)">Осталось попыток: {tokenRemainingAttempts}</span>
@@ -372,7 +483,7 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && !tokenExists && !isDevBypass && (
+                        {showNotification && (!tokenExists || !hasRegisteredUser) && !isDevBypass && (
                             <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">
                                 Токен подходит. Заполните форму ниже для активации тренажера.
                             </span>
@@ -392,7 +503,7 @@ export default function SettingsPage({ goTo }) {
                         )}
                     </div>
 
-                    {!tokenExists && showNotification && !isDevBypass && (
+                    {showNotification && (!tokenExists || !hasRegisteredUser) && !isDevBypass && (
                         <>
                             <div className="flex flex-col gap-[0.75rem] w-full">
                                 <span className="big">Личные данные</span>
@@ -439,6 +550,30 @@ export default function SettingsPage({ goTo }) {
                                             required
                                         />
                                     </div>
+                                    {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
+                                        <div>
+                                            <label htmlFor="tableNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                                                Выберите ваш стол *
+                                            </label>
+                                            <select
+                                                id="tableNumber"
+                                                name="tableNumber"
+                                                value={userData.tableNumber}
+                                                onChange={handleUserDataChange}
+                                                className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                required
+                                            >
+                                                {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
+                                                    const value = String(index + 1);
+                                                    return (
+                                                        <option key={value} value={value}>
+                                                            Стол {value}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

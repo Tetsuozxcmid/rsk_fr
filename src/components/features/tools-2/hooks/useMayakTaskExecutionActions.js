@@ -24,54 +24,50 @@ export const useMayakTaskExecutionActions = ({
     type,
     userType,
     who,
+    sessionUploadRequired,
 }) => {
-    const toggleTaskTimer = useCallback(async () => {
-        if (isIntroTask(currentTaskIndex)) {
-            if (timerState.isRunning) {
-                stopTimer();
-                autoCompleteIntroTask();
-            } else {
-                startTimer();
-            }
-            return;
+    const buildCompletionTaskData = useCallback(() => {
+        const taskNumber = currentTask?.number?.toString();
+        const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+
+        if (taskTextData) {
+            return {
+                ...taskTextData,
+                title: currentTask?.title || "",
+                contentType: currentTask?.contentType || "",
+            };
         }
-        if (timerState.isRunning) {
-            const timeWhenStopped = timerState.elapsedTime;
-            stopTimer();
 
-            const taskNumber = currentTask?.number?.toString();
-            const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+        console.warn(`Текст для задания ${currentTaskIndex + 1} не найден.`);
+        return {
+            number: currentTask?.number || currentTaskIndex + 1,
+            title: currentTask?.title || "",
+            contentType: currentTask?.contentType || "",
+            description: currentTask?.description || "Описание задания недоступно",
+            task: currentTask?.name || "Текст задания недоступен",
+        };
+    }, [currentTask, currentTaskIndex, tasksTexts]);
 
-            if (taskTextData) {
-                setCurrentTaskData({
-                    ...taskTextData,
-                    title: currentTask?.title || "",
-                    contentType: currentTask?.contentType || "",
-                });
-            } else {
-                console.warn(`Текст для задания ${currentTaskIndex + 1} не найден.`);
-                setCurrentTaskData({
-                    number: currentTask?.number || currentTaskIndex + 1,
-                    title: currentTask?.title || "",
-                    contentType: currentTask?.contentType || "",
-                    description: currentTask?.description || "Описание задания недоступно",
-                    task: currentTask?.name || "Текст задания недоступен",
-                });
+    const finalizeTaskExecution = useCallback(
+        async ({ timeWhenStopped, shouldStopTimer = true }) => {
+            const safeElapsedTime = Number.isFinite(timeWhenStopped) ? timeWhenStopped : timerState.elapsedTime;
+
+            if (shouldStopTimer) {
+                stopTimer();
             }
 
-            setShowCompletionPopup(true);
-
-            const minutes = Math.round(timeWhenStopped / 60);
+            const taskData = buildCompletionTaskData();
+            const minutes = Math.round(safeElapsedTime / 60);
             const taskName = currentTask?.name || `Задание ${currentTaskIndex + 1}`;
 
             const logEntry = {
-                number: taskNumber || String(currentTaskIndex + 1),
+                number: String(taskData.number || currentTaskIndex + 1),
                 title: taskName,
                 taskTitle: currentTask?.title || "",
                 contentType: currentTask?.contentType || "",
-                description: taskTextData?.description || "",
-                taskText: taskTextData?.task || "",
-                time: formatTaskTime(timeWhenStopped),
+                description: taskData?.description || "",
+                taskText: taskData?.task || "",
+                time: formatTaskTime(safeElapsedTime),
                 mayak: {
                     m: fields.m,
                     a: fields.a,
@@ -96,7 +92,7 @@ export const useMayakTaskExecutionActions = ({
                     type,
                     userType,
                     who,
-                    taskElapsedTime: timeWhenStopped,
+                    taskElapsedTime: safeElapsedTime,
                     sectionId: tokenSectionId,
                 });
 
@@ -124,35 +120,49 @@ export const useMayakTaskExecutionActions = ({
             } catch (err) {
                 console.error("Error saving task data:", err);
             }
+        },
+        [activeUser, buildCompletionTaskData, completedTasks, currentTask, currentTaskIndex, fields, formatTaskTime, getStorageKey, prompt, setCompletedTasks, stopTimer, timerState.elapsedTime, tokenSectionId, type, userType, who]
+    );
+
+    const toggleTaskTimer = useCallback(async () => {
+        if (isIntroTask(currentTaskIndex)) {
+            if (timerState.isRunning) {
+                stopTimer();
+                autoCompleteIntroTask();
+            } else {
+                startTimer();
+            }
+            return;
+        }
+        if (timerState.isRunning) {
+            const timeWhenStopped = timerState.elapsedTime;
+            setCurrentTaskData(buildCompletionTaskData());
+            setShowCompletionPopup(true);
+            if (sessionUploadRequired) {
+                return;
+            }
+            await finalizeTaskExecution({ timeWhenStopped });
         } else {
             startTimer();
         }
     }, [
         activeUser,
         autoCompleteIntroTask,
-        completedTasks,
-        currentTask,
         currentTaskIndex,
-        fields,
-        formatTaskTime,
-        getStorageKey,
+        buildCompletionTaskData,
+        finalizeTaskExecution,
         isIntroTask,
-        prompt,
-        setCompletedTasks,
         setCurrentTaskData,
         setShowCompletionPopup,
+        sessionUploadRequired,
         startTimer,
         stopTimer,
-        tasksTexts,
         timerState.elapsedTime,
         timerState.isRunning,
-        tokenSectionId,
-        type,
-        userType,
-        who,
     ]);
 
     return {
+        finalizeTaskExecution,
         toggleTaskTimer,
     };
 };

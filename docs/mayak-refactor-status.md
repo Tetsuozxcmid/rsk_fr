@@ -1,4 +1,4 @@
-﻿# MAYAK Refactor Status
+# MAYAK Refactor Status
 
 ## Rules
 
@@ -39,6 +39,11 @@ Stabilize MAYAK architecture around:
 - Added a dedicated MAYAK `maps` attachment channel in storage/admin/runtime with split-view PDF preview in the trainer.
 - Local content was verified to work through `data/mayak-content`.
 - Added shared MAYAK questionnaire-link settings in `data/mayak-settings.json` with admin editing in `/admin/mayak-content`.
+- Added a separate experimental MAYAK session domain in `data/mayak-sessions.json` plus isolated session-token storage in `data/mayak-session-tokens.json`, with admin APIs for create/update/complete and cleanup of `data/mayak-session-files/<sessionId>/`.
+- Added experimental session runtime storage in `data/mayak-session-runtime.json` with participant registration, role assignment, inspector queue, review statuses, and session-scoped uploaded review files.
+- Session admin now lets the operator set token usage count separately from table count, so one session can have, for example, `3` tables and `100` token uses.
+- Session admin now also stores shared review/rework timers per session (`reviewTimeoutSeconds`, `reworkTimeoutSeconds`).
+- Session admin now uses one destructive `Завершить сессию` action in the UI: it fully deletes the session instead of moving it into a visible history section.
 
 
 ### Storage hardening
@@ -107,7 +112,22 @@ Stabilize MAYAK architecture around:
 - MAYAK content admin is on the new auth model.
 - MAYAK v2 runtime content now goes through API instead of direct public JSON fetches.
 - `trainer.js` is much smaller and closer to orchestration-only, but still needs behavioral smoke-check.
+- Experimental MAYAK sessions now have a dedicated admin surface (`/admin/mayak-sessions`) and remain isolated from the legacy token flow.
+- Session creation/editing now keeps an explicit `tokenUsageLimit` field instead of deriving token capacity from `tableCount`.
+- Session tokens are now accepted by `/api/mayak/validate-token`, and session-mode registration in `settings` requires a table selection derived from the active session.
+- Session-mode registration now also creates a session participant record bound to `sessionId`, `userId`, and `tableNumber`.
+- Session trainer flow now supports:
+  - one server-enforced inspector per table,
+  - participant upload on task completion,
+  - blocking next-task navigation while a task is pending review or rejected,
+  - inspector review queue with accept/reject and session-configured review/rework timers,
+  - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
+- Inspector review UI now uses a compact top-right queue with per-task countdown bars and an `Открыть` action that expands into a split review modal; participants see a matching `Задание на проверке` timer banner while navigation stays blocked.
+- Session upload allowlist now also accepts `ppt/pptx`; unsupported preview types fall back to download-only inside the inspector panel.
+- `doc/docx` conversion now supports an explicit `MAYAK_LIBREOFFICE_PATH` override before default `soffice/libreoffice` lookup, so server deploys can bind LibreOffice without changing code.
 - MAYAK task maps now auto-open as a right-side desktop preview while a task is running and close automatically on task completion.
+- MAYAK instructions can now reuse the same right-side preview panel: map opens by default, and the `Инструкция` button toggles instruction preview / return to map.
+- The desktop right-side preview panel is now resizable by drag with saved width and desktop-only min/max constraints.
 - Storage directory selection now prefers an explicit MAYAK_CONTENT_DIR when set, otherwise the first valid MAYAK storage instead of the first merely existing directory.
 - The largest remaining trainer risk is behavioral regression, not syntax.
 
@@ -122,7 +142,8 @@ Stabilize MAYAK architecture around:
    - buffer,
    - instructions/materials,
    - Qwen evaluation,
-   - completion popups.
+   - completion popups,
+   - session participant upload / inspector review flow.
 2. Content storage selection and JSON save path were hardened: valid storage detection plus atomic JSON writes are now in place.
 
 ### Medium priority
@@ -138,6 +159,7 @@ Stabilize MAYAK architecture around:
 - Verify admin login through `/api/admin/mayak-auth` after deploy.
 - Verify runtime `content-bundle` / `content-file` behavior after deploy.
 - Verify regular token flow works and old production bypasses do not.
+- For session review `doc/docx` preview, ensure LibreOffice is installed on the server or set `MAYAK_LIBREOFFICE_PATH` to the real `soffice` binary before restarting `nextjs.service`.
 
 ## Stopping Rule For This Refactor Stage
 
@@ -156,3 +178,7 @@ Stop this stage when:
 - Added automatic cleanup of legacy `ADMIN-BYPASS-TOKEN` from `activated_key` cookie on MAYAK settings load.
 - Tightened `useMayakAccessGate` so bypass token access requires an authenticated MAYAK admin cookie before opening the trainer.
 
+
+- 2026-03-18: Office preview conversion on local Windows was diagnosed to fail because LibreOffice could not use the ambient TEMP/user path reliably; the runtime now uses an isolated ASCII temp workspace plus explicit `TEMP/TMP` overrides and logs conversion steps.
+
+- 2026-03-18: doc/docx session review uploads were moved from synchronous LibreOffice conversion to the same background-preview flow as ppt/pptx, so upload no longer blocks on office conversion.

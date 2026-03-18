@@ -13,6 +13,27 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-17 - Session-mode trainer code must not treat `active_user` as a raw cookie string
+
+- Problem: MAYAK session features need `sessionId`, `tableNumber`, and `userId`, but some runtime code still treated `active_user` as a plain encoded cookie string.
+- Root cause: older trainer helpers only needed a loose user key for local stats, so they read `document.cookie` directly instead of parsing the structured `active_user` payload.
+- Fix: use `getUserFromCookies()` for MAYAK session/runtime work and pass explicit `activeUserId` into hooks that only need a stable identifier.
+- Prevention: when adding new MAYAK session logic, do not read `active_user` through ad-hoc string splitting if the code needs structured participant/session fields.
+
+### 2026-03-17 - Word preview conversion should not assume `libreoffice` is on PATH
+
+- Problem: session review upload on local Windows failed with `spawn libreoffice ENOENT` during `doc/docx -> pdf` conversion.
+- Root cause: the runtime called `libreoffice` directly and assumed the binary existed in the process PATH, which is not guaranteed on Windows or some server deployments.
+- Fix: resolve the converter through `MAYAK_LIBREOFFICE_PATH` first, then fall back to standard `soffice/libreoffice` names and common Windows install paths, and return a human-readable setup error if nothing is found.
+- Prevention: whenever MAYAK depends on external binaries, add an explicit env override and a readable configuration error instead of trusting PATH-only discovery.
+
+### 2026-03-17 - MAYAK role constants must not depend on literal Cyrillic source bytes
+
+- Problem: session runtime accepted a role value that looked like `ИНСПЕКТОР`, but the inspector-specific logic still did not fire and uniqueness checks were bypassed.
+- Root cause: the source file had a codepage/encoding mismatch, so literal Cyrillic comparisons in JavaScript were not byte-stable even though they looked correct in some tools.
+- Fix: move critical MAYAK role constants to Unicode-escaped literals and compare against those constants server-side.
+- Prevention: for MAYAK business-critical string enums used in API/runtime logic, prefer stable constants (ASCII keys or Unicode escapes) instead of trusting visually correct Cyrillic literals in source files.
+
 ### 2026-03-06 - apply_patch sandbox failure in this workspace
 
 - Problem: `apply_patch` can fail here with `windows sandbox: setup refresh failed with status exit code: 1`, which blocks normal file edits.
@@ -204,3 +225,10 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: content storage fallback previously selected the first existing directory instead of checking whether it contained a valid MAYAK manifest or section data.
 - Fix: keep `MAYAK_CONTENT_DIR` as the explicit override, but otherwise choose the first valid MAYAK storage root and use atomic JSON writes for manifest/section saves.
 - Prevention: when MAYAK content can live in multiple candidate directories, treat directory existence and content validity as separate checks; do not let an empty placeholder directory win over a valid storage root.
+
+### 2026-03-18 - LibreOffice conversion on Windows needs an ASCII temp/workspace, not the default user TEMP
+
+- Problem: MAYAK `docx/pptx -> pdf` preview conversion could hang in `processing` or fail with `source file could not be loaded` / `Io Write Code:16`, even when LibreOffice was installed correctly.
+- Root cause: in this Windows environment the default TEMP/TMP path and profile/temp handling for LibreOffice are unreliable; direct conversion from the long workspace path left `soffice` processes hanging or unable to load/write files.
+- Fix: run LibreOffice with an isolated ASCII workspace inside the repo, copy the source file to a short ASCII temp path, set `TEMP` and `TMP` explicitly for the conversion process, and log stdout/stderr for diagnosis.
+- Prevention: for MAYAK office preview conversion on Windows, do not invoke `soffice` directly against the original workspace path with the ambient TEMP; stage files into an ASCII temp workdir and override `TEMP/TMP` first.

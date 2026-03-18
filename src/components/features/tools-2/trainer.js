@@ -5,6 +5,7 @@ import RankingTestPopup from "./addons/RankingTestPopup";
 import MayakServicesPanel from "./MayakServicesPanel";
 import InstructionImageModal from "./InstructionImageModal";
 import InstructionPreviewPanel from "./InstructionPreviewPanel";
+import { InspectorReviewModal, InspectorReviewQueue, SessionReviewStatusBanner, SessionTaskReviewPopup } from "./SessionReviewWidgets";
 import { MayakField, TrainerControls } from "./TrainerUiSections";
 import { RoleSelectionPopup, ConfirmationPopup, FirstQuestionnairePopup, SecondQuestionnairePopup, ThirdQuestionnairePopup, SessionCompletionPopup, TaskCompletionPopup } from "./TrainerPopups";
 
@@ -18,7 +19,7 @@ import ResetIcon from "@/assets/general/ResetIcon.svg";
 import CloseIcon from "@/assets/general/close.svg";
 
 // Добавляем getUserFromCookies
-import { removeKeyCookie } from "./actions";
+import { clearUserCookie, removeKeyCookie } from "./actions";
 // Добавляем эти две строки для работы сертификата
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import CourseIcon from "@/assets/nav/course.svg";
@@ -55,6 +56,9 @@ import { useMayakPopupState } from "./hooks/useMayakPopupState";
 import { useMayakTypeUiState } from "./hooks/useMayakTypeUiState";
 
 const TRAINER_PREFIX = "trainer_v2"; // Уникальный префикс для этого тренажера
+const PREVIEW_WIDTH_MIN = 320;
+const PREVIEW_WIDTH_MAX = 560;
+const PREVIEW_WIDTH_DEFAULT = 520;
 
 const QWEN_EVALUATION_LIMIT = 20;
 const getStorageKey = (key) => `${TRAINER_PREFIX}_${key}`;
@@ -151,9 +155,18 @@ export default function TrainerPage({ goTo }) {
     const [savedField, setSavedField] = useState(null);
 
     const isMobile = useMediaQuery("(max-width: 1023px)");
+    const previewResizeStateRef = useRef(null);
+    const previewResizeCleanupRef = useRef(null);
 
     const [taskInputValue, setTaskInputValue] = useState("");
     const debounceTimeoutRef = useRef(null);
+    const [isPreviewResizing, setIsPreviewResizing] = useState(false);
+    const [previewWidth, setPreviewWidth] = useState(() => {
+        if (typeof window === "undefined") return PREVIEW_WIDTH_DEFAULT;
+        const raw = window.localStorage.getItem(getStorageKey("previewWidth"));
+        const parsed = parseInt(raw || "", 10);
+        return Number.isFinite(parsed) ? parsed : PREVIEW_WIDTH_DEFAULT;
+    });
 
     const [hasCompletedSecondQuestionnaire, setHasCompletedSecondQuestionnaire] = useState(localStorage.getItem(getStorageKey("hasCompletedSecondQuestionnaire")) === "true");
     const [selectedRole, setSelectedRole] = useState(localStorage.getItem(getStorageKey("userRole")) || null);
@@ -243,14 +256,21 @@ export default function TrainerPage({ goTo }) {
     const [showLevelsInput, setShowLevelsInput] = useState(false);
 
     const [completedTasks, setCompletedTasks] = useState({});
+    const [sessionRuntimeState, setSessionRuntimeState] = useState(null);
+    const [sessionRuntimeError, setSessionRuntimeError] = useState("");
+    const [sessionUploadError, setSessionUploadError] = useState("");
+    const [sessionUploadLoading, setSessionUploadLoading] = useState(false);
+    const [inspectorResolveLoading, setInspectorResolveLoading] = useState(false);
+    const [inspectorResolveError, setInspectorResolveError] = useState("");
+    const [openedInspectorReviewId, setOpenedInspectorReviewId] = useState("");
 
 
     const [type, setType] = useState("text");
     const [userType, setUserType] = useState("teacher");
     const [who, setWho] = useState("im");
     const [instructionModal, setInstructionModal] = useState(null);
-    const [isMapPreviewOpen, setIsMapPreviewOpen] = useState(false);
-    const [mapPreviewDismissedTaskKey, setMapPreviewDismissedTaskKey] = useState("");
+    const [previewMode, setPreviewMode] = useState(null);
+    const [previewDismissedTaskKey, setPreviewDismissedTaskKey] = useState("");
 
     const {
         isAdmin,
@@ -476,7 +496,8 @@ export default function TrainerPage({ goTo }) {
         }
     }, [goTo]);
 
-    const { activeUser, mayakData } = useMayakRuntimeData();
+    const { activeUserId, mayakData, sessionId: runtimeSessionId, tokenType, tableNumber } = useMayakRuntimeData();
+    const isSessionMode = tokenType === "session" && !!runtimeSessionId;
 
     const {
         activeTypeKey,
@@ -491,8 +512,8 @@ export default function TrainerPage({ goTo }) {
         type,
     });
 
-    const { toggleTaskTimer } = useMayakTaskExecutionActions({
-        activeUser,
+    const { finalizeTaskExecution, toggleTaskTimer } = useMayakTaskExecutionActions({
+        activeUser: activeUserId,
         autoCompleteIntroTask,
         completedTasks,
         currentTask,
@@ -513,6 +534,7 @@ export default function TrainerPage({ goTo }) {
         type,
         userType,
         who,
+        sessionUploadRequired: isSessionMode,
     });
 
     const {
@@ -570,11 +592,13 @@ export default function TrainerPage({ goTo }) {
     });
 
     const { handleAdminResetSession, handleRoleConfirm } = useMayakSessionActions({
+        activeUserId,
         autoCompleteIntroTask,
         currentTaskIndex,
         getStorageKey,
         isAdmin,
         isIntroTask,
+        sessionId: runtimeSessionId,
         removeKeyCookie,
         resetQwenSessionState,
         setCompletionSurveyDone,
@@ -627,6 +651,56 @@ export default function TrainerPage({ goTo }) {
         setShowThirdQuestionnaire,
     });
 
+    useEffect(() => {
+        if (!isSessionMode || !runtimeSessionId || !activeUserId) {
+            setSessionRuntimeState(null);
+            setSessionRuntimeError("");
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        const loadSessionRuntimeState = async () => {
+            try {
+                const response = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось загрузить состояние сессии");
+                }
+                if (cancelled) return;
+
+                const nextState = payload.data || null;
+                setSessionRuntimeState(nextState);
+                setSessionRuntimeError("");
+
+                if (nextState?.participant?.role && nextState.participant.role !== selectedRole) {
+                    setSelectedRole(nextState.participant.role);
+                    localStorage.setItem(getStorageKey("userRole"), nextState.participant.role);
+                }
+
+                if (nextState && nextState.sessionActive === false) {
+                    await removeKeyCookie();
+                    await clearUserCookie();
+                    localStorage.removeItem(getStorageKey("userRole"));
+                    window.location.replace("/tools/mayak-oko");
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setSessionRuntimeError(error.message || "Не удалось обновить состояние сессии");
+                }
+            }
+        };
+
+        loadSessionRuntimeState();
+        const intervalId = window.setInterval(loadSessionRuntimeState, 5000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [activeUserId, getStorageKey, isSessionMode, removeKeyCookie, runtimeSessionId, selectedRole, setSelectedRole]);
+
     const handleChange = useCallback(
         (code, value) => {
             setFields((prev) => ({ ...prev, [code]: value }));
@@ -634,43 +708,324 @@ export default function TrainerPage({ goTo }) {
         [setFields]
     );
 
-    const activeMapTaskKey = timerState.isRunning && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
+    const sessionBlockingTask = sessionRuntimeState?.blockingTask || null;
+    const currentTaskState =
+        Array.isArray(sessionRuntimeState?.participant?.taskStates)
+            ? sessionRuntimeState.participant.taskStates.find((task) => Number(task.taskIndex) === currentTaskIndex) || null
+            : null;
+    const isCurrentTaskRejected = !!(sessionBlockingTask && Number(sessionBlockingTask.taskIndex) === currentTaskIndex && sessionBlockingTask.status === "rejected");
+    const isCurrentTaskPendingReview = !!(sessionBlockingTask && Number(sessionBlockingTask.taskIndex) === currentTaskIndex && sessionBlockingTask.status === "pending_review");
+    const isCurrentTaskApproved = ["approved", "expired", "rework_expired"].includes(currentTaskState?.status);
+    const canAccessCurrentTaskResources = timerState.isRunning || isCurrentTaskRejected || isCurrentTaskPendingReview;
+    const currentTaskReviewComment = isCurrentTaskRejected ? sessionBlockingTask?.comment || "" : "";
+    const inspectorQueue = Array.isArray(sessionRuntimeState?.inspectorQueue) ? sessionRuntimeState.inspectorQueue : [];
+    const activeInspectorReview = inspectorQueue.find((review) => review.id === openedInspectorReviewId) || null;
+
+    const activeMapTaskKey = canAccessCurrentTaskResources && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
+    const previewFileUrl = previewMode === "instruction" ? instructionFileUrl : previewMode === "map" ? mapFileUrl : "";
+    const previewTitle =
+        previewMode === "instruction"
+            ? `Инструкция №${currentTask?.number || currentTaskIndex + 1}`
+            : `Карта №${currentTask?.number || currentTaskIndex + 1}`;
+    const isPreviewOpen = !!(previewMode && previewFileUrl && !isMobile);
+
+    const clampPreviewWidth = useCallback((nextWidth) => {
+        if (typeof window === "undefined") {
+            return Math.min(Math.max(nextWidth, PREVIEW_WIDTH_MIN), PREVIEW_WIDTH_MAX);
+        }
+
+        const viewportMax = Math.max(PREVIEW_WIDTH_MIN, Math.min(PREVIEW_WIDTH_MAX, Math.floor(window.innerWidth * 0.5)));
+        return Math.min(Math.max(nextWidth, PREVIEW_WIDTH_MIN), viewportMax);
+    }, []);
+
+    const canMoveToTaskIndex = useCallback(
+        (nextIndex) => {
+            if (!isSessionMode || !sessionBlockingTask) return true;
+            const blockedIndex = Number(sessionBlockingTask.taskIndex);
+            if (!Number.isFinite(blockedIndex)) return true;
+            if (sessionBlockingTask.status === "pending_review" || sessionBlockingTask.status === "rejected") {
+                return nextIndex <= blockedIndex;
+            }
+            return true;
+        },
+        [isSessionMode, sessionBlockingTask]
+    );
 
     useEffect(() => {
-        if (!timerState.isRunning) {
-            setIsMapPreviewOpen(false);
-            setMapPreviewDismissedTaskKey("");
+        if (!openedInspectorReviewId) return;
+        const stillOpenable = inspectorQueue.some((review) => review.id === openedInspectorReviewId);
+        if (!stillOpenable) {
+            setOpenedInspectorReviewId("");
+        }
+    }, [inspectorQueue, openedInspectorReviewId]);
+
+    useEffect(() => {
+        if (!canAccessCurrentTaskResources) {
+            setPreviewMode(null);
+            setPreviewDismissedTaskKey("");
             return;
         }
 
-        if (!mapFileUrl || isMobile) {
-            setIsMapPreviewOpen(false);
+        if (isMobile) {
+            setPreviewMode(null);
             return;
         }
 
-        if (mapPreviewDismissedTaskKey !== activeMapTaskKey) {
-            setIsMapPreviewOpen(true);
+        if (mapFileUrl) {
+            if (previewDismissedTaskKey !== activeMapTaskKey && previewMode !== "instruction") {
+                setPreviewMode("map");
+            }
+            return;
         }
-    }, [activeMapTaskKey, isMobile, mapFileUrl, mapPreviewDismissedTaskKey, timerState.isRunning]);
+
+        if (previewMode === "map") {
+            setPreviewMode(null);
+        }
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, isMobile, mapFileUrl, previewDismissedTaskKey, previewMode]);
 
     const handleToggleMapPreview = useCallback(() => {
-        if (!mapFileUrl || !timerState.isRunning || isMobile) return;
-        setIsMapPreviewOpen((prev) => {
-            const next = !prev;
-            setMapPreviewDismissedTaskKey(next ? "" : activeMapTaskKey);
-            return next;
-        });
-    }, [activeMapTaskKey, isMobile, mapFileUrl, timerState.isRunning]);
+        if (!mapFileUrl || !canAccessCurrentTaskResources || isMobile) return;
+        setPreviewMode((prev) => {
+            if (prev === "map") {
+                setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+                return null;
+            }
 
-    const handleCloseMapPreview = useCallback(() => {
-        setIsMapPreviewOpen(false);
-        setMapPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+            setPreviewDismissedTaskKey("");
+            return "map";
+        });
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, isMobile, mapFileUrl]);
+
+    const handleToggleInstructionPreview = useCallback(() => {
+        if (!instructionFileUrl || !canAccessCurrentTaskResources) return;
+
+        if (isMobile) {
+            window.open(instructionFileUrl, "_blank", "noopener,noreferrer");
+            return;
+        }
+
+        setPreviewMode((prev) => {
+            if (prev === "instruction") {
+                setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
+                return null;
+            }
+
+            setPreviewDismissedTaskKey("");
+            return "instruction";
+        });
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, instructionFileUrl, isMobile]);
+
+    const buildSessionCompletionTaskData = useCallback(() => {
+        const taskNumber = currentTask?.number?.toString();
+        const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+
+        if (taskTextData) {
+            return {
+                ...taskTextData,
+                title: currentTask?.title || "",
+                contentType: currentTask?.contentType || "",
+            };
+        }
+
+        return {
+            number: currentTask?.number || currentTaskIndex + 1,
+            title: currentTask?.title || "",
+            contentType: currentTask?.contentType || "",
+            description: currentTask?.description || "",
+            task: currentTask?.name || "",
+        };
+    }, [currentTask, currentTaskIndex, tasksTexts]);
+
+    const handleSessionTaskUpload = useCallback(
+        async (file, submissionText = "") => {
+            const normalizedSubmissionText = String(submissionText || "").trim();
+            if (!file && !normalizedSubmissionText) {
+                setSessionUploadError("Нужно загрузить файл или добавить текст ответа.");
+                return;
+            }
+            if (normalizedSubmissionText.length > 300) {
+                setSessionUploadError("Текст ответа не должен превышать 300 символов.");
+                return;
+            }
+            if (!runtimeSessionId || !activeUserId || !currentTaskData) {
+                setSessionUploadError("Не удалось определить параметры сессионной проверки.");
+                return;
+            }
+
+            setSessionUploadLoading(true);
+            setSessionUploadError("");
+
+            try {
+                const formData = new FormData();
+                formData.append("sessionId", runtimeSessionId);
+                formData.append("userId", activeUserId);
+                formData.append("taskNumber", String(currentTaskData.number || currentTask?.number || ""));
+                formData.append("taskIndex", String(currentTaskIndex));
+                formData.append("taskName", String(currentTask?.name || currentTaskData.title || `Задание ${currentTaskIndex + 1}`));
+                formData.append("taskTitle", String(currentTaskData.title || ""));
+                formData.append("contentType", String(currentTaskData.contentType || ""));
+                formData.append("description", String(currentTaskData.description || ""));
+                formData.append("taskText", String(currentTaskData.task || ""));
+                formData.append("secondsSpent", String(timerState.readyElapsedTime ?? timerState.elapsedTime ?? 0));
+                formData.append("submissionText", normalizedSubmissionText);
+                if (file) {
+                    formData.append("file", file);
+                }
+
+                const controller = new AbortController();
+                const timeoutId = window.setTimeout(() => controller.abort(), 55000);
+                let response;
+                try {
+                    response = await fetch("/api/mayak/session-runtime/upload", {
+                        method: "POST",
+                        body: formData,
+                        signal: controller.signal,
+                    });
+                } finally {
+                    window.clearTimeout(timeoutId);
+                }
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось отправить материал инспектору");
+                }
+
+                await finalizeTaskExecution({
+                    timeWhenStopped: timerState.elapsedTime,
+                });
+
+                const refreshResponse = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const refreshPayload = await refreshResponse.json().catch(() => ({}));
+                if (refreshResponse.ok && refreshPayload.success) {
+                    setSessionRuntimeState(refreshPayload.data || null);
+                }
+
+                setShowCompletionPopup(false);
+            } catch (error) {
+                setSessionUploadError(error.message || "Не удалось отправить материал инспектору");
+            } finally {
+                setSessionUploadLoading(false);
+            }
+        },
+        [activeUserId, currentTask, currentTaskData, currentTaskIndex, finalizeTaskExecution, runtimeSessionId, tasksTexts, timerState.elapsedTime, timerState.readyElapsedTime]
+    );
+
+    const handleResolveInspectorReview = useCallback(
+        async (action, comment = "") => {
+            if (!activeInspectorReview || !runtimeSessionId || !activeUserId) return;
+
+            setInspectorResolveLoading(true);
+            setInspectorResolveError("");
+            try {
+                const response = await fetch("/api/mayak/session-runtime/review", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        sessionId: runtimeSessionId,
+                        reviewId: activeInspectorReview.id,
+                        inspectorUserId: activeUserId,
+                        action,
+                        comment,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось сохранить решение инспектора");
+                }
+
+                setOpenedInspectorReviewId("");
+                const refreshResponse = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const refreshPayload = await refreshResponse.json().catch(() => ({}));
+                if (refreshResponse.ok && refreshPayload.success) {
+                    setSessionRuntimeState(refreshPayload.data || null);
+                }
+            } catch (error) {
+                setInspectorResolveError(error.message || "Не удалось сохранить решение инспектора");
+            } finally {
+                setInspectorResolveLoading(false);
+            }
+        },
+        [activeInspectorReview, activeUserId, runtimeSessionId]
+    );
+
+    const handleClosePreview = useCallback(() => {
+        setPreviewMode(null);
+        setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
     }, [activeMapTaskKey]);
 
-    const handleOpenMapSeparate = useCallback(() => {
-        if (!mapFileUrl || !timerState.isRunning) return;
-        window.open(mapFileUrl, "_blank", "noopener,noreferrer");
-    }, [mapFileUrl, timerState.isRunning]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        window.localStorage.setItem(getStorageKey("previewWidth"), String(clampPreviewWidth(previewWidth)));
+    }, [clampPreviewWidth, previewWidth]);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const handleResize = () => {
+            setPreviewWidth((prev) => clampPreviewWidth(prev));
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, [clampPreviewWidth]);
+
+    const stopPreviewResize = useCallback(() => {
+        previewResizeStateRef.current = null;
+        if (previewResizeCleanupRef.current) {
+            previewResizeCleanupRef.current();
+            previewResizeCleanupRef.current = null;
+        }
+        setIsPreviewResizing(false);
+    }, []);
+
+    useEffect(() => () => stopPreviewResize(), [stopPreviewResize]);
+
+    const handlePreviewResizeStart = useCallback(
+        (event) => {
+            if (isMobile || !isPreviewOpen) return;
+
+            event.preventDefault();
+
+            const previousUserSelect = document.body.style.userSelect;
+            const previousCursor = document.body.style.cursor;
+
+            previewResizeStateRef.current = {
+                startX: event.clientX,
+                startWidth: previewWidth,
+            };
+            setIsPreviewResizing(true);
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "col-resize";
+
+            const handlePointerMove = (moveEvent) => {
+                const state = previewResizeStateRef.current;
+                if (!state) return;
+
+                const deltaX = state.startX - moveEvent.clientX;
+                setPreviewWidth(clampPreviewWidth(state.startWidth + deltaX));
+            };
+
+            const handlePointerUp = () => {
+                stopPreviewResize();
+            };
+
+            previewResizeCleanupRef.current = () => {
+                document.body.style.userSelect = previousUserSelect;
+                document.body.style.cursor = previousCursor;
+                window.removeEventListener("pointermove", handlePointerMove);
+                window.removeEventListener("pointerup", handlePointerUp);
+            };
+
+            window.addEventListener("pointermove", handlePointerMove);
+            window.addEventListener("pointerup", handlePointerUp, { once: true });
+        },
+        [clampPreviewWidth, isMobile, isPreviewOpen, previewWidth, stopPreviewResize]
+    );
     const { createPrompt, handleCopy, handleRandom, handleResetFields } = useMayakPromptActions({
         buildPromptDraft,
         clearQwenState,
@@ -720,6 +1075,36 @@ export default function TrainerPage({ goTo }) {
     const qwenScoreMeta = qwenGreenCount === null ? null : getQwenScoreMeta(qwenGreenCount, qwenTotalFields);
     const shouldShowQwenMascot = !qwenLoading && activeQwenMascotAsset && showMascotVideo;
 
+    const guardedToggleTaskTimer = async () => {
+        if (!timerState.isRunning && isCurrentTaskPendingReview) {
+            alert("Это задание уже отправлено инспектору. Дождитесь проверки или истечения таймера.");
+            return;
+        }
+
+        if (!timerState.isRunning && isCurrentTaskRejected) {
+            setCurrentTaskData(buildSessionCompletionTaskData());
+            setShowCompletionPopup(true);
+            return;
+        }
+
+        setSessionUploadError("");
+        await toggleTaskTimer();
+    };
+
+    const guardedGoToTask = (nextIndex) => {
+        if (!canMoveToTaskIndex(nextIndex)) {
+            const message =
+                false
+                    ? "Сначала загрузите материал по завершённому заданию."
+                    : sessionBlockingTask?.status === "rejected"
+                    ? "Сначала исправьте текущее задание по замечанию инспектора."
+                    : "Сначала дождитесь проверки текущего задания инспектором.";
+            alert(message);
+            return;
+        }
+        goToTask(nextIndex);
+    };
+
     const trainerControlsProps = {
         who,
         taskVersion,
@@ -730,14 +1115,16 @@ export default function TrainerPage({ goTo }) {
         instructionFileUrl,
         taskFileUrl,
         mapFileUrl,
-        isMapPreviewOpen,
-        canToggleMapPreview: !!(mapFileUrl && timerState.isRunning && !isMobile),
+        isMapPreviewOpen: previewMode === "map" && !!previewFileUrl,
+        isInstructionPreviewOpen: previewMode === "instruction" && !!previewFileUrl,
+        canToggleMapPreview: !!(mapFileUrl && canAccessCurrentTaskResources && !isMobile),
         sourceUrl,
         currentTask,
         isCurrentTaskAllowed,
         allowedMinIndex,
         allowedMaxIndex,
         selectedRole,
+        tableNumber,
         rankingDelta5,
         onWhoChange: (value) => {
             // Сначала обновляем состояние, чтобы UI отреагировал
@@ -747,8 +1134,16 @@ export default function TrainerPage({ goTo }) {
                 showSwitchToWeConfirmation();
             }
         },
-        onPrevTask: prevTask,
-        onNextTask: nextTask,
+        onPrevTask: () => {
+            if (currentTaskIndex - 1 >= 0) {
+                guardedGoToTask(currentTaskIndex - 1);
+            }
+        },
+        onNextTask: () => {
+            if (currentTaskIndex + 1 < tasks.length) {
+                guardedGoToTask(currentTaskIndex + 1);
+            }
+        },
         taskInputValue,
         onTaskInputChange: (e) => {
             const value = e.target.value;
@@ -769,26 +1164,18 @@ export default function TrainerPage({ goTo }) {
 
             // Устанавливаем новый таймер
             debounceTimeoutRef.current = setTimeout(() => {
-                const inputNum = parseInt(value, 10);
-                let newIndex;
-
-                if (tokenTaskRange) {
-                    // С токеном: ищем по номеру задания (task.number)
-                    newIndex = tasks.findIndex((t) => parseInt(t.number, 10) === inputNum);
-                } else {
-                    // Без токена: ввод = порядковый номер (1, 2, 3...)
-                    newIndex = inputNum - 1;
-                }
+                const newIndex = resolveTaskIndexFromInput(value);
 
                 // Если задание найдено и в пределах допустимого диапазона — переключаем
                 if (newIndex >= 0 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex && newIndex < tasks.length) {
-                    goToTask(newIndex);
+                    guardedGoToTask(newIndex);
                 }
                 // Если не найдено — просто не переключаем, даём пользователю исправить
             }, 600);
         },
-        onToggleTaskTimer: toggleTaskTimer,
+        onToggleTaskTimer: guardedToggleTaskTimer,
         onToggleMapPreview: handleToggleMapPreview,
+        onToggleInstructionPreview: handleToggleInstructionPreview,
         onCompleteSession: handleCompleteSession,
         onShowRolePopup: handleShowRolePopup,
         onToolLink1Click: handleToolLink1Click,
@@ -796,12 +1183,197 @@ export default function TrainerPage({ goTo }) {
         onShowInstruction: handleShowInstruction,
         isCurrentTaskIntro: isIntroTask(currentTaskIndex),
         isCurrentTaskRoleSelection: isRoleSelectionTask(currentTask),
+        isTaskActionDisabled: isCurrentTaskPendingReview,
+        isReworkTask: isCurrentTaskRejected,
+        isCurrentTaskApproved,
+        isTaskNavigationLocked: isCurrentTaskPendingReview || isCurrentTaskRejected,
+        canAccessTaskResources: canAccessCurrentTaskResources,
+        taskActionLabel: isCurrentTaskPendingReview ? "\u041d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0435" : isCurrentTaskRejected ? "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c" : "\u041d\u0430\u0447\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435",
     };
+
+    const trainerFieldsBlock = (
+        <Block className="!h-full flex-1 min-w-0 self-stretch">
+            <form className="flex flex-col h-full justify-between">
+                <div className="flex flex-col gap-[1.25rem]">
+                    <div className="flex flex-col gap-[1rem]">
+                        <Switcher
+                            value={activeTypeKey}
+                            onChange={handleTypeSwitch}
+                            className="!w-full !flex-wrap">
+                            {mayakData.defaultTypes.map((t) => (
+                                <Switcher.Option key={t.key} value={t.key}>
+                                    {t.label}
+                                </Switcher.Option>
+                            ))}
+                        </Switcher>
+                    </div>
+                    <div className="flex flex-col gap-[0.5rem]">
+                        <div className="flex justify-between items-center">
+                            <span className="big">Цели и целевая направленность</span>
+                            <Button icon type="button" onClick={handleResetFields} className="!w-auto !h-auto !p-1 !bg-transparent" title="Сбросить все поля">
+                                <ResetIcon className="!text-black" />
+                            </Button>
+                        </div>
+                        {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
+                            <MayakField
+                                key={f.code}
+                                field={f}
+                                value={fields[f.code]}
+                                isMobile={isMobile}
+                                onChange={handleChange}
+                                onShowBuffer={handleShowBufferForField}
+                                onAddToBuffer={handleAddToBuffer}
+                                onRandom={handleRandom}
+                                savedField={savedField}
+                            />
+                        ))}
+                    </div>
+                    <div className="flex flex-col gap-[0.5rem]">
+                        <span className="big">Условия реализации и параметры оформления</span>
+                        {(mayakData.fieldsList || []).slice(4).map((f) => (
+                            <MayakField
+                                key={f.code}
+                                field={f}
+                                value={fields[f.code]}
+                                isMobile={isMobile}
+                                onChange={handleChange}
+                                onShowBuffer={handleShowBufferForField}
+                                onAddToBuffer={handleAddToBuffer}
+                                onRandom={handleRandom}
+                                savedField={savedField}
+                            />
+                        ))}
+                    </div>
+                </div>
+                <div className="mt-4 flex w-full flex-col gap-2">
+                    <div className="flex w-full flex-col gap-2 sm:flex-row">
+                        <span className="block w-full" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
+                            <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled || qwenLoading}>
+                                Создать&nbsp;промт
+                            </Button>
+                        </span>
+                        <span className="block w-full" title={createWithEvaluationDisabledReason}>
+                            <Button className="w-full" type="button" onClick={createPromptWithEvaluation} disabled={isCreateWithEvaluationDisabled}>
+                                Создать&nbsp;промт&nbsp;с&nbsp;оценкой&nbsp;({qwenChecksRemaining}/{evaluationLimit})
+                            </Button>
+                        </span>
+                    </div>
+                </div>
+            </form>
+        </Block>
+    );
+
+    const trainerOutputBlock = (
+        <div className="flex h-full min-h-0 flex-1 min-w-0 flex-col gap-4 self-stretch">
+            {!isMobile && <TrainerControls {...trainerControlsProps} />}
+
+            {sessionRuntimeError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{sessionRuntimeError}</div> : null}
+            {false && currentTaskReviewComment ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="mb-1 font-semibold">Задание требует исправлений</div>
+                    <div>{currentTaskReviewComment}</div>
+                </div>
+            ) : null}
+            {(isCurrentTaskPendingReview || isCurrentTaskRejected) ? (
+                <SessionReviewStatusBanner
+                    taskNumber={currentTask?.number || currentTaskIndex + 1}
+                    status={sessionBlockingTask?.status}
+                    comment={currentTaskReviewComment}
+                    expiresAt={sessionBlockingTask?.expiresAt}
+                    remainingSeconds={sessionBlockingTask?.remainingSeconds}
+                    durationSeconds={sessionBlockingTask?.durationSeconds}
+                />
+            ) : null}
+
+            <Block className="flex min-h-0 flex-grow flex-col !bg-slate-50">
+                <h6 className="text-black mb-2">Ваш промт</h6>
+                <div className="flex-grow overflow-y-auto">
+                    <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать промт"'}</p>
+                </div>
+            </Block>
+
+            {(qwenLoading || qwenResponse) && (
+                <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} relative flex flex-col`}>
+                    {!qwenLoading && qwenScoreMeta && (
+                        <div className={`absolute right-4 top-4 text-lg font-bold sm:text-xl ${qwenScoreMeta.textClass}`}>
+                            {qwenScoreMeta.text}
+                        </div>
+                    )}
+                    <h6 className="mb-2 text-black">Оценка от нейросети</h6>
+                    <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
+                        <div className="flex-1">
+                            {qwenLoading ? (
+                                <p className="text-gray-500 animate-pulse">Анализирую промпт...</p>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-gray-700">{qwenResponse}</p>
+                                    {qwenStrongFields.length > 0 && (
+                                        <p className="text-sm text-gray-700">
+                                            <span className="font-semibold text-black">Сильные поля:</span> {formatFieldList(qwenStrongFields)}
+                                        </p>
+                                    )}
+                                    {qwenWeakFields.length > 0 && (
+                                        <p className="text-sm text-gray-700">
+                                            <span className="font-semibold text-black">Слабые поля:</span> {formatFieldList(qwenWeakFields)}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {shouldShowQwenMascot && (
+                            <div className="flex shrink-0 flex-col items-center self-center">
+                                <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
+                                    <img key={mascotPlaybackKey} src={activeQwenMascotAsset.animatedSrc} alt="" aria-hidden="true" decoding="sync" fetchPriority="high" className="h-full w-full object-contain" />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </Block>
+            )}
+            <div className="mt-auto flex flex-col gap-[1rem]">
+                <div className="flex flex-col gap-[0.5rem]">
+                    <Button onClick={() => handleCopy(prompt)} disabled={isCopyDisabled} title={copyDisabledReason}>
+                        {isCopied ? "Скопировано!" : "Скопировать"}
+                    </Button>
+                    <MayakServicesPanel
+                        defaultLinks={mayakData.defaultLinks}
+                        isMiscAccordionOpen={isMiscAccordionOpen}
+                        miscCategory={miscCategory}
+                        onOpenInstruction={handleShowInstruction}
+                        openSubAccordionKey={openSubAccordionKey}
+                        setOpenSubAccordionKey={setOpenSubAccordionKey}
+                        type={type}
+                        allowWrap={isPreviewOpen}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    const previewPanel = isPreviewOpen && previewFileUrl && !isMobile && (
+        <div className="relative h-full min-h-[420px] shrink-0 self-stretch pl-3" style={{ width: `${previewWidth}px` }}>
+            <div
+                className="absolute left-0 top-1/2 z-10 hidden h-24 w-4 -translate-x-1/2 -translate-y-1/2 cursor-col-resize items-center justify-center lg:flex"
+                onPointerDown={handlePreviewResizeStart}
+                title="Изменить ширину панели"
+                aria-label="Изменить ширину панели"
+                role="separator"
+                aria-orientation="vertical">
+                <span className={`h-14 w-[3px] rounded-full transition-colors ${isPreviewResizing ? "bg-slate-500" : "bg-slate-300"}`} />
+            </div>
+            <InstructionPreviewPanel previewFileUrl={previewFileUrl} previewTitle={previewTitle} onClose={handleClosePreview} />
+        </div>
+    );
 
     return (
         <>
             <Header>
                 <Header.Heading>МАЯК ОКО</Header.Heading>
+                {tableNumber ? (
+                    <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700">
+                        Стол №{tableNumber}
+                    </div>
+                ) : null}
                 <Button
                     icon
                     disabled={timerState.isRunning}
@@ -847,160 +1419,46 @@ export default function TrainerPage({ goTo }) {
                         <TrainerControls {...trainerControlsProps} />
                     </div>
                 )}
-                <Block className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} !h-full`}>
-                    <form className="flex flex-col h-full justify-between">
-                        <div className="flex flex-col gap-[1.25rem]">
-                            <div className="flex flex-col gap-[1rem]">
-                                <Switcher
-                                    value={activeTypeKey} // Используем activeTypeKey для правильного выделения
-                                    onChange={handleTypeSwitch}
-                                    className="!w-full !flex-wrap">
-                                    {mayakData.defaultTypes.map((t) => (
-                                        <Switcher.Option key={t.key} value={t.key}>
-                                            {t.label}
-                                        </Switcher.Option>
-                                    ))}
-                                </Switcher>
-                            </div>
-                            <div className="flex flex-col gap-[0.5rem]">
-                                <div className="flex justify-between items-center">
-                                    <span className="big">Цели и целевая направленность</span>
-                                    <Button icon type="button" onClick={handleResetFields} className="!w-auto !h-auto !p-1 !bg-transparent" title="Сбросить все поля">
-                                        <ResetIcon className="!text-black" />
-                                    </Button>
-                                </div>
-                                {(mayakData.fieldsList || []).slice(0, 4).map((f) => (
-                                    <MayakField
-                                        key={f.code}
-                                        field={f}
-                                        value={fields[f.code]}
-                                        isMobile={isMobile}
-                                        onChange={handleChange}
-                                        onShowBuffer={handleShowBufferForField}
-                                        onAddToBuffer={handleAddToBuffer}
-                                        onRandom={handleRandom}
-                                        savedField={savedField}
-                                    />
-                                ))}
-                            </div>
-                            <div className="flex flex-col gap-[0.5rem]">
-                                <span className="big">Условия реализации и параметры оформления</span>
-                                {(mayakData.fieldsList || []).slice(4).map((f) => (
-                                    <MayakField
-                                        key={f.code}
-                                        field={f}
-                                        value={fields[f.code]}
-                                        isMobile={isMobile}
-                                        onChange={handleChange}
-                                        onShowBuffer={handleShowBufferForField}
-                                        onAddToBuffer={handleAddToBuffer}
-                                        onRandom={handleRandom}
-                                        savedField={savedField}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                        <div className="mt-4 flex w-full flex-col gap-2">
-                            <div className="flex w-full flex-col gap-2 sm:flex-row">
-                                <span className="block w-full" title={isCreateDisabled ? "Сначала заполните все поля" : ""}>
-                                    <Button className="blue w-full" type="button" onClick={createPrompt} disabled={isCreateDisabled || qwenLoading}>
-                                        Создать&nbsp;промт
-                                    </Button>
-                                </span>
-                                <span className="block w-full" title={createWithEvaluationDisabledReason}>
-                                    <Button className="w-full" type="button" onClick={createPromptWithEvaluation} disabled={isCreateWithEvaluationDisabled}>
-                                        Создать&nbsp;промт&nbsp;с&nbsp;оценкой&nbsp;({qwenChecksRemaining}/{evaluationLimit})
-                                    </Button>
-                                </span>
-                            </div>
-                        </div>
-                    </form>
-                </Block>
-
-                <div className={`col-span-12 ${isMapPreviewOpen ? "lg:col-span-5" : "lg:col-span-6"} h-full flex flex-col gap-4`}>
-                    {!isMobile && <TrainerControls {...trainerControlsProps} />}
-
-                    <Block className="flex-grow !bg-slate-50 flex flex-col">
-                        <h6 className="text-black mb-2">Ваш промт</h6>
-                        <div className="flex-grow overflow-y-auto">
-                            <p className="text-gray-600">{prompt || 'Заполните поля и нажмите "Создать промт"'}</p>
-                        </div>
-                    </Block>
-
-                    {(qwenLoading || qwenResponse) && (
-                        <Block className={`${qwenLoading ? QWEN_ZONE_META.default.blockClass : qwenZoneMeta.blockClass} relative flex flex-col`}>
-                            {!qwenLoading && qwenScoreMeta && (
-                                <div className={`absolute right-4 top-4 text-lg font-bold sm:text-xl ${qwenScoreMeta.textClass}`}>
-                                    {qwenScoreMeta.text}
-                                </div>
-                            )}
-                            <h6 className="mb-2 text-black">Оценка от нейросети</h6>
-                            <div className={`flex ${shouldShowQwenMascot ? "flex-col gap-3 sm:flex-row sm:items-start sm:justify-between" : "flex-col"}`}>
-                                <div className="flex-1">
-                                    {qwenLoading ? (
-                                        <p className="text-gray-500 animate-pulse">Анализирую промпт...</p>
-                                    ) : (
-                                        <div className="flex flex-col gap-3">
-                                            <p className="text-gray-700">{qwenResponse}</p>
-                                            {qwenStrongFields.length > 0 && (
-                                                <p className="text-sm text-gray-700">
-                                                    <span className="font-semibold text-black">Сильные поля:</span> {formatFieldList(qwenStrongFields)}
-                                                </p>
-                                            )}
-                                            {qwenWeakFields.length > 0 && (
-                                                <p className="text-sm text-gray-700">
-                                                    <span className="font-semibold text-black">Слабые поля:</span> {formatFieldList(qwenWeakFields)}
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                {shouldShowQwenMascot && (
-                                    <div className="flex shrink-0 flex-col items-center self-center">
-                                        <div className="h-[96px] w-[96px] sm:h-[112px] sm:w-[112px]">
-                                            <img key={mascotPlaybackKey} src={activeQwenMascotAsset.animatedSrc} alt="" aria-hidden="true" decoding="sync" fetchPriority="high" className="h-full w-full object-contain" />
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </Block>
-                    )}
-                    <div className="flex flex-col gap-[1rem]">
-                        <div className="flex flex-col gap-[0.5rem]">
-                            <Button onClick={() => handleCopy(prompt)} disabled={isCopyDisabled} title={copyDisabledReason}>
-                                {isCopied ? "Скопировано!" : "Скопировать"}
-                            </Button>
-                            <MayakServicesPanel
-                                defaultLinks={mayakData.defaultLinks}
-                                isMiscAccordionOpen={isMiscAccordionOpen}
-                                miscCategory={miscCategory}
-                                onOpenInstruction={handleShowInstruction}
-                                openSubAccordionKey={openSubAccordionKey}
-                                setOpenSubAccordionKey={setOpenSubAccordionKey}
-                                type={type}
-                                allowWrap={isMapPreviewOpen}
-                            />
-                        </div>
+                {!isMobile && isPreviewOpen ? (
+                    <div className="col-span-12 hidden h-full min-h-0 lg:flex gap-4 items-stretch">
+                        {trainerFieldsBlock}
+                        {trainerOutputBlock}
+                        {previewPanel}
                     </div>
-                </div>
-
-                {isMapPreviewOpen && mapFileUrl && !isMobile && (
-                    <div className="col-span-12 lg:col-span-3 h-full min-h-[420px]">
-                        <InstructionPreviewPanel previewFileUrl={mapFileUrl} previewTitle={`Карта №${currentTask?.number || currentTaskIndex + 1}`} onClose={handleCloseMapPreview} />
-                    </div>
+                ) : (
+                    <>
+                        <div className={`col-span-12 ${isPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} !h-full`}>{trainerFieldsBlock}</div>
+                        <div className={`col-span-12 ${isPreviewOpen ? "lg:col-span-4" : "lg:col-span-6"} h-full`}>{trainerOutputBlock}</div>
+                        {previewPanel && <div className="col-span-12 lg:col-span-4 h-full min-h-[420px]">{previewPanel}</div>}
+                    </>
                 )}
+                {isPreviewResizing && <div className="fixed inset-0 z-40 cursor-col-resize" aria-hidden="true" />}
                 {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
                 <InstructionImageModal instructionModal={instructionModal} onClose={handleCloseInstructionModal} />
             </div>
-            {showCompletionPopup && (
-                <TaskCompletionPopup
-                    taskData={currentTaskData}
-                    elapsedTime={timerState.readyElapsedTime}
-                    onClose={() => {
-                        setShowCompletionPopup(false);
-                    }}
-                />
-            )}
+            {showCompletionPopup &&
+                (isSessionMode && !isIntroTask(currentTaskIndex) ? (
+                    <SessionTaskReviewPopup
+                        taskData={currentTaskData}
+                        elapsedTime={formatTaskTime(timerState.readyElapsedTime ?? timerState.elapsedTime ?? 0)}
+                        rejectedComment={currentTaskReviewComment}
+                        uploadLoading={sessionUploadLoading}
+                        uploadError={sessionUploadError}
+                        onClose={() => {
+                            setShowCompletionPopup(false);
+                            setSessionUploadError("");
+                        }}
+                        onSubmit={handleSessionTaskUpload}
+                    />
+                ) : (
+                    <TaskCompletionPopup
+                        taskData={currentTaskData}
+                        elapsedTime={timerState.readyElapsedTime}
+                        onClose={() => {
+                            setShowCompletionPopup(false);
+                        }}
+                    />
+                ))}
             {showSessionCompletionPopup && <SessionCompletionPopup onClose={handleCloseSessionCompletionPopup} onSave={handleSaveSessionCompletion} />}
             {showRolePopup && <RoleSelectionPopup onClose={handleCloseRolePopup} onConfirm={handleRoleConfirm} />}
             {showRankingTestPopup && (
@@ -1010,6 +1468,28 @@ export default function TrainerPage({ goTo }) {
                     onSave={handleSaveRankingTest}
                 />
             )}
+            {inspectorQueue.length > 0 ? (
+                <InspectorReviewQueue
+                    reviews={inspectorQueue}
+                    onOpen={(review) => {
+                        setOpenedInspectorReviewId(review.id);
+                        setInspectorResolveError("");
+                    }}
+                />
+            ) : null}
+            {activeInspectorReview ? (
+                <InspectorReviewModal
+                    review={activeInspectorReview}
+                    loading={inspectorResolveLoading}
+                    error={inspectorResolveError}
+                    onApprove={() => handleResolveInspectorReview("approve")}
+                    onReject={(comment) => handleResolveInspectorReview("reject", comment)}
+                    onClose={() => {
+                        setOpenedInspectorReviewId("");
+                        setInspectorResolveError("");
+                    }}
+                />
+            ) : null}
         </>
     );
 }

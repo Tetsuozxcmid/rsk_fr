@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        const { scope = "section", sectionId = "", type = "files", filename = "" } = req.query;
+        const { scope = "section", sectionId = "", type = "files", filename = "", download = "" } = req.query;
         let filePath;
 
         if (scope === "source") {
@@ -49,9 +49,10 @@ export default async function handler(req, res) {
 
         const stat = await fs.stat(filePath);
         const fileName = path.basename(filePath);
+        const shouldDownload = download === "1" || download === "true";
         res.setHeader("Content-Type", getContentType(filePath));
         res.setHeader("Content-Length", stat.size);
-        res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(fileName)}"`);
+        res.setHeader("Content-Disposition", `${shouldDownload ? "attachment" : "inline"}; filename="${encodeURIComponent(fileName)}"`);
         res.setHeader("Cache-Control", "private, no-store, max-age=0, must-revalidate");
         createReadStream(filePath).pipe(res);
     } catch (error) {

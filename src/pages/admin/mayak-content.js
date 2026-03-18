@@ -1383,11 +1383,16 @@ export default function AdminMayakContent() {
         <>
             <Header />
             <div style={{ margin: "0 auto", padding: "16px 20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
                     <h1 style={{ fontSize: 20, margin: 0, color: "#1e293b" }}>Управление контентом МАЯК</h1>
-                    <Link href="/admin/tokens" style={{ padding: "8px 16px", borderRadius: 6, background: "#8b5cf6", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                        Токены доступа
-                    </Link>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <Link href="/admin/tokens" style={{ padding: "8px 16px", borderRadius: 6, background: "#8b5cf6", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                            Токены доступа
+                        </Link>
+                        <Link href="/admin/sessions" style={{ padding: "8px 16px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                            Сессии
+                        </Link>
+                    </div>
                 </div>
 
                 {!selectedRange ? (
