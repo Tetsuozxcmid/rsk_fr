@@ -123,6 +123,7 @@ export const TrainerControls = memo(function TrainerControls({
     allowedMaxIndex,
     rankingDelta5,
     selectedRole,
+    tableNumber,
     onWhoChange,
     onPrevTask,
     onNextTask,
@@ -137,6 +138,12 @@ export const TrainerControls = memo(function TrainerControls({
     onShowInstruction,
     isCurrentTaskIntro,
     isCurrentTaskRoleSelection,
+    isTaskActionDisabled,
+    isReworkTask,
+    isCurrentTaskApproved,
+    isTaskNavigationLocked,
+    canAccessTaskResources,
+    taskActionLabel,
 }) {
     const formatTaskTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -145,7 +152,7 @@ export const TrainerControls = memo(function TrainerControls({
     };
 
     const handleDownloadTaskFile = () => {
-        if (!taskFileUrl || !isTaskRunning || typeof document === "undefined") return;
+        if (!taskFileUrl || !canAccessTaskResources || typeof document === "undefined") return;
 
         const link = document.createElement("a");
         link.href = taskFileUrl;
@@ -214,13 +221,14 @@ export const TrainerControls = memo(function TrainerControls({
                 <div className="flex flex-col gap-[0.75rem]">
                     <div className="flex items-center gap-[0.5rem]">
                         <span className="text-sm text-gray-500">Задание №{tasks.length > 0 && tasks[currentTaskIndex] ? tasks[currentTaskIndex].number || currentTaskIndex + 1 : 0}</span>
+                        {isCurrentTaskApproved ? <span className="text-sm font-medium text-emerald-600">Задание выполнено</span> : null}
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex <= allowedMinIndex || isTaskRunning}>
+                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onPrevTask} disabled={currentTaskIndex <= allowedMinIndex || isTaskRunning || isTaskNavigationLocked}>
                             ←
                         </Button>
-                        <Input type="text" inputMode="numeric" min="1" max={tasks.length || 1} value={taskInputValue} onChange={onTaskInputChange} className="text-center !w-15 !h-10" disabled={isTaskRunning} />
-                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= allowedMaxIndex || isTaskRunning}>
+                        <Input type="text" inputMode="numeric" min="1" max={tasks.length || 1} value={taskInputValue} onChange={onTaskInputChange} className="text-center !w-15 !h-10" disabled={isTaskRunning || isTaskNavigationLocked} />
+                        <Button className="!w-10 !h-10 !p-0 flex items-center justify-center" onClick={onNextTask} disabled={currentTaskIndex >= allowedMaxIndex || isTaskRunning || isTaskNavigationLocked}>
                             →
                         </Button>
                         {mapFileUrl && (
@@ -233,45 +241,45 @@ export const TrainerControls = memo(function TrainerControls({
                     </div>
                 </div>
                 <div className="flex flex-wrap lg:flex-nowrap gap-[0.5rem] items-center">
-                    {(isCurrentTaskAllowed || isTaskRunning) && (
-                        <Button className={isTaskRunning ? "!bg-(--color-red-noise) !text-(--color-red)" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer}>
-                            {isTaskRunning ? (isCurrentTaskIntro ? "Завершить" : `Завершить (${formatTaskTime(taskElapsedTime)})`) : "Начать задание"}
+                    {(isCurrentTaskAllowed || isTaskRunning || isReworkTask) && (
+                        <Button className={isTaskRunning || isReworkTask ? "!bg-(--color-red-noise) !text-(--color-red)" : isTaskActionDisabled ? "!bg-slate-100 !text-slate-500" : "!bg-(--color-green-noise) !text-(--color-green-peace)"} onClick={onToggleTaskTimer} disabled={isTaskActionDisabled}>
+                            {isTaskRunning ? (isCurrentTaskIntro || isReworkTask ? "Завершить" : `Завершить (${formatTaskTime(taskElapsedTime)})`) : taskActionLabel || "Начать задание"}
                         </Button>
                     )}
                     {instructionFileUrl && (
-                        <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
-                            <Button type="button" onClick={onToggleInstructionPreview} disabled={!isTaskRunning} className="w-full">
+                        <span className="w-full" title={!canAccessTaskResources ? "Сначала начните задание" : ""}>
+                            <Button type="button" onClick={onToggleInstructionPreview} disabled={!canAccessTaskResources} className="w-full">
                                 {isInstructionPreviewOpen ? "Закрыть инструкцию" : "Инструкция"}
                             </Button>
                         </span>
                     )}
                     {taskFileUrl && (
-                        <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
+                        <span className="w-full" title={!canAccessTaskResources ? "Сначала начните задание" : ""}>
                             <Button
                                 type="button"
                                 onClick={handleDownloadTaskFile}
-                                disabled={!isTaskRunning}
+                                disabled={!canAccessTaskResources}
                                 className="w-full">
                                 Доп.материал
                             </Button>
                         </span>
                     )}
                     {currentTask?.toolLink1 && (
-                        <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
-                            <Button inverted as="a" href={currentTask.toolLink1} target="_blank" disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`} onClick={onToolLink1Click}>
+                        <span className="w-full" title={!canAccessTaskResources ? "Сначала начните задание" : ""}>
+                            <Button inverted as="a" href={currentTask.toolLink1} target="_blank" disabled={!canAccessTaskResources} className={`w-full ${!canAccessTaskResources ? "opacity-50 cursor-not-allowed" : ""}`} onClick={onToolLink1Click}>
                                 {currentTask.toolName1 || "Инструмент"}
                             </Button>
                         </span>
                     )}
                     {currentTask?.toolLink2 && (
-                        <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
+                        <span className="w-full" title={!canAccessTaskResources ? "Сначала начните задание" : ""}>
                             <Button
                                 inverted
                                 as="a"
                                 href={currentTask.toolLink2}
                                 target="_blank"
-                                disabled={!isTaskRunning}
-                                className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={!canAccessTaskResources}
+                                className={`w-full ${!canAccessTaskResources ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     window.open(currentTask.toolLink2, "_blank");
@@ -305,7 +313,7 @@ export const TrainerControls = memo(function TrainerControls({
                                         <div key={idx} className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3">
                                             <span className="font-semibold text-sm text-gray-900">{svc.name}</span>
                                             <div className="flex gap-2 flex-shrink-0">
-                                                <Button inverted className={`!px-3 !py-1.5 !text-xs ${!isTaskRunning ? "!opacity-50 !cursor-not-allowed" : ""}`} disabled={!isTaskRunning} onClick={() => window.open(svc.url, "_blank")}>
+                                                <Button inverted className={`!px-3 !py-1.5 !text-xs ${!isTaskRunning ? "!opacity-50 !cursor-not-allowed" : ""}`} disabled={!canAccessTaskResources} onClick={() => window.open(svc.url, "_blank")}>
                                                     Регистрация
                                                 </Button>
                                                 {svc.instructionImage && (
@@ -326,8 +334,8 @@ export const TrainerControls = memo(function TrainerControls({
                                 as="a"
                                 href={sourceUrl}
                                 target="_blank"
-                                disabled={!isTaskRunning}
-                                className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}
+                                disabled={!canAccessTaskResources}
+                                className={`!w-9 !h-9 !p-0 flex items-center justify-center ${!canAccessTaskResources ? "opacity-50 cursor-not-allowed" : ""}`}
                                 onClick={(e) => {
                                     e.preventDefault();
                                     if (isTaskRunning) {
@@ -342,8 +350,8 @@ export const TrainerControls = memo(function TrainerControls({
                     )}
                     {isCurrentTaskRoleSelection && who === "im" && (
 
-                            <span className="w-full" title={!isTaskRunning ? "Сначала начните задание" : ""}>
-                                <Button inverted onClick={onShowRolePopup} disabled={!isTaskRunning} className={`w-full ${!isTaskRunning ? "opacity-50 cursor-not-allowed" : ""}`}>
+                            <span className="w-full" title={!canAccessTaskResources ? "Сначала начните задание" : ""}>
+                                <Button inverted onClick={onShowRolePopup} disabled={!canAccessTaskResources} className={`w-full ${!canAccessTaskResources ? "opacity-50 cursor-not-allowed" : ""}`}>
                                     Выбрать роль
                                 </Button>
                             </span>

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 
 import { STATIC_MAYAK_DATA } from "../../../../../data/mayakDataConst";
+import { getUserFromCookies } from "../actions";
 
 export const useMayakRuntimeData = () => {
     const [mayakData, setMayakData] = useState({ ...STATIC_MAYAK_DATA, defaultLinks: {} });
@@ -33,14 +34,15 @@ export const useMayakRuntimeData = () => {
         fetchData();
     }, []);
 
-    const activeUser =
-        document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("active_user="))
-            ?.split("=")[1] || "anonymous";
+    const activeUser = getUserFromCookies();
 
     return {
         activeUser,
+        activeUserId: activeUser?.id || "anonymous",
+        activeUserName: activeUser?.name || "Участник",
+        sessionId: activeUser?.sessionId || null,
+        tableNumber: activeUser?.tableNumber || "",
+        tokenType: activeUser?.tokenType || "legacy",
         errorData,
         isLoadingData,
         mayakData,

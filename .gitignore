@@ -12,6 +12,9 @@
 /data/taskAttempts.json
 
 data/mayakTokens.json
+data/mayak-sessions.json
+data/mayak-session-tokens.json
+data/mayak-session-runtime.json
 data/mayakTaskAttempts.json
 data/sessionLogs.json
 

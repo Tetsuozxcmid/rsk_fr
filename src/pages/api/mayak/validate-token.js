@@ -1,4 +1,6 @@
-﻿import { validateToken, useToken } from "@/utils/mayakTokens";
+import { validateToken, useToken } from "@/utils/mayakTokens";
+import { useMayakSessionToken, validateMayakSessionToken } from "@/lib/mayakSessionTokens";
+import { findActiveMayakSessionByTokenId } from "@/lib/mayakSessions";
 
 const DEV_BYPASS_TOKEN = "fffff";
 
@@ -22,6 +24,32 @@ function buildBypassValidationResponse() {
         isExhausted: false,
         isActive: true,
         isBypass: true,
+        tokenType: "bypass",
+    };
+}
+
+async function buildValidationResponse(result, tokenType = "legacy") {
+    const session =
+        tokenType === "session" && result.token?.id
+            ? await findActiveMayakSessionByTokenId(result.token.id)
+            : null;
+
+    return {
+        success: true,
+        valid: result.valid,
+        error: result.error || null,
+        remainingAttempts: result.remainingAttempts || 0,
+        usageLimit: result.token?.usageLimit || 0,
+        usedCount: result.token?.usedCount || 0,
+        taskRange: result.token?.taskRange || null,
+        sectionId: result.token?.sectionId || null,
+        isExhausted: result.token ? result.token.usedCount >= result.token.usageLimit : false,
+        isActive: result.token?.isActive ?? false,
+        isBypass: false,
+        tokenType,
+        sessionId: session?.id || null,
+        sessionName: session?.name || null,
+        tableCount: session?.tableCount || 0,
     };
 }
 
@@ -42,21 +70,13 @@ export default async function handler(req, res) {
                 return res.status(200).json(buildBypassValidationResponse());
             }
 
-            const result = validateToken(token);
+            const legacyResult = validateToken(token);
+            if (legacyResult.valid || legacyResult.token) {
+                return res.status(200).json(await buildValidationResponse(legacyResult, "legacy"));
+            }
 
-            return res.status(200).json({
-                success: true,
-                valid: result.valid,
-                error: result.error || null,
-                remainingAttempts: result.remainingAttempts || 0,
-                usageLimit: result.token?.usageLimit || 0,
-                usedCount: result.token?.usedCount || 0,
-                taskRange: result.token?.taskRange || null,
-                sectionId: result.token?.sectionId || null,
-                isExhausted: result.token ? result.token.usedCount >= result.token.usageLimit : false,
-                isActive: result.token?.isActive ?? false,
-                isBypass: false,
-            });
+            const sessionResult = await validateMayakSessionToken(token);
+            return res.status(200).json(await buildValidationResponse(sessionResult, "session"));
         } catch (error) {
             console.error("Error validating token:", error);
             return res.status(500).json({
@@ -84,24 +104,36 @@ export default async function handler(req, res) {
                     message: "Локальный bypass-токен использован",
                     remainingAttempts: 1,
                     isBypass: true,
+                    tokenType: "bypass",
                 });
             }
 
-            const result = useToken(token);
-
-            if (!result.success) {
-                return res.status(403).json({
-                    success: false,
-                    error: result.error,
-                    remainingAttempts: 0,
+            const legacyResult = useToken(token);
+            if (legacyResult.success) {
+                return res.status(200).json({
+                    success: true,
+                    message: "Токен использован",
+                    remainingAttempts: legacyResult.remainingAttempts,
+                    isBypass: false,
+                    tokenType: "legacy",
                 });
             }
 
-            return res.status(200).json({
-                success: true,
-                message: "Токен использован",
-                remainingAttempts: result.remainingAttempts,
-                isBypass: false,
+            const sessionResult = await useMayakSessionToken(token);
+            if (sessionResult.success) {
+                return res.status(200).json({
+                    success: true,
+                    message: "Токен использован",
+                    remainingAttempts: sessionResult.remainingAttempts,
+                    isBypass: false,
+                    tokenType: "session",
+                });
+            }
+
+            return res.status(403).json({
+                success: false,
+                error: sessionResult.error || legacyResult.error,
+                remainingAttempts: sessionResult.remainingAttempts || 0,
             });
         } catch (error) {
             console.error("Error using token:", error);
@@ -114,4 +146,3 @@ export default async function handler(req, res) {
 
     return res.status(405).json({ success: false, error: "Method not allowed" });
 }
-

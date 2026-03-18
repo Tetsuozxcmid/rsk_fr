@@ -2,11 +2,13 @@ import { useCallback } from "react";
 import { createEmptyMayakFields } from "../utils/mayakPromptState";
 
 export function useMayakSessionActions({
+    activeUserId,
     autoCompleteIntroTask,
     currentTaskIndex,
     getStorageKey,
     isAdmin,
     isIntroTask,
+    sessionId,
     resetQwenSessionState,
     removeKeyCookie,
     setCompletionSurveyDone,
@@ -21,7 +23,26 @@ export function useMayakSessionActions({
     timerIsRunning,
 }) {
     const handleRoleConfirm = useCallback(
-        (role) => {
+        async (role) => {
+            if (sessionId && activeUserId) {
+                const response = await fetch("/api/mayak/session-runtime/role", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        sessionId,
+                        userId: activeUserId,
+                        role,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    alert(payload.error || "Не удалось сохранить роль в сессии");
+                    return;
+                }
+            }
+
             setSelectedRole(role);
             localStorage.setItem(getStorageKey("userRole"), role);
             setShowRolePopup(false);
@@ -29,7 +50,7 @@ export function useMayakSessionActions({
                 autoCompleteIntroTask();
             }
         },
-        [autoCompleteIntroTask, currentTaskIndex, getStorageKey, isIntroTask, setSelectedRole, setShowRolePopup]
+        [activeUserId, autoCompleteIntroTask, currentTaskIndex, getStorageKey, isIntroTask, sessionId, setSelectedRole, setShowRolePopup]
     );
 
     const handleAdminResetSession = useCallback(() => {

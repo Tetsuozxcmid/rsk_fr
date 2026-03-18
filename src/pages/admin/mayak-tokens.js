@@ -703,6 +703,9 @@ export default function AdminMayakTokens() {
                     <Link href="/admin/content" style={{ padding: "6px 14px", borderRadius: 6, background: "#3b82f6", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
                         Контент
                     </Link>
+                    <Link href="/admin/sessions" style={{ padding: "6px 14px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                        Сессии
+                    </Link>
                     <Button icon>
                         <Notify />
                     </Button>

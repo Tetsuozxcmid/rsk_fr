@@ -1,20 +1,10 @@
 {
-  "99cf0e9c": {
-    "userName": "Гумерова Зиля",
-    "createdAt": "2026-03-13T10:59:40.930Z",
-    "delivered": false,
-    "hasLogData": true
-  },
-  "f7f6bfc6": {
-    "userName": "Нуриханова Зиля",
-    "createdAt": "2026-03-13T11:56:11.118Z",
-    "delivered": false,
-    "hasLogData": true
-  },
-  "15121e92": {
-    "userName": "тест тест",
-    "createdAt": "2026-03-14T10:27:25.605Z",
-    "delivered": false,
-    "hasLogData": true
+  "788d6e37": {
+    "userName": "1 1",
+    "createdAt": "2026-03-17T10:06:56.422Z",
+    "delivered": true,
+    "hasLogData": true,
+    "deliveredTo": 804636463,
+    "deliveredAt": "2026-03-17T10:07:17.012Z"
   }
 }

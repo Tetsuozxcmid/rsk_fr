@@ -5,6 +5,7 @@ import RankingTestPopup from "./addons/RankingTestPopup";
 import MayakServicesPanel from "./MayakServicesPanel";
 import InstructionImageModal from "./InstructionImageModal";
 import InstructionPreviewPanel from "./InstructionPreviewPanel";
+import { InspectorReviewModal, InspectorReviewQueue, SessionReviewStatusBanner, SessionTaskReviewPopup } from "./SessionReviewWidgets";
 import { MayakField, TrainerControls } from "./TrainerUiSections";
 import { RoleSelectionPopup, ConfirmationPopup, FirstQuestionnairePopup, SecondQuestionnairePopup, ThirdQuestionnairePopup, SessionCompletionPopup, TaskCompletionPopup } from "./TrainerPopups";
 
@@ -18,7 +19,7 @@ import ResetIcon from "@/assets/general/ResetIcon.svg";
 import CloseIcon from "@/assets/general/close.svg";
 
 // Добавляем getUserFromCookies
-import { removeKeyCookie } from "./actions";
+import { clearUserCookie, removeKeyCookie } from "./actions";
 // Добавляем эти две строки для работы сертификата
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import CourseIcon from "@/assets/nav/course.svg";
@@ -255,6 +256,13 @@ export default function TrainerPage({ goTo }) {
     const [showLevelsInput, setShowLevelsInput] = useState(false);
 
     const [completedTasks, setCompletedTasks] = useState({});
+    const [sessionRuntimeState, setSessionRuntimeState] = useState(null);
+    const [sessionRuntimeError, setSessionRuntimeError] = useState("");
+    const [sessionUploadError, setSessionUploadError] = useState("");
+    const [sessionUploadLoading, setSessionUploadLoading] = useState(false);
+    const [inspectorResolveLoading, setInspectorResolveLoading] = useState(false);
+    const [inspectorResolveError, setInspectorResolveError] = useState("");
+    const [openedInspectorReviewId, setOpenedInspectorReviewId] = useState("");
 
 
     const [type, setType] = useState("text");
@@ -488,7 +496,8 @@ export default function TrainerPage({ goTo }) {
         }
     }, [goTo]);
 
-    const { activeUser, mayakData } = useMayakRuntimeData();
+    const { activeUserId, mayakData, sessionId: runtimeSessionId, tokenType, tableNumber } = useMayakRuntimeData();
+    const isSessionMode = tokenType === "session" && !!runtimeSessionId;
 
     const {
         activeTypeKey,
@@ -503,8 +512,8 @@ export default function TrainerPage({ goTo }) {
         type,
     });
 
-    const { toggleTaskTimer } = useMayakTaskExecutionActions({
-        activeUser,
+    const { finalizeTaskExecution, toggleTaskTimer } = useMayakTaskExecutionActions({
+        activeUser: activeUserId,
         autoCompleteIntroTask,
         completedTasks,
         currentTask,
@@ -525,6 +534,7 @@ export default function TrainerPage({ goTo }) {
         type,
         userType,
         who,
+        sessionUploadRequired: isSessionMode,
     });
 
     const {
@@ -582,11 +592,13 @@ export default function TrainerPage({ goTo }) {
     });
 
     const { handleAdminResetSession, handleRoleConfirm } = useMayakSessionActions({
+        activeUserId,
         autoCompleteIntroTask,
         currentTaskIndex,
         getStorageKey,
         isAdmin,
         isIntroTask,
+        sessionId: runtimeSessionId,
         removeKeyCookie,
         resetQwenSessionState,
         setCompletionSurveyDone,
@@ -639,6 +651,56 @@ export default function TrainerPage({ goTo }) {
         setShowThirdQuestionnaire,
     });
 
+    useEffect(() => {
+        if (!isSessionMode || !runtimeSessionId || !activeUserId) {
+            setSessionRuntimeState(null);
+            setSessionRuntimeError("");
+            return undefined;
+        }
+
+        let cancelled = false;
+
+        const loadSessionRuntimeState = async () => {
+            try {
+                const response = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось загрузить состояние сессии");
+                }
+                if (cancelled) return;
+
+                const nextState = payload.data || null;
+                setSessionRuntimeState(nextState);
+                setSessionRuntimeError("");
+
+                if (nextState?.participant?.role && nextState.participant.role !== selectedRole) {
+                    setSelectedRole(nextState.participant.role);
+                    localStorage.setItem(getStorageKey("userRole"), nextState.participant.role);
+                }
+
+                if (nextState && nextState.sessionActive === false) {
+                    await removeKeyCookie();
+                    await clearUserCookie();
+                    localStorage.removeItem(getStorageKey("userRole"));
+                    window.location.replace("/tools/mayak-oko");
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setSessionRuntimeError(error.message || "Не удалось обновить состояние сессии");
+                }
+            }
+        };
+
+        loadSessionRuntimeState();
+        const intervalId = window.setInterval(loadSessionRuntimeState, 5000);
+        return () => {
+            cancelled = true;
+            window.clearInterval(intervalId);
+        };
+    }, [activeUserId, getStorageKey, isSessionMode, removeKeyCookie, runtimeSessionId, selectedRole, setSelectedRole]);
+
     const handleChange = useCallback(
         (code, value) => {
             setFields((prev) => ({ ...prev, [code]: value }));
@@ -646,7 +708,20 @@ export default function TrainerPage({ goTo }) {
         [setFields]
     );
 
-    const activeMapTaskKey = timerState.isRunning && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
+    const sessionBlockingTask = sessionRuntimeState?.blockingTask || null;
+    const currentTaskState =
+        Array.isArray(sessionRuntimeState?.participant?.taskStates)
+            ? sessionRuntimeState.participant.taskStates.find((task) => Number(task.taskIndex) === currentTaskIndex) || null
+            : null;
+    const isCurrentTaskRejected = !!(sessionBlockingTask && Number(sessionBlockingTask.taskIndex) === currentTaskIndex && sessionBlockingTask.status === "rejected");
+    const isCurrentTaskPendingReview = !!(sessionBlockingTask && Number(sessionBlockingTask.taskIndex) === currentTaskIndex && sessionBlockingTask.status === "pending_review");
+    const isCurrentTaskApproved = ["approved", "expired", "rework_expired"].includes(currentTaskState?.status);
+    const canAccessCurrentTaskResources = timerState.isRunning || isCurrentTaskRejected || isCurrentTaskPendingReview;
+    const currentTaskReviewComment = isCurrentTaskRejected ? sessionBlockingTask?.comment || "" : "";
+    const inspectorQueue = Array.isArray(sessionRuntimeState?.inspectorQueue) ? sessionRuntimeState.inspectorQueue : [];
+    const activeInspectorReview = inspectorQueue.find((review) => review.id === openedInspectorReviewId) || null;
+
+    const activeMapTaskKey = canAccessCurrentTaskResources && currentTask?.number && mapFileUrl ? `${currentTask.number}:${mapFileUrl}` : "";
     const previewFileUrl = previewMode === "instruction" ? instructionFileUrl : previewMode === "map" ? mapFileUrl : "";
     const previewTitle =
         previewMode === "instruction"
@@ -663,8 +738,29 @@ export default function TrainerPage({ goTo }) {
         return Math.min(Math.max(nextWidth, PREVIEW_WIDTH_MIN), viewportMax);
     }, []);
 
+    const canMoveToTaskIndex = useCallback(
+        (nextIndex) => {
+            if (!isSessionMode || !sessionBlockingTask) return true;
+            const blockedIndex = Number(sessionBlockingTask.taskIndex);
+            if (!Number.isFinite(blockedIndex)) return true;
+            if (sessionBlockingTask.status === "pending_review" || sessionBlockingTask.status === "rejected") {
+                return nextIndex <= blockedIndex;
+            }
+            return true;
+        },
+        [isSessionMode, sessionBlockingTask]
+    );
+
     useEffect(() => {
-        if (!timerState.isRunning) {
+        if (!openedInspectorReviewId) return;
+        const stillOpenable = inspectorQueue.some((review) => review.id === openedInspectorReviewId);
+        if (!stillOpenable) {
+            setOpenedInspectorReviewId("");
+        }
+    }, [inspectorQueue, openedInspectorReviewId]);
+
+    useEffect(() => {
+        if (!canAccessCurrentTaskResources) {
             setPreviewMode(null);
             setPreviewDismissedTaskKey("");
             return;
@@ -685,10 +781,10 @@ export default function TrainerPage({ goTo }) {
         if (previewMode === "map") {
             setPreviewMode(null);
         }
-    }, [activeMapTaskKey, isMobile, mapFileUrl, previewDismissedTaskKey, previewMode, timerState.isRunning]);
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, isMobile, mapFileUrl, previewDismissedTaskKey, previewMode]);
 
     const handleToggleMapPreview = useCallback(() => {
-        if (!mapFileUrl || !timerState.isRunning || isMobile) return;
+        if (!mapFileUrl || !canAccessCurrentTaskResources || isMobile) return;
         setPreviewMode((prev) => {
             if (prev === "map") {
                 setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
@@ -698,10 +794,10 @@ export default function TrainerPage({ goTo }) {
             setPreviewDismissedTaskKey("");
             return "map";
         });
-    }, [activeMapTaskKey, isMobile, mapFileUrl, timerState.isRunning]);
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, isMobile, mapFileUrl]);
 
     const handleToggleInstructionPreview = useCallback(() => {
-        if (!instructionFileUrl || !timerState.isRunning) return;
+        if (!instructionFileUrl || !canAccessCurrentTaskResources) return;
 
         if (isMobile) {
             window.open(instructionFileUrl, "_blank", "noopener,noreferrer");
@@ -717,7 +813,145 @@ export default function TrainerPage({ goTo }) {
             setPreviewDismissedTaskKey("");
             return "instruction";
         });
-    }, [activeMapTaskKey, instructionFileUrl, isMobile, timerState.isRunning]);
+    }, [activeMapTaskKey, canAccessCurrentTaskResources, instructionFileUrl, isMobile]);
+
+    const buildSessionCompletionTaskData = useCallback(() => {
+        const taskNumber = currentTask?.number?.toString();
+        const taskTextData = taskNumber ? tasksTexts.find((t) => t.number === taskNumber) : null;
+
+        if (taskTextData) {
+            return {
+                ...taskTextData,
+                title: currentTask?.title || "",
+                contentType: currentTask?.contentType || "",
+            };
+        }
+
+        return {
+            number: currentTask?.number || currentTaskIndex + 1,
+            title: currentTask?.title || "",
+            contentType: currentTask?.contentType || "",
+            description: currentTask?.description || "",
+            task: currentTask?.name || "",
+        };
+    }, [currentTask, currentTaskIndex, tasksTexts]);
+
+    const handleSessionTaskUpload = useCallback(
+        async (file, submissionText = "") => {
+            const normalizedSubmissionText = String(submissionText || "").trim();
+            if (!file && !normalizedSubmissionText) {
+                setSessionUploadError("Нужно загрузить файл или добавить текст ответа.");
+                return;
+            }
+            if (normalizedSubmissionText.length > 300) {
+                setSessionUploadError("Текст ответа не должен превышать 300 символов.");
+                return;
+            }
+            if (!runtimeSessionId || !activeUserId || !currentTaskData) {
+                setSessionUploadError("Не удалось определить параметры сессионной проверки.");
+                return;
+            }
+
+            setSessionUploadLoading(true);
+            setSessionUploadError("");
+
+            try {
+                const formData = new FormData();
+                formData.append("sessionId", runtimeSessionId);
+                formData.append("userId", activeUserId);
+                formData.append("taskNumber", String(currentTaskData.number || currentTask?.number || ""));
+                formData.append("taskIndex", String(currentTaskIndex));
+                formData.append("taskName", String(currentTask?.name || currentTaskData.title || `Задание ${currentTaskIndex + 1}`));
+                formData.append("taskTitle", String(currentTaskData.title || ""));
+                formData.append("contentType", String(currentTaskData.contentType || ""));
+                formData.append("description", String(currentTaskData.description || ""));
+                formData.append("taskText", String(currentTaskData.task || ""));
+                formData.append("secondsSpent", String(timerState.readyElapsedTime ?? timerState.elapsedTime ?? 0));
+                formData.append("submissionText", normalizedSubmissionText);
+                if (file) {
+                    formData.append("file", file);
+                }
+
+                const controller = new AbortController();
+                const timeoutId = window.setTimeout(() => controller.abort(), 55000);
+                let response;
+                try {
+                    response = await fetch("/api/mayak/session-runtime/upload", {
+                        method: "POST",
+                        body: formData,
+                        signal: controller.signal,
+                    });
+                } finally {
+                    window.clearTimeout(timeoutId);
+                }
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось отправить материал инспектору");
+                }
+
+                await finalizeTaskExecution({
+                    timeWhenStopped: timerState.elapsedTime,
+                });
+
+                const refreshResponse = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const refreshPayload = await refreshResponse.json().catch(() => ({}));
+                if (refreshResponse.ok && refreshPayload.success) {
+                    setSessionRuntimeState(refreshPayload.data || null);
+                }
+
+                setShowCompletionPopup(false);
+            } catch (error) {
+                setSessionUploadError(error.message || "Не удалось отправить материал инспектору");
+            } finally {
+                setSessionUploadLoading(false);
+            }
+        },
+        [activeUserId, currentTask, currentTaskData, currentTaskIndex, finalizeTaskExecution, runtimeSessionId, tasksTexts, timerState.elapsedTime, timerState.readyElapsedTime]
+    );
+
+    const handleResolveInspectorReview = useCallback(
+        async (action, comment = "") => {
+            if (!activeInspectorReview || !runtimeSessionId || !activeUserId) return;
+
+            setInspectorResolveLoading(true);
+            setInspectorResolveError("");
+            try {
+                const response = await fetch("/api/mayak/session-runtime/review", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        sessionId: runtimeSessionId,
+                        reviewId: activeInspectorReview.id,
+                        inspectorUserId: activeUserId,
+                        action,
+                        comment,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || !payload.success) {
+                    throw new Error(payload.error || "Не удалось сохранить решение инспектора");
+                }
+
+                setOpenedInspectorReviewId("");
+                const refreshResponse = await fetch(`/api/mayak/session-runtime/state?sessionId=${encodeURIComponent(runtimeSessionId)}&userId=${encodeURIComponent(activeUserId)}`, {
+                    cache: "no-store",
+                });
+                const refreshPayload = await refreshResponse.json().catch(() => ({}));
+                if (refreshResponse.ok && refreshPayload.success) {
+                    setSessionRuntimeState(refreshPayload.data || null);
+                }
+            } catch (error) {
+                setInspectorResolveError(error.message || "Не удалось сохранить решение инспектора");
+            } finally {
+                setInspectorResolveLoading(false);
+            }
+        },
+        [activeInspectorReview, activeUserId, runtimeSessionId]
+    );
 
     const handleClosePreview = useCallback(() => {
         setPreviewMode(null);
@@ -841,6 +1075,36 @@ export default function TrainerPage({ goTo }) {
     const qwenScoreMeta = qwenGreenCount === null ? null : getQwenScoreMeta(qwenGreenCount, qwenTotalFields);
     const shouldShowQwenMascot = !qwenLoading && activeQwenMascotAsset && showMascotVideo;
 
+    const guardedToggleTaskTimer = async () => {
+        if (!timerState.isRunning && isCurrentTaskPendingReview) {
+            alert("Это задание уже отправлено инспектору. Дождитесь проверки или истечения таймера.");
+            return;
+        }
+
+        if (!timerState.isRunning && isCurrentTaskRejected) {
+            setCurrentTaskData(buildSessionCompletionTaskData());
+            setShowCompletionPopup(true);
+            return;
+        }
+
+        setSessionUploadError("");
+        await toggleTaskTimer();
+    };
+
+    const guardedGoToTask = (nextIndex) => {
+        if (!canMoveToTaskIndex(nextIndex)) {
+            const message =
+                false
+                    ? "Сначала загрузите материал по завершённому заданию."
+                    : sessionBlockingTask?.status === "rejected"
+                    ? "Сначала исправьте текущее задание по замечанию инспектора."
+                    : "Сначала дождитесь проверки текущего задания инспектором.";
+            alert(message);
+            return;
+        }
+        goToTask(nextIndex);
+    };
+
     const trainerControlsProps = {
         who,
         taskVersion,
@@ -853,13 +1117,14 @@ export default function TrainerPage({ goTo }) {
         mapFileUrl,
         isMapPreviewOpen: previewMode === "map" && !!previewFileUrl,
         isInstructionPreviewOpen: previewMode === "instruction" && !!previewFileUrl,
-        canToggleMapPreview: !!(mapFileUrl && timerState.isRunning && !isMobile),
+        canToggleMapPreview: !!(mapFileUrl && canAccessCurrentTaskResources && !isMobile),
         sourceUrl,
         currentTask,
         isCurrentTaskAllowed,
         allowedMinIndex,
         allowedMaxIndex,
         selectedRole,
+        tableNumber,
         rankingDelta5,
         onWhoChange: (value) => {
             // Сначала обновляем состояние, чтобы UI отреагировал
@@ -869,8 +1134,16 @@ export default function TrainerPage({ goTo }) {
                 showSwitchToWeConfirmation();
             }
         },
-        onPrevTask: prevTask,
-        onNextTask: nextTask,
+        onPrevTask: () => {
+            if (currentTaskIndex - 1 >= 0) {
+                guardedGoToTask(currentTaskIndex - 1);
+            }
+        },
+        onNextTask: () => {
+            if (currentTaskIndex + 1 < tasks.length) {
+                guardedGoToTask(currentTaskIndex + 1);
+            }
+        },
         taskInputValue,
         onTaskInputChange: (e) => {
             const value = e.target.value;
@@ -895,12 +1168,12 @@ export default function TrainerPage({ goTo }) {
 
                 // Если задание найдено и в пределах допустимого диапазона — переключаем
                 if (newIndex >= 0 && newIndex >= allowedMinIndex && newIndex <= allowedMaxIndex && newIndex < tasks.length) {
-                    goToTask(newIndex);
+                    guardedGoToTask(newIndex);
                 }
                 // Если не найдено — просто не переключаем, даём пользователю исправить
             }, 600);
         },
-        onToggleTaskTimer: toggleTaskTimer,
+        onToggleTaskTimer: guardedToggleTaskTimer,
         onToggleMapPreview: handleToggleMapPreview,
         onToggleInstructionPreview: handleToggleInstructionPreview,
         onCompleteSession: handleCompleteSession,
@@ -910,6 +1183,12 @@ export default function TrainerPage({ goTo }) {
         onShowInstruction: handleShowInstruction,
         isCurrentTaskIntro: isIntroTask(currentTaskIndex),
         isCurrentTaskRoleSelection: isRoleSelectionTask(currentTask),
+        isTaskActionDisabled: isCurrentTaskPendingReview,
+        isReworkTask: isCurrentTaskRejected,
+        isCurrentTaskApproved,
+        isTaskNavigationLocked: isCurrentTaskPendingReview || isCurrentTaskRejected,
+        canAccessTaskResources: canAccessCurrentTaskResources,
+        taskActionLabel: isCurrentTaskPendingReview ? "\u041d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0435" : isCurrentTaskRejected ? "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c" : "\u041d\u0430\u0447\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435",
     };
 
     const trainerFieldsBlock = (
@@ -987,6 +1266,24 @@ export default function TrainerPage({ goTo }) {
     const trainerOutputBlock = (
         <div className="flex h-full min-h-0 flex-1 min-w-0 flex-col gap-4 self-stretch">
             {!isMobile && <TrainerControls {...trainerControlsProps} />}
+
+            {sessionRuntimeError ? <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{sessionRuntimeError}</div> : null}
+            {false && currentTaskReviewComment ? (
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="mb-1 font-semibold">Задание требует исправлений</div>
+                    <div>{currentTaskReviewComment}</div>
+                </div>
+            ) : null}
+            {(isCurrentTaskPendingReview || isCurrentTaskRejected) ? (
+                <SessionReviewStatusBanner
+                    taskNumber={currentTask?.number || currentTaskIndex + 1}
+                    status={sessionBlockingTask?.status}
+                    comment={currentTaskReviewComment}
+                    expiresAt={sessionBlockingTask?.expiresAt}
+                    remainingSeconds={sessionBlockingTask?.remainingSeconds}
+                    durationSeconds={sessionBlockingTask?.durationSeconds}
+                />
+            ) : null}
 
             <Block className="flex min-h-0 flex-grow flex-col !bg-slate-50">
                 <h6 className="text-black mb-2">Ваш промт</h6>
@@ -1072,6 +1369,11 @@ export default function TrainerPage({ goTo }) {
         <>
             <Header>
                 <Header.Heading>МАЯК ОКО</Header.Heading>
+                {tableNumber ? (
+                    <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-sm font-semibold text-slate-700">
+                        Стол №{tableNumber}
+                    </div>
+                ) : null}
                 <Button
                     icon
                     disabled={timerState.isRunning}
@@ -1134,15 +1436,29 @@ export default function TrainerPage({ goTo }) {
                 {showBuffer && <Buffer onClose={handleCloseBuffer} onInsert={handleInsertFromBuffer} onUpdate={handleUpdateBuffer} buffer={buffer} currentField={currentField} />}
                 <InstructionImageModal instructionModal={instructionModal} onClose={handleCloseInstructionModal} />
             </div>
-            {showCompletionPopup && (
-                <TaskCompletionPopup
-                    taskData={currentTaskData}
-                    elapsedTime={timerState.readyElapsedTime}
-                    onClose={() => {
-                        setShowCompletionPopup(false);
-                    }}
-                />
-            )}
+            {showCompletionPopup &&
+                (isSessionMode && !isIntroTask(currentTaskIndex) ? (
+                    <SessionTaskReviewPopup
+                        taskData={currentTaskData}
+                        elapsedTime={formatTaskTime(timerState.readyElapsedTime ?? timerState.elapsedTime ?? 0)}
+                        rejectedComment={currentTaskReviewComment}
+                        uploadLoading={sessionUploadLoading}
+                        uploadError={sessionUploadError}
+                        onClose={() => {
+                            setShowCompletionPopup(false);
+                            setSessionUploadError("");
+                        }}
+                        onSubmit={handleSessionTaskUpload}
+                    />
+                ) : (
+                    <TaskCompletionPopup
+                        taskData={currentTaskData}
+                        elapsedTime={timerState.readyElapsedTime}
+                        onClose={() => {
+                            setShowCompletionPopup(false);
+                        }}
+                    />
+                ))}
             {showSessionCompletionPopup && <SessionCompletionPopup onClose={handleCloseSessionCompletionPopup} onSave={handleSaveSessionCompletion} />}
             {showRolePopup && <RoleSelectionPopup onClose={handleCloseRolePopup} onConfirm={handleRoleConfirm} />}
             {showRankingTestPopup && (
@@ -1152,6 +1468,28 @@ export default function TrainerPage({ goTo }) {
                     onSave={handleSaveRankingTest}
                 />
             )}
+            {inspectorQueue.length > 0 ? (
+                <InspectorReviewQueue
+                    reviews={inspectorQueue}
+                    onOpen={(review) => {
+                        setOpenedInspectorReviewId(review.id);
+                        setInspectorResolveError("");
+                    }}
+                />
+            ) : null}
+            {activeInspectorReview ? (
+                <InspectorReviewModal
+                    review={activeInspectorReview}
+                    loading={inspectorResolveLoading}
+                    error={inspectorResolveError}
+                    onApprove={() => handleResolveInspectorReview("approve")}
+                    onReject={(comment) => handleResolveInspectorReview("reject", comment)}
+                    onClose={() => {
+                        setOpenedInspectorReviewId("");
+                        setInspectorResolveError("");
+                    }}
+                />
+            ) : null}
         </>
     );
 }
