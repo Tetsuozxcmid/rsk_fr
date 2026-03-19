@@ -80,6 +80,7 @@ tmp_mascot_compare/
 tmp_qwen_eval_cases.json
 tmp_qwen_eval_results.json
 tmp_qwen_eval_results_v2.json
+.tools/
 
 public/tasks-2/v2/
 

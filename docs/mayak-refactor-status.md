@@ -122,6 +122,7 @@ Stabilize MAYAK architecture around:
   - blocking next-task navigation while a task is pending review or rejected,
   - inspector review queue with accept/reject and session-configured review/rework timers,
   - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
+- Trainer session completion now downloads certificate, session log, and analytics PDF directly in the browser; the older Telegram-delivery handoff remains in code but is temporarily disabled and is no longer the active completion path.
 - Inspector review UI now uses a compact top-right queue with per-task countdown bars and an `Открыть` action that expands into a split review modal; participants see a matching `Задание на проверке` timer banner while navigation stays blocked.
 - Session upload allowlist now also accepts `ppt/pptx`; unsupported preview types fall back to download-only inside the inspector panel.
 - `doc/docx` conversion now supports an explicit `MAYAK_LIBREOFFICE_PATH` override before default `soffice/libreoffice` lookup, so server deploys can bind LibreOffice without changing code.

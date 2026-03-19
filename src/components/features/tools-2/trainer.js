@@ -263,6 +263,7 @@ export default function TrainerPage({ goTo }) {
     const [inspectorResolveLoading, setInspectorResolveLoading] = useState(false);
     const [inspectorResolveError, setInspectorResolveError] = useState("");
     const [openedInspectorReviewId, setOpenedInspectorReviewId] = useState("");
+    const [materialDownloadNotice, setMaterialDownloadNotice] = useState("");
 
 
     const [type, setType] = useState("text");
@@ -410,6 +411,7 @@ export default function TrainerPage({ goTo }) {
     });
 
     const buildPromptDraftRef = useRef(null);
+    const materialDownloadNoticeTimeoutRef = useRef(null);
     const resolveTaskIndexFromInput = useCallback(
         (rawValue) => {
             const inputNum = parseInt(String(rawValue).trim(), 10);
@@ -843,8 +845,8 @@ export default function TrainerPage({ goTo }) {
                 setSessionUploadError("Нужно загрузить файл или добавить текст ответа.");
                 return;
             }
-            if (normalizedSubmissionText.length > 300) {
-                setSessionUploadError("Текст ответа не должен превышать 300 символов.");
+            if (normalizedSubmissionText.length > 1000) {
+                setSessionUploadError("Текст ответа не должен превышать 1000 символов.");
                 return;
             }
             if (!runtimeSessionId || !activeUserId || !currentTaskData) {
@@ -957,6 +959,25 @@ export default function TrainerPage({ goTo }) {
         setPreviewMode(null);
         setPreviewDismissedTaskKey(activeMapTaskKey || "manual-close");
     }, [activeMapTaskKey]);
+
+    const handleTaskFileDownloaded = useCallback(() => {
+        setMaterialDownloadNotice("Доп.материал скачивается.");
+        if (materialDownloadNoticeTimeoutRef.current) {
+            window.clearTimeout(materialDownloadNoticeTimeoutRef.current);
+        }
+        materialDownloadNoticeTimeoutRef.current = window.setTimeout(() => {
+            setMaterialDownloadNotice("");
+            materialDownloadNoticeTimeoutRef.current = null;
+        }, 2500);
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            if (materialDownloadNoticeTimeoutRef.current) {
+                window.clearTimeout(materialDownloadNoticeTimeoutRef.current);
+            }
+        };
+    }, []);
 
     useEffect(() => {
         if (typeof window === "undefined") return;
@@ -1189,6 +1210,8 @@ export default function TrainerPage({ goTo }) {
         isTaskNavigationLocked: isCurrentTaskPendingReview || isCurrentTaskRejected,
         canAccessTaskResources: canAccessCurrentTaskResources,
         taskActionLabel: isCurrentTaskPendingReview ? "\u041d\u0430 \u043f\u0440\u043e\u0432\u0435\u0440\u043a\u0435" : isCurrentTaskRejected ? "\u0417\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044c" : "\u041d\u0430\u0447\u0430\u0442\u044c \u0437\u0430\u0434\u0430\u043d\u0438\u0435",
+        materialDownloadNotice,
+        onTaskFileDownloaded: handleTaskFileDownloaded,
     };
 
     const trainerFieldsBlock = (
