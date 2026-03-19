@@ -144,6 +144,8 @@ export const TrainerControls = memo(function TrainerControls({
     isTaskNavigationLocked,
     canAccessTaskResources,
     taskActionLabel,
+    materialDownloadNotice,
+    onTaskFileDownloaded,
 }) {
     const formatTaskTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -161,6 +163,7 @@ export const TrainerControls = memo(function TrainerControls({
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        onTaskFileDownloaded?.();
     };
 
     return (
@@ -357,6 +360,7 @@ export const TrainerControls = memo(function TrainerControls({
                             </span>
                         )}
                 </div>
+                {materialDownloadNotice ? <div className="text-sm font-medium text-emerald-600">{materialDownloadNotice}</div> : null}
             </div>
         </div>
     );

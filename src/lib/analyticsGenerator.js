@@ -417,6 +417,27 @@ async function callLLM(prompt) {
   return data.choices?.[0]?.message?.content || 'Не удалось получить анализ';
 }
 
+export async function generateAnalyticsBufferFromLogData(logData) {
+  if (!logData || typeof logData !== 'object') {
+    throw new Error('Данные аналитики не переданы');
+  }
+
+  // Вызываем LLM
+  const prompt = buildPrompt(logData);
+  console.log(`[Analytics] Запрос к LLM для ${logData.userName || 'participant'}...`);
+  const analysisText = await callLLM(prompt);
+  console.log(`[Analytics] Ответ получен (${analysisText.length} символов)`);
+
+  // Генерируем PDF
+  return renderToBuffer(
+    React.createElement(AnalyticsPDF, {
+      userName: logData.userName,
+      date: logData.date,
+      analysisText,
+    })
+  );
+}
+
 // Основная функция: генерация аналитического PDF
 export async function generateAnalytics(sessionId, sessionsDir) {
   const logDataPath = path.join(sessionsDir, `${sessionId}_logdata.json`);
@@ -426,21 +447,7 @@ export async function generateAnalytics(sessionId, sessionsDir) {
   }
 
   const logData = JSON.parse(fs.readFileSync(logDataPath, 'utf-8'));
-
-  // Вызываем LLM
-  const prompt = buildPrompt(logData);
-  console.log(`[Analytics] Запрос к LLM для сессии ${sessionId}...`);
-  const analysisText = await callLLM(prompt);
-  console.log(`[Analytics] Ответ получен (${analysisText.length} символов)`);
-
-  // Генерируем PDF
-  const pdfBuffer = await renderToBuffer(
-    React.createElement(AnalyticsPDF, {
-      userName: logData.userName,
-      date: logData.date,
-      analysisText,
-    })
-  );
+  const pdfBuffer = await generateAnalyticsBufferFromLogData(logData);
 
   // Сохраняем
   const analyticsPath = path.join(sessionsDir, `${sessionId}_analytics.pdf`);

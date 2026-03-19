@@ -279,6 +279,23 @@ export default function SettingsPage({ goTo }) {
         return () => clearTimeout(delayDebounceFn);
     }, [token]);
 
+    useEffect(() => {
+        if (sessionInfo.tokenType === "session" && Number(sessionInfo.tableCount) > 0 && !String(userData.tableNumber || "").trim()) {
+            setUserData((prev) => ({
+                ...prev,
+                tableNumber: "1",
+            }));
+            return;
+        }
+
+        if (sessionInfo.tokenType !== "session" && userData.tableNumber) {
+            setUserData((prev) => ({
+                ...prev,
+                tableNumber: "",
+            }));
+        }
+    }, [sessionInfo.tokenType, sessionInfo.tableCount, userData.tableNumber]);
+
     const handleUserDataChange = (e) => {
         const { name, value: fieldValue } = e.target;
         setUserData((prev) => ({

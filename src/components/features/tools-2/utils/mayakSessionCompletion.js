@@ -40,6 +40,7 @@ export function clearMayakSessionCompletionState({ getStorageKey, removeKeyCooki
 export async function executeMayakSessionCompletion({
     elapsedTime,
     levels,
+    onDownloadAnalytics,
     onDownloadCertificate,
     onDownloadLogs,
     onSendToTelegram,
@@ -65,6 +66,7 @@ export async function executeMayakSessionCompletion({
 
     await onDownloadCertificate();
     await onDownloadLogs();
+    await onDownloadAnalytics();
 
     try {
         await onSendToTelegram();

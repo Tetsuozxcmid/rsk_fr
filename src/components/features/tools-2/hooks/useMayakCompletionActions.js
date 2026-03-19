@@ -5,6 +5,8 @@ import { clearMayakSessionCompletionState, executeMayakSessionCompletion } from 
 import { buildMayakCertificateBlob, buildMayakQrDataUrl, buildMayakSessionLogBlob, downloadMayakBlob } from "../utils/mayakSessionDocuments";
 import { getUserFromCookies } from "../actions";
 
+const ENABLE_MAYAK_TELEGRAM_COMPLETION_DELIVERY = false;
+
 export const useMayakCompletionActions = ({
     elapsedTime,
     getStorageKey,
@@ -62,7 +64,48 @@ export const useMayakCompletionActions = ({
         }
     }, []);
 
+    const handleDownloadAnalytics = useCallback(async () => {
+        try {
+            const userData = getUserFromCookies();
+            const userName = userData?.name || "Участник";
+            const dateStr = new Date().toLocaleDateString("ru-RU");
+            const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
+                getStorageKey,
+                tokenSectionId,
+            });
+            const totalTime = formatTaskTime(totalSessionSeconds);
+
+            const res = await fetch("/api/mayak/session-analytics", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    logData: {
+                        userName,
+                        userRole: selectedRole,
+                        date: dateStr,
+                        totalTime,
+                        rankingData,
+                        tasks: enrichedTasks,
+                    },
+                }),
+            });
+
+            if (!res.ok) {
+                const payload = await res.json().catch(() => ({}));
+                throw new Error(payload.error || "Не удалось сформировать аналитику");
+            }
+
+            const analyticsBlob = await res.blob();
+            downloadMayakBlob(analyticsBlob, `Analytics_Mayak_${userName.replace(/\s+/g, "_")}_${dateStr}.pdf`);
+        } catch (error) {
+            console.error("Ошибка при генерации аналитики:", error);
+        }
+    }, [formatTaskTime, getStorageKey, selectedRole, tokenSectionId]);
+
     const handleSendToTelegram = useCallback(async () => {
+        if (!ENABLE_MAYAK_TELEGRAM_COMPLETION_DELIVERY) {
+            return;
+        }
         setTelegramLoading(true);
         try {
             const userData = getUserFromCookies();
@@ -126,6 +169,7 @@ export const useMayakCompletionActions = ({
             await executeMayakSessionCompletion({
                 elapsedTime,
                 levels,
+                onDownloadAnalytics: handleDownloadAnalytics,
                 onDownloadCertificate: handleDownloadCertificate,
                 onDownloadLogs: handleDownloadLogs,
                 onSendToTelegram: handleSendToTelegram,
@@ -144,9 +188,10 @@ export const useMayakCompletionActions = ({
             alert("Произошла ошибка. Если сертификат не скачался, проверьте папку загрузок.");
             window.location.href = "/";
         }
-    }, [elapsedTime, getStorageKey, handleDownloadCertificate, handleDownloadLogs, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
+    }, [elapsedTime, getStorageKey, handleDownloadAnalytics, handleDownloadCertificate, handleDownloadLogs, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
 
     return {
+        handleDownloadAnalytics,
         handleDownloadCertificate,
         handleDownloadLogs,
         handleSaveSessionCompletion,

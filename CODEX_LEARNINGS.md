@@ -232,3 +232,17 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: in this Windows environment the default TEMP/TMP path and profile/temp handling for LibreOffice are unreliable; direct conversion from the long workspace path left `soffice` processes hanging or unable to load/write files.
 - Fix: run LibreOffice with an isolated ASCII workspace inside the repo, copy the source file to a short ASCII temp path, set `TEMP` and `TMP` explicitly for the conversion process, and log stdout/stderr for diagnosis.
 - Prevention: for MAYAK office preview conversion on Windows, do not invoke `soffice` directly against the original workspace path with the ambient TEMP; stage files into an ASCII temp workdir and override `TEMP/TMP` first.
+
+### 2026-03-18 - Session upload text limits must match in trainer UI and upload API
+
+- Problem: MAYAK session review popup showed a 1000-character text limit, but users still got a 300-character error when sending the answer.
+- Root cause: the upload API had already been updated to 1000, but 	rainer.js still kept an older client-side guard and error message for 300.
+- Fix: update both the trainer-side validation and the API/runtime storage to the same limit, and verify the full request path instead of only the endpoint.
+- Prevention: when changing MAYAK submission limits, search both trainer UI guards and API/runtime validators so the contract stays synchronized.
+
+### 2026-03-18 - Session table selects need an explicit default when the placeholder is removed
+
+- Problem: after removing the placeholder option from the session registration table select, users could not reliably choose table 1.
+- Root cause: the controlled React select still held an empty value, while the browser visually showed the first option, so choosing the first real option did not change state.
+- Fix: when session-mode registration becomes available and no table is selected yet, prefill 	ableNumber with "1".
+- Prevention: if a controlled MAYAK select has no placeholder option, initialize it to a valid real option instead of leaving the value empty.
