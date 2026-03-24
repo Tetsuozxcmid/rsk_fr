@@ -44,6 +44,7 @@ Stabilize MAYAK architecture around:
 - Session admin now lets the operator set token usage count separately from table count, so one session can have, for example, `3` tables and `100` token uses.
 - Session admin now also stores shared review/rework timers per session (`reviewTimeoutSeconds`, `reworkTimeoutSeconds`).
 - Session admin now uses one destructive `Завершить сессию` action in the UI: it fully deletes the session instead of moving it into a visible history section.
+- Session admin now also shows registered participants by table and lets the operator manually reassign roles, including the extra reviewer role `АДМИНИСТРАТОР`.
 
 
 ### Storage hardening
@@ -118,6 +119,7 @@ Stabilize MAYAK architecture around:
 - Session-mode registration now also creates a session participant record bound to `sessionId`, `userId`, and `tableNumber`.
 - Session trainer flow now supports:
   - one server-enforced inspector per table,
+  - one additional server-enforced administrator reviewer per table,
   - participant upload on task completion,
   - blocking next-task navigation while a task is pending review or rejected,
   - inspector review queue with accept/reject and session-configured review/rework timers,

@@ -5,6 +5,30 @@ import { RANKING_TEST_DATA } from "../../../../../data/rankingTestData";
 
 const STORAGE_KEY = "trainer_v2_rankingTestResults";
 const PREVIOUS_STORAGE_KEY = "trainer_v2_rankingTestResults_previous";
+const RANKING_ZONE_LIMITS = [
+    { greenMax: 4, yellowMax: 8 },
+    { greenMax: 8, yellowMax: 16 },
+    { greenMax: 16, yellowMax: 33 },
+    { greenMax: 24, yellowMax: 48 },
+    { greenMax: 37, yellowMax: 74 },
+];
+const RANKING_MASCOT_POOLS = {
+    green: [
+        { animatedSrc: "/mascot-good-transparent-anim-smooth.webp" },
+        { animatedSrc: "/mascot-good-2-transparent-anim.webp" },
+        { animatedSrc: "/mascot-good-3-transparent-anim.webp" },
+    ],
+    yellow: [
+        { animatedSrc: "/mascot-neutral-1-transparent-anim.webp" },
+        { animatedSrc: "/mascot-neutral-2-transparent-anim.webp" },
+        { animatedSrc: "/mascot-neutral-3-transparent-anim.webp" },
+    ],
+    red: [
+        { animatedSrc: "/mascot-bad-transparent-anim.webp" },
+        { animatedSrc: "/mascot-bad-2-transparent-anim.webp" },
+        { animatedSrc: "/mascot-bad-3-transparent-anim.webp" },
+    ],
+};
 
 function shuffleArray(arr) {
     const a = [...arr];
@@ -63,6 +87,32 @@ function formatTime(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
+function getRankingDeltaZone(levelIndex, delta) {
+    const limits = RANKING_ZONE_LIMITS[levelIndex];
+    if (!limits || !Number.isFinite(delta)) return "yellow";
+    if (delta <= limits.greenMax) return "green";
+    if (delta <= limits.yellowMax) return "yellow";
+    return "red";
+}
+
+function getRankingDeltaLabel(levelIndex, delta) {
+    const zone = getRankingDeltaZone(levelIndex, delta);
+    if (zone === "green") {
+        return delta === 0 ? "Идеально!" : "Хороший результат";
+    }
+    if (zone === "yellow") {
+        return "Можно лучше";
+    }
+    return "Есть куда расти";
+}
+
+function getRankingMascotAsset(levelIndex, delta) {
+    const zone = getRankingDeltaZone(levelIndex, delta);
+    const pool = RANKING_MASCOT_POOLS[zone];
+    if (!Array.isArray(pool) || pool.length === 0) return null;
+    return pool[levelIndex % pool.length] || pool[0];
 }
 
 export default function RankingTestPopup({ onClose, onSave, forceRetake = false }) {
@@ -482,6 +532,10 @@ export default function RankingTestPopup({ onClose, onSave, forceRetake = false 
 
     const allCompleted = Object.keys(completedLevels).length === levels.length;
     const positionDiffs = isShowingResults ? calcPositionDiffs(userOrder, level.correctOrder) : [];
+    const currentDelta = completedLevels[currentLevel]?.delta;
+    const currentDeltaZone = getRankingDeltaZone(currentLevel, currentDelta);
+    const currentMascotAsset = getRankingMascotAsset(currentLevel, currentDelta);
+    const currentDeltaLabel = getRankingDeltaLabel(currentLevel, currentDelta);
 
     const canInteract = isRetakeMode ? !completedLevels[currentLevel] : (!isLevelDone && !isFullyCompleted);
 
@@ -654,11 +708,9 @@ export default function RankingTestPopup({ onClose, onSave, forceRetake = false 
                     <div className="px-6 py-3 flex items-center justify-between border-b border-[var(--color-gray-plus-50)]">
                         <div>
                             <p className="text-sm font-semibold text-[var(--color-black)]">{level.description}</p>
-                            {canInteract && (
-                                <p className="text-xs text-[var(--color-gray-black)] mt-1">
-                                    Перетаскивайте промты или используйте стрелки для изменения порядка
-                                </p>
-                            )}
+                            <p className="text-xs text-[var(--color-gray-black)] mt-1">
+                                Перетаскивайте промты или используйте стрелки для изменения порядка
+                            </p>
                         </div>
                         <div className="flex items-center gap-3">
                             {!showHint && (
@@ -788,40 +840,52 @@ export default function RankingTestPopup({ onClose, onSave, forceRetake = false 
                         {/* Results summary */}
                         {isShowingResults && (
                             <div className="mt-4 p-4 rounded-xl bg-slate-50 border border-[var(--color-gray-plus)]">
-                                <div className="flex items-center justify-between">
+                                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                     <div>
                                         <p className="text-sm font-bold text-[var(--color-black)]">Результат уровня {currentLevel + 1}</p>
                                         <p className="text-xs text-[var(--color-gray-black)] mt-1">
                                             Время: {formatTime(levelTimers[currentLevel] || 0)}
                                         </p>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-3xl font-bold text-[var(--color-black)]">Δ {completedLevels[currentLevel]?.delta}</p>
-                                        {(() => {
-                                            const prevDelta = getPreviousDelta(currentLevel);
-                                            const currDelta = completedLevels[currentLevel]?.delta;
-                                            if (prevDelta !== null && currDelta !== undefined) {
-                                                const diff = prevDelta - currDelta;
-                                                return (
-                                                    <p className={`text-sm font-bold mt-1 ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-500" : "text-gray-400"}`}>
-                                                        {diff > 0 ? `↓${diff} улучшение` : diff < 0 ? `↑${Math.abs(diff)} ухудшение` : "= без изменений"}
-                                                        <span className="text-xs font-normal text-gray-400 ml-1">(было Δ{prevDelta})</span>
-                                                    </p>
-                                                );
-                                            }
-                                            return (
-                                                <p className="text-xs text-[var(--color-gray-black)]">
-                                                    {currDelta === 0
-                                                        ? "Идеально!"
-                                                        : currDelta <= 10
-                                                            ? "Хороший результат"
-                                                            : currDelta <= 20
-                                                                ? "Можно лучше"
-                                                                : "Есть куда расти"
-                                                    }
-                                                </p>
-                                            );
-                                        })()}
+                                    <div className="flex items-center justify-between gap-4 sm:justify-end">
+                                        <div className="text-right">
+                                            <p className="text-3xl font-bold text-[var(--color-black)]">Δ {currentDelta}</p>
+                                            {(() => {
+                                                const prevDelta = getPreviousDelta(currentLevel);
+                                                if (prevDelta !== null && currentDelta !== undefined) {
+                                                    const diff = prevDelta - currentDelta;
+                                                    return (
+                                                        <p className={`text-sm font-bold mt-1 ${diff > 0 ? "text-green-600" : diff < 0 ? "text-red-500" : "text-gray-400"}`}>
+                                                            {diff > 0 ? `↓${diff} улучшение` : diff < 0 ? `↑${Math.abs(diff)} ухудшение` : "= без изменений"}
+                                                            <span className="text-xs font-normal text-gray-400 ml-1">(было Δ{prevDelta})</span>
+                                                        </p>
+                                                    );
+                                                }
+                                                return null;
+                                            })()}
+                                            <p className={`text-xs font-medium mt-1 ${
+                                                currentDeltaZone === "green"
+                                                    ? "text-green-600"
+                                                    : currentDeltaZone === "yellow"
+                                                        ? "text-amber-600"
+                                                        : "text-red-500"
+                                            }`}>
+                                                {currentDeltaLabel}
+                                            </p>
+                                        </div>
+                                        {currentMascotAsset && (
+                                            <div className="h-[72px] w-[72px] shrink-0 sm:h-[84px] sm:w-[84px]">
+                                                <img
+                                                    key={`ranking-mascot-${currentLevel}-${currentDelta}`}
+                                                    src={currentMascotAsset.animatedSrc}
+                                                    alt=""
+                                                    aria-hidden="true"
+                                                    decoding="sync"
+                                                    fetchPriority="high"
+                                                    className="h-full w-full object-contain"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="mt-3 flex items-center gap-4 text-xs text-[var(--color-gray-black)]">

@@ -238,6 +238,14 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Problem: MAYAK session review popup showed a 1000-character text limit, but users still got a 300-character error when sending the answer.
 - Root cause: the upload API had already been updated to 1000, but 	rainer.js still kept an older client-side guard and error message for 300.
 - Fix: update both the trainer-side validation and the API/runtime storage to the same limit, and verify the full request path instead of only the endpoint.
+- Prevention: when MAYAK changes user-visible limits in session review flow, grep both trainer UI and runtime API/storage for the old numeric guard before considering the task done.
+
+### 2026-03-19 - Reviewer permissions must not be hardcoded to `ИНСПЕКТОР` if a second reviewer role exists
+
+- Problem: adding a session-level `АДМИНИСТРАТОР` reviewer role would look correct in UI/admin data but still fail to receive queues or resolve reviews if runtime checks stayed tied to `ИНСПЕКТОР` only.
+- Root cause: the original session review logic encoded reviewer capability as one literal role instead of a shared reviewer-role group.
+- Fix: centralize reviewer-role checks in runtime and use that helper everywhere queue access and review resolution are validated.
+- Prevention: when MAYAK adds a role with reused business permissions, audit all server-side role comparisons before shipping the new UI.
 - Prevention: when changing MAYAK submission limits, search both trainer UI guards and API/runtime validators so the contract stays synchronized.
 
 ### 2026-03-18 - Session table selects need an explicit default when the placeholder is removed

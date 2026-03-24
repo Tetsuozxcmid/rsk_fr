@@ -5,6 +5,11 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 
 const AUTH_KEY = "mayak_content_admin_auth";
+const PARTICIPANT_ROLE_OPTIONS = [
+    { value: "__participant__", label: "\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a" },
+    { value: "\u0418\u041d\u0421\u041f\u0415\u041a\u0422\u041e\u0420", label: "\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440" },
+    { value: "\u0410\u0414\u041c\u0418\u041d\u0418\u0421\u0422\u0420\u0410\u0422\u041e\u0420", label: "\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440" },
+];
 
 function LoginForm({ onLogin }) {
     const [password, setPassword] = useState("");
@@ -127,9 +132,13 @@ function SessionForm({ ranges, value, onChange, onSubmit, submitting, submitLabe
     );
 }
 
-function SessionCard({ session, tokenMap, onEdit, onRemove, removingId, onCopyToken }) {
+function SessionCard({ session, tokenMap, participants, onEdit, onRemove, removingId, onCopyToken, onRoleChange, roleSavingKey }) {
     const sessionTokens = (session.tokenIds || []).map((id) => tokenMap.get(id)).filter(Boolean);
     const primaryToken = sessionTokens[0] || null;
+    const participantsByTable = Array.from({ length: Number(session.tableCount) || 0 }, (_, index) => index + 1).map((tableNumber) => ({
+        tableNumber,
+        participants: (participants || []).filter((participant) => Number(participant.tableNumber) === tableNumber),
+    }));
 
     return (
         <div style={cardStyle}>
@@ -164,6 +173,67 @@ function SessionCard({ session, tokenMap, onEdit, onRemove, removingId, onCopyTo
                 </div>
             )}
 
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#1e293b" }}>{"\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0438 \u043f\u043e \u0441\u0442\u043e\u043b\u0430\u043c"}</div>
+                {participantsByTable.map(({ tableNumber, participants: tableParticipants }) => (
+                    <div key={tableNumber} style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 12, background: "#f8fafc" }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
+                            {`\u0421\u0442\u043e\u043b ${tableNumber}`}
+                        </div>
+                        {tableParticipants.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                                {tableParticipants.map((participant) => {
+                                    const savingKey = `${session.id}:${participant.userId}`;
+                                    return (
+                                        <div
+                                            key={participant.userId}
+                                            style={{
+                                                border: "1px solid #dbeafe",
+                                                borderRadius: 8,
+                                                padding: 10,
+                                                background: "#fff",
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                gap: 8,
+                                            }}>
+                                            <div>
+                                                <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{participant.name || "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438"}</div>
+                                                <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                                                    {participant.organization || "\u0411\u0435\u0437 \u043e\u0440\u0433\u0430\u043d\u0438\u0437\u0430\u0446\u0438\u0438"}
+                                                </div>
+                                            </div>
+                                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                                                <select
+                                                    value={participant.role || "__participant__"}
+                                                    onChange={(event) => onRoleChange(session.id, participant.userId, event.target.value)}
+                                                    style={{ ...inputStyle, width: "auto", minWidth: 180, background: "#fff" }}
+                                                    disabled={roleSavingKey === savingKey}>
+                                                    {PARTICIPANT_ROLE_OPTIONS.map((option) => (
+                                                        <option key={option.value || "participant"} value={option.value}>
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {participant.reviewerTargetTable ? (
+                                                    <span style={smallBadgeStyle}>{`\u041f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u0442 \u0441\u0442\u043e\u043b ${participant.reviewerTargetTable}`}</span>
+                                                ) : null}
+                                                {participant.blockingTask ? (
+                                                    <span style={{ ...smallBadgeStyle, background: "#fef3c7", color: "#92400e" }}>
+                                                        {`\u0411\u043b\u043e\u043a: ${participant.blockingTask.taskNumber || participant.blockingTask.taskIndex || "-"} \u2022 ${participant.blockingTask.status || ""}`}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 12, color: "#94a3b8" }}>{"\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442."}</div>
+                        )}
+                    </div>
+                ))}
+            </div>
+
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
                 <button type="button" style={secondaryButtonStyle} onClick={() => onEdit(session)}>
                     Редактировать
@@ -180,12 +250,14 @@ export default function AdminMayakSessions() {
     const [isAuth, setIsAuth] = useState(false);
     const [loading, setLoading] = useState(true);
     const [sessions, setSessions] = useState([]);
+    const [participantsBySession, setParticipantsBySession] = useState({});
     const [ranges, setRanges] = useState([]);
     const [tokens, setTokens] = useState([]);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [saving, setSaving] = useState(false);
     const [removingId, setRemovingId] = useState("");
+    const [roleSavingKey, setRoleSavingKey] = useState("");
     const [editingSessionId, setEditingSessionId] = useState("");
     const [form, setForm] = useState({
         name: "",
@@ -230,9 +302,20 @@ export default function AdminMayakSessions() {
             if (!rangesJson.success) throw new Error(rangesJson.error || "Не удалось загрузить разделы");
             if (!tokensJson.success) throw new Error(tokensJson.error || "Не удалось загрузить session-токены");
 
-            setSessions(Array.isArray(sessionsJson.data) ? sessionsJson.data : []);
+            const nextSessions = Array.isArray(sessionsJson.data) ? sessionsJson.data : [];
+            setSessions(nextSessions);
             setRanges(Array.isArray(rangesJson.data) ? rangesJson.data : []);
             setTokens(Array.isArray(tokensJson.data) ? tokensJson.data : []);
+            const participantEntries = await Promise.all(
+                nextSessions
+                    .filter((session) => session.status !== "completed")
+                    .map(async (session) => {
+                        const response = await fetch(`/api/admin/mayak-sessions/${session.id}/participants`);
+                        const payload = await response.json().catch(() => ({}));
+                        return [session.id, response.ok && payload.success ? payload.data || [] : []];
+                    })
+            );
+            setParticipantsBySession(Object.fromEntries(participantEntries));
             setError("");
         } catch (loadError) {
             setError(loadError.message || "Не удалось загрузить данные");
@@ -339,6 +422,31 @@ export default function AdminMayakSessions() {
         }
     };
 
+    const handleRoleChange = async (sessionId, userId, role) => {
+        const savingKey = `${sessionId}:${userId}`;
+        const normalizedRole = role === "__participant__" ? "\u0423\u0427\u0410\u0421\u0422\u041d\u0418\u041a" : role;
+        setRoleSavingKey(savingKey);
+        setError("");
+        setMessage("");
+        try {
+            const response = await fetch(`/api/admin/mayak-sessions/${sessionId}/participants`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId, role: normalizedRole }),
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || !payload.success) {
+                throw new Error(payload.error || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0440\u043e\u043b\u044c");
+            }
+            setMessage("\u0420\u043e\u043b\u044c \u0443\u0447\u0430\u0441\u0442\u043d\u0438\u043a\u0430 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0430");
+            await loadAll();
+        } catch (changeError) {
+            setError(changeError.message || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0440\u043e\u043b\u044c");
+        } finally {
+            setRoleSavingKey("");
+        }
+    };
+
     if (!isAuth) {
         return (
             <>
@@ -404,9 +512,12 @@ export default function AdminMayakSessions() {
                                     key={session.id}
                                     session={session}
                                     tokenMap={tokenMap}
+                                    participants={participantsBySession[session.id] || []}
                                     onEdit={handleEdit}
                                     onRemove={handleRemove}
                                     onCopyToken={handleCopyToken}
+                                    onRoleChange={handleRoleChange}
+                                    roleSavingKey={roleSavingKey}
                                     removingId={removingId}
                                 />
                             ))}

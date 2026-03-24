@@ -1,4 +1,4 @@
-import { assignMayakSessionRole } from "@/lib/mayakSessionRuntime";
+import { setMayakSessionParticipantRole } from "@/lib/mayakSessionRuntime";
 
 export default async function handler(req, res) {
     if (req.method !== "POST") {
@@ -7,7 +7,7 @@ export default async function handler(req, res) {
 
     try {
         const { sessionId, userId, role } = req.body || {};
-        const participant = await assignMayakSessionRole({
+        const participant = await setMayakSessionParticipantRole({
             sessionId: String(sessionId || ""),
             userId: String(userId || ""),
             role: String(role || ""),
