@@ -1,4 +1,4 @@
-# MAYAK Refactor Status
+﻿# MAYAK Refactor Status
 
 ## Rules
 
@@ -43,8 +43,13 @@ Stabilize MAYAK architecture around:
 - Added experimental session runtime storage in `data/mayak-session-runtime.json` with participant registration, role assignment, inspector queue, review statuses, and session-scoped uploaded review files.
 - Session admin now lets the operator set token usage count separately from table count, so one session can have, for example, `3` tables and `100` token uses.
 - Session admin now also stores shared review/rework timers per session (`reviewTimeoutSeconds`, `reworkTimeoutSeconds`).
-- Session admin now uses one destructive `Завершить сессию` action in the UI: it fully deletes the session instead of moving it into a visible history section.
-- Session admin now also shows registered participants by table and lets the operator manually reassign roles, including the extra reviewer role `АДМИНИСТРАТОР`.
+- Session admin now uses one destructive `Р—Р°РІРµСЂС€РёС‚СЊ СЃРµСЃСЃРёСЋ` action in the UI: it fully deletes the session instead of moving it into a visible history section.
+- Session admin now also shows registered participants by table and lets the operator manually reassign roles, including the extra reviewer role `РђР”РњРРќРРЎРўР РђРўРћР `.
+- Added a separate MAYAK onboarding domain with JSON-backed storage for config, links, and submissions.
+- Added public onboarding runtime routes under `/mayak-onboarding/...` for link landing, participant flow, and tech-specialist flow.
+- Added dedicated MAYAK onboarding admin surface at `/admin/mayak-onboarding`.
+- Added separate onboarding file storage under `data/mayak-onboarding-files/` plus API-backed file serving/upload.
+- Onboarding constructor/runtime now support configurable minimum required photo count per checklist section (`minPhotos`) with runtime validation on section completion.
 
 
 ### Storage hardening
@@ -125,14 +130,16 @@ Stabilize MAYAK architecture around:
   - inspector review queue with accept/reject and session-configured review/rework timers,
   - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
 - Trainer session completion now downloads certificate, session log, and analytics PDF directly in the browser; the older Telegram-delivery handoff remains in code but is temporarily disabled and is no longer the active completion path.
-- Inspector review UI now uses a compact top-right queue with per-task countdown bars and an `Открыть` action that expands into a split review modal; participants see a matching `Задание на проверке` timer banner while navigation stays blocked.
+- Inspector review UI now uses a compact top-right queue with per-task countdown bars and an `РћС‚РєСЂС‹С‚СЊ` action that expands into a split review modal; participants see a matching `Р—Р°РґР°РЅРёРµ РЅР° РїСЂРѕРІРµСЂРєРµ` timer banner while navigation stays blocked.
 - Session upload allowlist now also accepts `ppt/pptx`; unsupported preview types fall back to download-only inside the inspector panel.
 - `doc/docx` conversion now supports an explicit `MAYAK_LIBREOFFICE_PATH` override before default `soffice/libreoffice` lookup, so server deploys can bind LibreOffice without changing code.
 - MAYAK task maps now auto-open as a right-side desktop preview while a task is running and close automatically on task completion.
-- MAYAK instructions can now reuse the same right-side preview panel: map opens by default, and the `Инструкция` button toggles instruction preview / return to map.
+- MAYAK instructions can now reuse the same right-side preview panel: map opens by default, and the `РРЅСЃС‚СЂСѓРєС†РёСЏ` button toggles instruction preview / return to map.
 - The desktop right-side preview panel is now resizable by drag with saved width and desktop-only min/max constraints.
 - Storage directory selection now prefers an explicit MAYAK_CONTENT_DIR when set, otherwise the first valid MAYAK storage instead of the first merely existing directory.
 - The largest remaining trainer risk is behavioral regression, not syntax.
+- Onboarding public flow now uses lighter MAYAK-style white surfaces, inline progress blocks in the hero area, and tech-section validation that highlights missing checklist items/photos before a section can be closed.
+- Onboarding admin now uses native date pickers for link creation, removes location from the main create-link flow, and exposes per-section minimum photo count in the constructor.
 
 ## Remaining Work
 
@@ -175,7 +182,7 @@ Stop this stage when:
 
 - Confirmed `ADMIN-BYPASS-TOKEN` is no longer present in runtime MAYAK code; current localhost-only bypass is `fffff` via `/api/mayak/validate-token` with `isBypass` flag.
 - Confirmed current local bypass still maps to `isAdmin` inside `useMayakAccessGate`, which explains admin-like behavior under `fffff`.
-- Fixed broken `Пройти Тестирование` trigger in `useMayakTrainerControlActions.js`; the handler had a corrupted Cyrillic string and no longer opened the ranking popup for those tasks.
+- Fixed broken `РџСЂРѕР№С‚Рё РўРµСЃС‚РёСЂРѕРІР°РЅРёРµ` trigger in `useMayakTrainerControlActions.js`; the handler had a corrupted Cyrillic string and no longer opened the ranking popup for those tasks.
 - Reconfirmed content contract: admin save writes to shared storage through `mayakContentStorage.js`, and MAYAK v2 runtime reads through `content-bundle` / `content-file` from the same storage root.
 - Switched localhost bypass flow from plain `fffff` to `fffff + MAYAK admin password` through `/api/admin/mayak-auth`.
 - Added automatic cleanup of legacy `ADMIN-BYPASS-TOKEN` from `activated_key` cookie on MAYAK settings load.
@@ -185,3 +192,5 @@ Stop this stage when:
 - 2026-03-18: Office preview conversion on local Windows was diagnosed to fail because LibreOffice could not use the ambient TEMP/user path reliably; the runtime now uses an isolated ASCII temp workspace plus explicit `TEMP/TMP` overrides and logs conversion steps.
 
 - 2026-03-18: doc/docx session review uploads were moved from synchronous LibreOffice conversion to the same background-preview flow as ppt/pptx, so upload no longer blocks on office conversion.
+
+

@@ -1392,6 +1392,9 @@ export default function AdminMayakContent() {
                         <Link href="/admin/sessions" style={{ padding: "8px 16px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
                             Сессии
                         </Link>
+                        <Link href="/admin/mayak-onboarding" style={{ padding: "8px 16px", borderRadius: 6, background: "#0ea5e9", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+                            Онбординг
+                        </Link>
                     </div>
                 </div>
 
@@ -1490,3 +1493,4 @@ export default function AdminMayakContent() {
         </>
     );
 }
+

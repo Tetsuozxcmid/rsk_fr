@@ -469,6 +469,9 @@ export default function AdminMayakSessions() {
                         <Link href="/admin/mayak-content" style={navLinkStyle}>
                             Контент
                         </Link>
+                        <Link href="/admin/mayak-onboarding" style={navLinkStyle}>
+                            MAYAK Onboarding
+                        </Link>
                         <Link href="/admin/mayak-tokens" style={navLinkStyle}>
                             Токены
                         </Link>
@@ -530,7 +533,6 @@ export default function AdminMayakSessions() {
         </>
     );
 }
-
 function formatDate(value) {
     if (!value) return "-";
     const date = new Date(value);
@@ -688,4 +690,5 @@ const noticeStyle = {
     marginBottom: 16,
     fontSize: 13,
 };
+
 
