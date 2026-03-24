@@ -38,6 +38,7 @@ const BASE_NAV_LINKS = [
             { label: "Проекты", href: "/admin/projects" },
             { label: "Обучение", href: "/admin/cours" },
             { label: "Роли", href: "/admin/roleswitch" },
+            { label: "MAYAK Онбординг", href: "/admin/mayak-onboarding" },
         ],
     },
 ];

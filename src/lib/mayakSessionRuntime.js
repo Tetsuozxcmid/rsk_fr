@@ -15,7 +15,9 @@ const LIBREOFFICE_LOG_FILE = path.join(process.cwd(), "data", "mayak-libreoffice
 const DEFAULT_REVIEW_TIMEOUT_SECONDS = 130;
 const DEFAULT_REWORK_TIMEOUT_SECONDS = 180;
 const PREVIEW_PROCESSING_TIMEOUT_MS = 90 * 1000;
-const INSPECTOR_ROLE = "\u0418\u041d\u0421\u041f\u0415\u041a\u0422\u041e\u0420";
+export const INSPECTOR_ROLE = "\u0418\u041d\u0421\u041f\u0415\u041a\u0422\u041e\u0420";
+export const ADMINISTRATOR_ROLE = "\u0410\u0414\u041c\u0418\u041d\u0418\u0421\u0422\u0420\u0410\u0422\u041e\u0420";
+const REVIEWER_ROLES = new Set([INSPECTOR_ROLE, ADMINISTRATOR_ROLE]);
 
 const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".avif"]);
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
@@ -34,6 +36,10 @@ function normalizeString(value) {
 function normalizeTableNumber(value) {
     const parsed = parseInt(value, 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function isReviewerRole(role) {
+    return REVIEWER_ROLES.has(normalizeString(role));
 }
 
 function buildTaskKey(taskNumber) {
@@ -475,8 +481,8 @@ export async function assignMayakSessionRole({ sessionId, userId, role }) {
         throw new Error("Участник не зарегистрирован в этой сессии");
     }
 
-    if (normalizedRole === INSPECTOR_ROLE) {
-        const takenByAnother = Object.values(bucket.participants).find((candidate) => candidate.userId !== userId && candidate.tableNumber === participant.tableNumber && candidate.role === INSPECTOR_ROLE);
+    if (isReviewerRole(normalizedRole)) {
+        const takenByAnother = Object.values(bucket.participants).find((candidate) => candidate.userId !== userId && candidate.tableNumber === participant.tableNumber && candidate.role === normalizedRole);
         if (takenByAnother) {
             throw new Error(`Для стола ${participant.tableNumber} инспектор уже выбран`);
         }
@@ -489,6 +495,86 @@ export async function assignMayakSessionRole({ sessionId, userId, role }) {
     participant.updatedAt = new Date().toISOString();
     await writeStore(store);
     return participant;
+}
+
+export async function setMayakSessionParticipantRole({ sessionId, userId, role }) {
+    const session = await getSessionById(sessionId);
+    if (!session || session.status !== "active") {
+        throw new Error("\u0421\u0435\u0441\u0441\u0438\u044f \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u0438\u043b\u0438 \u0443\u0436\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430");
+    }
+
+    const normalizedRole = normalizeString(role);
+    if (!normalizedRole) {
+        throw new Error("\u041d\u0435 \u0432\u044b\u0431\u0440\u0430\u043d\u0430 \u0440\u043e\u043b\u044c");
+    }
+
+    const store = await readStore();
+    const bucket = ensureSessionBucket(store, sessionId);
+    const participant = bucket.participants?.[userId];
+    if (!participant) {
+        throw new Error("\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a \u043d\u0435 \u0437\u0430\u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0438\u0440\u043e\u0432\u0430\u043d \u0432 \u044d\u0442\u043e\u0439 \u0441\u0435\u0441\u0441\u0438\u0438");
+    }
+
+    if (isReviewerRole(normalizedRole)) {
+        const takenByAnother = Object.values(bucket.participants || {}).find(
+            (candidate) => candidate.userId !== userId && candidate.tableNumber === participant.tableNumber && candidate.role === normalizedRole
+        );
+        if (takenByAnother) {
+            throw new Error(
+                normalizedRole === ADMINISTRATOR_ROLE
+                    ? `\u0414\u043b\u044f \u0441\u0442\u043e\u043b\u0430 ${participant.tableNumber} \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440 \u0443\u0436\u0435 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d`
+                    : `\u0414\u043b\u044f \u0441\u0442\u043e\u043b\u0430 ${participant.tableNumber} \u0438\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440 \u0443\u0436\u0435 \u0432\u044b\u0431\u0440\u0430\u043d`
+            );
+        }
+        participant.inspectorTargetTable = getInspectorTargetTable(participant.tableNumber, normalizeTableNumber(session.tableCount));
+    } else {
+        participant.inspectorTargetTable = null;
+    }
+
+    participant.role = normalizedRole;
+    participant.updatedAt = new Date().toISOString();
+    await writeStore(store);
+    return participant;
+}
+
+export async function listMayakSessionParticipants(sessionId) {
+    const session = await getSessionById(sessionId);
+    if (!session) {
+        throw new Error("\u0421\u0435\u0441\u0441\u0438\u044f \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430");
+    }
+
+    const store = await readStore();
+    await expirePendingReviews(store, sessionId);
+    const freshStore = await readStore();
+    const bucket = ensureSessionBucket(freshStore, sessionId);
+    const tableCount = normalizeTableNumber(session.tableCount);
+
+    return Object.values(bucket.participants || {})
+        .sort((a, b) => {
+            const tableDelta = (Number(a.tableNumber) || 0) - (Number(b.tableNumber) || 0);
+            if (tableDelta !== 0) return tableDelta;
+            return String(a.name || "").localeCompare(String(b.name || ""), "ru");
+        })
+        .map((participant) => {
+            const blockingTask = getBlockingTaskState(participant);
+            return {
+                userId: participant.userId,
+                name: participant.name || "",
+                organization: participant.organization || "",
+                tableNumber: participant.tableNumber || 0,
+                role: participant.role || "",
+                reviewerTargetTable: isReviewerRole(participant.role) ? getInspectorTargetTable(participant.tableNumber, tableCount) : null,
+                registeredAt: participant.registeredAt || null,
+                updatedAt: participant.updatedAt || null,
+                blockingTask: blockingTask
+                    ? {
+                          taskNumber: blockingTask.taskNumber || "",
+                          taskIndex: Number(blockingTask.taskIndex) || 0,
+                          status: blockingTask.status || "",
+                      }
+                    : null,
+            };
+        });
 }
 
 export async function createMayakSessionReview({
@@ -595,7 +681,7 @@ export async function resolveMayakSessionReview({ sessionId, reviewId, inspector
     }
 
     const inspector = bucket.participants?.[inspectorUserId];
-    if (!inspector || inspector.role !== INSPECTOR_ROLE) {
+    if (!inspector || !isReviewerRole(inspector.role)) {
         throw new Error("Проверку может выполнить только инспектор");
     }
     if (inspector.inspectorTargetTable !== review.participantTableNumber) {
@@ -676,7 +762,7 @@ export async function getMayakSessionRuntimeState({ sessionId, userId }) {
 
     const blockingTask = getBlockingTaskState(participant);
     const inspectorQueue =
-        participant.role === INSPECTOR_ROLE && participant.inspectorTargetTable
+        isReviewerRole(participant.role) && participant.inspectorTargetTable
             ? Object.values(bucket.reviews || {})
                   .filter((review) => review.status === "pending" && review.participantTableNumber === participant.inspectorTargetTable)
                   .filter((review) => isReviewReadyForInspector(review))

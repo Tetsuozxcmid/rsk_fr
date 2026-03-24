@@ -13,6 +13,48 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-24 - MAYAK admin file uploads must clear hidden input values after async handlers
+
+- Problem: onboarding constructor image uploads could appear broken when an admin retried the same photo-instruction file for a tech-specialist block.
+- Root cause: the hidden `input[type=file]` kept its previous value after the async upload handler finished, so selecting the same file again did not fire a new `change` event.
+- Fix: always reset `event.target.value = ""` in the upload input `finally` block and keep the async state local to the uploader UI.
+- Prevention: for MAYAK admin upload controls built on hidden file inputs, clear the input after every handled selection so retries with the same file remain possible.
+
+### 2026-03-24 - Large MAYAK onboarding images should not be uploaded as base64 JSON
+
+- Problem: some larger onboarding PNGs failed with `Maximum call stack size exceeded` even though the file size was well below the nominal route limits.
+- Root cause: onboarding image uploads were sent as `data:` URLs inside JSON, which inflated payload size and hit unstable request/body handling on the Next.js upload routes.
+- Fix: send onboarding images as `multipart/form-data`, parse them server-side as files in both admin and public tech-specialist flows, and keep the old JSON path only as a backward-compatible fallback.
+- Prevention: for MAYAK onboarding image uploads, do not serialize real files into base64 JSON unless there is no binary upload option; prefer multipart transport from the start.
+
+### 2026-03-24 - Participant laptop checks can disappear when onboarding config leaves `participantSections.laptop.items` empty
+
+- Problem: the participant onboarding flow could lose the required personal-laptop parameter checklist even though the tech flow still showed the laptop requirements.
+- Root cause: `data/mayak-onboarding-config.json` allowed `participantSections.laptop.items` to be empty, and the participant page trusted that empty array as the full contract.
+- Fix: store the participant laptop checklist as its own `participantSections.laptop.items` array and also normalize old configs by cloning the tech `laptops` items into that participant section when it is empty.
+- Prevention: for MAYAK onboarding JSON import/export, keep participant and tech laptop checklists as separate persisted section entities even if their initial contents are identical.
+
+### 2026-03-24 - MAYAK onboarding readiness must be derived from live checklist validation, not from manual section-confirm buttons
+
+- Problem: tech onboarding could keep showing stale progress after the user ticked checkboxes or uploaded the last required photo, and completion depended on extra manual `Раздел готов` / `Завершить подготовку` actions.
+- Root cause: the UI percentage and final `completed` flag were tied to persisted `completedSections` markers instead of recalculating readiness from the current checklist state on every save.
+- Fix: recompute `completedSections`, progress percentage, and final `completed` directly from the live checklist items and required photo counts inside each save path, so the last required action auto-completes the onboarding.
+- Prevention: for MAYAK onboarding flows with autosave, do not treat `completedSections` as an independent source of truth; derive it from current validation every time checklist data changes.
+
+### 2026-03-24 - New MAYAK pages must not rely on raw `button` defaults for card-like UI
+
+- Problem: newly added MAYAK onboarding cards looked visually broken because some interactive blocks unexpectedly inherited black backgrounds and platform button typography.
+- Root cause: the shared project styles define global rules for plain `button`, so new page-level card/button compositions can be restyled by the base MAYAK CSS unless they explicitly override it.
+- Fix: for custom MAYAK surfaces, either use non-button containers for card navigation or add explicit override classes (`!bg-*`, `!border-*`, `!w-auto`, etc.) so the component does not depend on global button defaults.
+- Prevention: when building new MAYAK UI outside the legacy design system, inspect global `button` rules first and harden interactive cards/buttons against inherited platform styling before polishing the layout.
+
+### 2026-03-24 - MAYAK onboarding slug pages must read the dynamic slug from the router, not `window.location.pathname`
+
+- Problem: a newly created onboarding link could open the public landing page with `Ссылка онбординга не найдена`, especially when the slug contained Cyrillic characters.
+- Root cause: the landing page parsed the slug from `window.location.pathname`, which can keep the path segment URL-encoded; the client then encoded that value again for the API request and missed the stored slug.
+- Fix: read the slug from `next/router` query params on the client, encode only when constructing outgoing URLs, and keep a server-side decode fallback in onboarding slug lookup.
+- Prevention: for Next.js dynamic MAYAK routes, do not derive identifiers from raw `location.pathname` if the same identifier is later passed through `encodeURIComponent`; use router params as the source of truth.
+
 ### 2026-03-17 - Session-mode trainer code must not treat `active_user` as a raw cookie string
 
 - Problem: MAYAK session features need `sessionId`, `tableNumber`, and `userId`, but some runtime code still treated `active_user` as a plain encoded cookie string.
@@ -181,7 +223,6 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: restart the mascot by remounting the `<img>` with a React `key`, keep the URL stable, and preload the mascot assets once on page load.
 - Prevention: for MAYAK animated mascot playback, do not use cache-busting query params as the replay mechanism unless a real asset version change is intended.
 
-
 ### 2026-03-11 - Live MAYAK content should not be served to the trainer directly from public JSON files
 
 - Problem: editable MAYAK v2 content could load slowly and become inconsistent after admin edits because the trainer fetched many public JSON files directly and the running Next process could keep serving stale or missing files.
@@ -210,7 +251,7 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: remove `ADMIN_BYPASS_TOKEN` handling from the MAYAK token validation API and let both token checks and token usage go only through `validateToken()` and `useToken()` from the shared token store.
 - Prevention: when cleaning MAYAK auth or token flows, audit both client and API layers; removing a bypass only on the frontend is incomplete.
 
-- 2026-03-11: PowerShell here-string -> node can corrupt Cyrillic in MAYAK JS files into question marks. Root cause: console/input encoding during inline script replacement. Fix: write Russian literals via Unicode escapes or verify UTF-8 content with Node after replacement. Prevention: after any inline script edit touching Cyrillic, read the resulting literal back via Node, not PowerShell output alone.
+- 2026-03-11: PowerShell write flows can corrupt Cyrillic in MAYAK JS files into mojibake/question marks. Root cause: `Set-Content`, `Out-File`, or here-string -> node replacements can pass through the wrong encoding/BOM path on Windows. Fix: prefer `apply_patch`; if a script fallback is unavoidable, force UTF-8 without BOM and verify the saved bytes with Node or Git diff, not PowerShell display alone. Prevention: do not use generic PowerShell file writes for MAYAK source files that contain Cyrillic UI or business strings.
 
 ### 2026-03-11 - MAYAK refactor progress should be tracked in a dedicated status file before context compression
 
@@ -236,13 +277,21 @@ Add only verified, reusable lessons. Skip one-off noise.
 ### 2026-03-18 - Session upload text limits must match in trainer UI and upload API
 
 - Problem: MAYAK session review popup showed a 1000-character text limit, but users still got a 300-character error when sending the answer.
-- Root cause: the upload API had already been updated to 1000, but 	rainer.js still kept an older client-side guard and error message for 300.
+- Root cause: the upload API had already been updated to 1000, but rainer.js still kept an older client-side guard and error message for 300.
 - Fix: update both the trainer-side validation and the API/runtime storage to the same limit, and verify the full request path instead of only the endpoint.
+- Prevention: when MAYAK changes user-visible limits in session review flow, grep both trainer UI and runtime API/storage for the old numeric guard before considering the task done.
+
+### 2026-03-19 - Reviewer permissions must not be hardcoded to `ИНСПЕКТОР` if a second reviewer role exists
+
+- Problem: adding a session-level `АДМИНИСТРАТОР` reviewer role would look correct in UI/admin data but still fail to receive queues or resolve reviews if runtime checks stayed tied to `ИНСПЕКТОР` only.
+- Root cause: the original session review logic encoded reviewer capability as one literal role instead of a shared reviewer-role group.
+- Fix: centralize reviewer-role checks in runtime and use that helper everywhere queue access and review resolution are validated.
+- Prevention: when MAYAK adds a role with reused business permissions, audit all server-side role comparisons before shipping the new UI.
 - Prevention: when changing MAYAK submission limits, search both trainer UI guards and API/runtime validators so the contract stays synchronized.
 
 ### 2026-03-18 - Session table selects need an explicit default when the placeholder is removed
 
 - Problem: after removing the placeholder option from the session registration table select, users could not reliably choose table 1.
 - Root cause: the controlled React select still held an empty value, while the browser visually showed the first option, so choosing the first real option did not change state.
-- Fix: when session-mode registration becomes available and no table is selected yet, prefill 	ableNumber with "1".
+- Fix: when session-mode registration becomes available and no table is selected yet, prefill ableNumber with "1".
 - Prevention: if a controlled MAYAK select has no placeholder option, initialize it to a valid real option instead of leaving the value empty.
