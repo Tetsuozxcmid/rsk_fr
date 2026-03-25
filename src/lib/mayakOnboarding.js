@@ -184,11 +184,11 @@ export async function createMayakOnboardingLink(payload = {}) {
     }
 
     const endDate = String(payload.endDate || "").trim();
-    if (!endDate) {
+    if (!endDate && payload?.requireEndDate) {
         throw new Error("Укажите дату окончания");
     }
 
-    if (endDate < eventDate) {
+    if (endDate && endDate < eventDate) {
         throw new Error("Дата окончания не может быть раньше даты начала");
     }
 

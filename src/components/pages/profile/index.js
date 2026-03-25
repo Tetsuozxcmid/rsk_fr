@@ -9,6 +9,7 @@ import { getUserData } from "@/utils/auth";
 
 import Header from "@/components/layout/Header";
 import Card from "@/components/ui/Card";
+import MayakHistoryPanel from "@/components/pages/profile/MayakHistoryPanel";
 
 import Setts from "@/assets/general/setts.svg";
 import Notify from "@/assets/general/notify.svg";
@@ -177,6 +178,7 @@ export default function ProfileIndexPage({ goTo }) {
                             </Link>
                         </div>
                     </div>
+                    <MayakHistoryPanel />
                 </div>
                 {/* <Folder projects="2" works="12" exp="100" onClick={() => goTo("workfolder")} /> */}
             </div>

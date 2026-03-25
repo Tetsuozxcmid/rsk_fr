@@ -13,6 +13,13 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
+
+- Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.
+- Root cause: `reactStrictMode` remounted client pages and reran bootstrap `useEffect` hooks, so auth/session gates briefly reset and repeated the same profile fetch.
+- Fix: move portal profile bootstrap behind a module-scoped client cache plus in-flight promise dedupe, and reuse that helper across `/auth`, MAYAK settings, and portal auth completion flows. If local debugging still suffers from false double-mount noise, disable `reactStrictMode` in this repo.
+- Prevention: when MAYAK or portal UI depends on one initial session/profile fetch, do not call the raw fetch from every mount; use a shared client bootstrap helper that survives remounts and verify whether StrictMode is amplifying the issue before chasing phantom rerenders.
+
 ### 2026-03-24 - MAYAK admin file uploads must clear hidden input values after async handlers
 
 - Problem: onboarding constructor image uploads could appear broken when an admin retried the same photo-instruction file for a tech-specialist block.
@@ -26,6 +33,20 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: onboarding image uploads were sent as `data:` URLs inside JSON, which inflated payload size and hit unstable request/body handling on the Next.js upload routes.
 - Fix: send onboarding images as `multipart/form-data`, parse them server-side as files in both admin and public tech-specialist flows, and keep the old JSON path only as a backward-compatible fallback.
 - Prevention: for MAYAK onboarding image uploads, do not serialize real files into base64 JSON unless there is no binary upload option; prefer multipart transport from the start.
+
+### 2026-03-25 - MAYAK delta-test storage must accept both nested per-user payloads and flat event payloads
+
+- Problem: different MAYAK runtime paths sent delta/ranking data in two incompatible shapes, which risked broken writes or malformed keys in `DeltaTest.json`.
+- Root cause: `saveDeltaTest` assumed only the nested `{ [userId]: { [timestamp]: value } }` format, while some callers already posted flat event objects with `user` and `date`.
+- Fix: normalize both payload shapes server-side inside `/api/mayak/saveDeltaTest` before writing, so legacy and new runtime calls land in the same store.
+- Prevention: when MAYAK uses JSON-backed append APIs, normalize payload variants at the route boundary instead of assuming every client path already shares one exact envelope.
+
+### 2026-03-24 - MAYAK onboarding links must allow single-day sessions without a second required date
+
+- Problem: admin could not create an onboarding link for a one-day event because the constructor required both start and end dates.
+- Root cause: the form and `createMayakOnboardingLink()` treated `endDate` as mandatory instead of an optional multi-day window.
+- Fix: keep `eventDate/startDate` required, make `endDate` optional in both UI and server validation, and display only one date when `endDate` is empty.
+- Prevention: for MAYAK scheduling fields, model the single-day case explicitly instead of forcing operators to duplicate one date into two required inputs.
 
 ### 2026-03-24 - Participant laptop checks can disappear when onboarding config leaves `participantSections.laptop.items` empty
 

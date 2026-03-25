@@ -1,28 +1,24 @@
-﻿export async function saveMayakMeasurements({ elapsedTime, levels, taskNumber = 3 }) {
+import { getUserFromCookies } from "../actions";
+
+export async function saveMayakMeasurements({ elapsedTime, levels, taskNumber = 3 }) {
     try {
-        const activeUser =
-            document.cookie
-                .split("; ")
-                .find((row) => row.startsWith("active_user="))
-                ?.split("=")[1] || "anonymous";
-
-        const decodedUser = decodeURIComponent(activeUser);
+        const activeUser = getUserFromCookies();
+        const userKey = activeUser?.id || "anonymous";
         const timestamp = new Date().toISOString();
-
         const measurementData = {
             taskNumber,
             elapsedTime,
             levels: {
-                level1: parseInt(levels.level1) || 0,
-                level2: parseInt(levels.level2) || 0,
-                level3: parseInt(levels.level3) || 0,
-                level4: parseInt(levels.level4) || 0,
-                level5: parseInt(levels.level5) || 0,
+                level1: parseInt(levels.level1, 10) || 0,
+                level2: parseInt(levels.level2, 10) || 0,
+                level3: parseInt(levels.level3, 10) || 0,
+                level4: parseInt(levels.level4, 10) || 0,
+                level5: parseInt(levels.level5, 10) || 0,
             },
         };
 
         const payload = {
-            [decodedUser]: {
+            [userKey]: {
                 [timestamp]: measurementData,
             },
         };

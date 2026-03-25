@@ -1,5 +1,6 @@
 import Cookies from "js-cookie";
 import { useState, useEffect } from "react";
+import { invalidatePortalProfileCache } from "@/lib/portalProfileClient";
 
 // Получение userData из cookies
 export function getUserData() {
@@ -33,6 +34,7 @@ export function saveUserData(data) {
 // Удаление данных (выход)
 export function clearUserData() {
     Cookies.remove("userData");
+    invalidatePortalProfileCache();
 }
 
 // React-хук для получения userData внутри компонентов

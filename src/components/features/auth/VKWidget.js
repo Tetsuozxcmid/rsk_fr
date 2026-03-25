@@ -2,7 +2,7 @@ import { useRef, useEffect } from "react";
 import Button from "@/components/ui/Button";
 import VK from "@/assets/general/vk.svg";
 
-export default function VKWidget() {
+export default function VKWidget({ onBeforeLogin }) {
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -35,6 +35,10 @@ export default function VKWidget() {
 
   const handleVKLogin = () => {
     if (!window.VKIDSDK?.Auth?.login) return;
+
+    if (typeof onBeforeLogin === "function") {
+      onBeforeLogin();
+    }
 
     const originalOpen = window.open;
 

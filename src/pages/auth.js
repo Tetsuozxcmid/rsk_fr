@@ -1,76 +1,79 @@
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
-import { useState, useEffect, useContext } from "react"; // Добавили useContext
-import { motion, AnimatePresence } from "framer-motion";
-import { isAuthorized } from "@/utils/auth";
-import dynamic from "next/dynamic";
 
-import Switcher from "@/components/ui/Switcher";
 import Layout from "@/components/layout/Layout";
 import Header from "@/components/layout/Header";
-
-// Импорты стадий
-import RegStage0 from "@/components/pages/auth/reg/Stage0";
-import RegStage1 from "@/components/pages/auth/reg/Stage1";
-import LoginStage0 from "@/components/pages/auth/login/Stage0";
-import LoginStage1 from "@/components/pages/auth/login/Stage1";
-
-const AuthIcon = dynamic(() => import("@/assets/nav/auth.svg"));
-
-const pageVariants = {
-    initial: (direction) => ({ x: direction > 0 ? "100%" : "-100%", opacity: 0 }),
-    in: { x: 0, opacity: 1, transition: { duration: 0.5, ease: "circOut" } },
-    out: (direction) => ({ x: direction > 0 ? "-100%" : "100%", opacity: 0, transition: { duration: 0.5, ease: "circIn" } }),
-};
+import PortalAuthFlow from "@/components/features/auth/PortalAuthFlow";
+import { clearUserData, saveUserData } from "@/utils/auth";
+import { consumePortalAuthReturnPath } from "@/lib/portalAuthReturn";
+import { fetchPortalProfileClient, hasResolvedPortalProfileCache, primePortalProfileCache } from "@/lib/portalProfileClient";
 
 export default function AuthPage() {
-    const [authType, setAuthType] = useState("register");
-    const [step, setStep] = useState(0);
     const router = useRouter();
+    const [isSessionChecking, setIsSessionChecking] = useState(() => !hasResolvedPortalProfileCache());
 
     useEffect(() => {
-        if (isAuthorized()) router.push("/profile");
+        if (!router.isReady) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const bootstrapPortalSession = async () => {
+            try {
+                const payload = await fetchPortalProfileClient();
+                if (!payload) {
+                    clearUserData();
+                    if (!isCancelled) {
+                        setIsSessionChecking(false);
+                    }
+                    return;
+                }
+
+                primePortalProfileCache(payload);
+                const userInfo = {
+                    email: payload.data.email,
+                    username: payload.data.NameIRL,
+                };
+                await saveUserData(userInfo);
+
+                const nextPath = consumePortalAuthReturnPath();
+                if (!isCancelled) {
+                    router.replace(nextPath || "/profile");
+                }
+            } catch (error) {
+                console.error("Auth page session bootstrap failed:", error);
+                clearUserData();
+                if (!isCancelled) {
+                    setIsSessionChecking(false);
+                }
+            }
+        };
+
+        bootstrapPortalSession();
+
+        return () => {
+            isCancelled = true;
+        };
     }, [router]);
-
-    const getDirection = () => (authType === "register" ? 1 : -1);
-    const switchToLogin = () => { setAuthType("login"); setStep(0); };
-
-    const stages = {
-        register: [
-            <RegStage0 key="reg-0" onContinue={() => setStep(1)} pageVariants={pageVariants} custom={getDirection()} />,
-            <RegStage1 key="reg-1" pageVariants={pageVariants} custom={getDirection()} onSwitchToLogin={switchToLogin} />,
-        ],
-        login: [
-            <LoginStage0 key="login-0" pageVariants={pageVariants} custom={getDirection()} onForgotPassword={() => setStep(1)} />,
-            <LoginStage1 key="login-1" onRecover={() => {}} onBack={() => setStep(0)} pageVariants={pageVariants} custom={getDirection()} />,
-        ],
-    };
 
     return (
         <Layout>
             <Header className="flex items-center w-full">
-                {/* ЛЕВО: На мобилке flex-1 (толкает центр), на десктопе flex-none (не мешает) */}
-                <div className="max-[640px]:flex-1 flex-none flex justify-start">
-                    {/* Бургер из Header.js сам сюда встанет на мобилке */}
-                </div>
-
-                {/* ЦЕНТР: Свитчер */}
-                <div className="flex-none flex justify-center">
-                    <Switcher
-                        value={authType}
-                        onChange={(val) => {
-                            setAuthType(val);
-                            setStep(0);
-                        }}>
-                        <Switcher.Option value="login">Вход</Switcher.Option>
-                        <Switcher.Option value="register">Регистрация</Switcher.Option>
-                    </Switcher>
-                </div>
+                <div className="max-[640px]:flex-1 flex-none flex justify-start" />
             </Header>
 
-            <div className="hero relative overflow-hidden">
-                <AnimatePresence mode="wait" custom={getDirection()} initial={false}>
-                    {stages[authType][step]}
-                </AnimatePresence>
+            <div className="hero" style={{ placeItems: "center" }}>
+                <div className="auth_cntr col-span-4 w-full flex flex-col justify-center">
+                    {isSessionChecking ? (
+                        <div className="flex flex-col gap-[0.75rem] items-center text-center">
+                            <h3>Проверяем сессию</h3>
+                            <p className="text-(--color-gray-black)">Если вы уже вошли на портале, сразу перенаправим дальше.</p>
+                        </div>
+                    ) : (
+                        <PortalAuthFlow className="w-full" />
+                    )}
+                </div>
             </div>
         </Layout>
     );
