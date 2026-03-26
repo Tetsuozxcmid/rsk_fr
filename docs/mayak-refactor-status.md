@@ -50,6 +50,20 @@ Stabilize MAYAK architecture around:
 - Added dedicated MAYAK onboarding admin surface at `/admin/mayak-onboarding`.
 - Added separate onboarding file storage under `data/mayak-onboarding-files/` plus API-backed file serving/upload.
 - Onboarding constructor/runtime now support configurable minimum required photo count per checklist section (`minPhotos`) with runtime validation on section completion.
+- Added anonymous onboarding survey schema storage in `data/mayak-onboarding-config.json` under top-level `survey`.
+- Added separate anonymous onboarding survey response storage in `data/mayak-onboarding-survey-responses.json`.
+- Added public survey response APIs:
+  - `/api/mayak/onboarding-survey-responses`
+  - `/api/mayak/onboarding-survey-responses/[id]`
+- Extended `/api/mayak/onboarding-link/[slug]` so the public landing page now receives both `link` and sanitized `summary`.
+- Added admin survey result APIs:
+  - `/api/admin/mayak-onboarding/survey-responses`
+  - `/api/admin/mayak-onboarding/survey-responses/export`
+- Added onboarding progress helpers shared between public landing, participant flow, tech flow, and admin dashboard.
+- Public onboarding now enforces a survey-first flow: the anonymous questionnaire must be completed on the current device before role selection and the public summary become visible.
+- Admin onboarding constructor now includes a dedicated `Анкета` tab with survey-schema editing plus JSON import/export.
+- Admin onboarding dashboard now shows anonymous response lists plus one unified JSON/XLSX export for survey results across all onboarding links.
+- Added a unified MAYAK admin hub on `/admin` with one shared login entry for the main MAYAK admin surfaces.
 
 
 ### Storage hardening
@@ -140,6 +154,18 @@ Stabilize MAYAK architecture around:
 - The largest remaining trainer risk is behavioral regression, not syntax.
 - Onboarding public flow now uses lighter MAYAK-style white surfaces, inline progress blocks in the hero area, and tech-section validation that highlights missing checklist items/photos before a section can be closed.
 - Onboarding admin now uses native date pickers for link creation, removes location from the main create-link flow, and exposes per-section minimum photo count in the constructor.
+- Onboarding public landing is now a two-step flow:
+  - anonymous survey first, persisted per device via `mayak_onboarding_survey:<slug>`
+  - role selection plus public progress summary only after survey completion
+- The public survey landing now shows the survey schema title/description at the top instead of the legacy anonymous-intro copy.
+- The survey card now starts directly from `Блок А` / survey sections instead of repeating the hero title and description a second time inside the form body.
+- Participant onboarding now always requires both the laptop checklist and service confirmations after laptop-type selection; the ownership choice no longer hides required sections.
+- Public onboarding summary now shows:
+  - participants with `ФИО`, status, and progress percent
+  - tech specialists with `ФИО`, status, progress percent, and uploaded photos
+- Tech specialist phone remains admin-only and is excluded from the public summary contract.
+- Onboarding admin now supports survey-schema management and unified survey result export without mixing anonymous responses into named participant/tech submissions.
+- MAYAK admin frontend pages now trust the shared `/api/admin/mayak-auth` cookie directly and redirect unauthenticated users to `/admin?next=...` instead of keeping separate page-local login flows.
 
 ## Remaining Work
 
@@ -155,6 +181,11 @@ Stabilize MAYAK architecture around:
    - completion popups,
    - session participant upload / inspector review flow.
 2. Content storage selection and JSON save path were hardened: valid storage detection plus atomic JSON writes are now in place.
+3. Smoke-check the onboarding survey-first flow end-to-end:
+   - clean-device survey gate,
+   - local resume through `mayak_onboarding_survey:<slug>`,
+   - public summary rendering,
+   - admin survey export JSON/XLSX.
 
 ### Medium priority
 

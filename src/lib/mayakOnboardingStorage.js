@@ -7,6 +7,7 @@ const FILES_ROOT = path.join(DATA_DIR, "mayak-onboarding-files");
 const CONFIG_FILE = path.join(DATA_DIR, "mayak-onboarding-config.json");
 const LINKS_FILE = path.join(DATA_DIR, "mayak-onboarding-links.json");
 const SUBMISSIONS_FILE = path.join(DATA_DIR, "mayak-onboarding-submissions.json");
+const SURVEY_RESPONSES_FILE = path.join(DATA_DIR, "mayak-onboarding-survey-responses.json");
 
 async function pathExists(targetPath) {
     try {
@@ -63,6 +64,9 @@ export async function ensureMayakOnboardingStorage() {
     if (!(await pathExists(SUBMISSIONS_FILE))) {
         await writeJsonAtomic(SUBMISSIONS_FILE, []);
     }
+    if (!(await pathExists(SURVEY_RESPONSES_FILE))) {
+        await writeJsonAtomic(SURVEY_RESPONSES_FILE, []);
+    }
 }
 
 export async function readOnboardingConfig() {
@@ -99,6 +103,18 @@ export async function writeOnboardingSubmissions(submissions) {
     await ensureMayakOnboardingStorage();
     await writeJsonAtomic(SUBMISSIONS_FILE, Array.isArray(submissions) ? submissions : []);
     return submissions;
+}
+
+export async function readOnboardingSurveyResponses() {
+    await ensureMayakOnboardingStorage();
+    const responses = await readJsonFile(SURVEY_RESPONSES_FILE, []);
+    return Array.isArray(responses) ? responses : [];
+}
+
+export async function writeOnboardingSurveyResponses(responses) {
+    await ensureMayakOnboardingStorage();
+    await writeJsonAtomic(SURVEY_RESPONSES_FILE, Array.isArray(responses) ? responses : []);
+    return responses;
 }
 
 function getScopeRoot(scope, parentId) {

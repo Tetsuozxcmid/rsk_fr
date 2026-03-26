@@ -1,56 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import Header from "@/components/layout/Header";
-
-const AUTH_KEY = "mayak_content_admin_auth";
+import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
+import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
 const PARTICIPANT_ROLE_OPTIONS = [
     { value: "__participant__", label: "\u0423\u0447\u0430\u0441\u0442\u043d\u0438\u043a" },
     { value: "\u0418\u041d\u0421\u041f\u0415\u041a\u0422\u041e\u0420", label: "\u0418\u043d\u0441\u043f\u0435\u043a\u0442\u043e\u0440" },
     { value: "\u0410\u0414\u041c\u0418\u041d\u0418\u0421\u0422\u0420\u0410\u0422\u041e\u0420", label: "\u0410\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440" },
 ];
-
-function LoginForm({ onLogin }) {
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        setError("");
-
-        try {
-            const res = await fetch("/api/admin/mayak-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                setError(json.error || "Неверный пароль");
-                setPassword("");
-                return;
-            }
-            sessionStorage.setItem(AUTH_KEY, "true");
-            onLogin();
-        } catch {
-            setError("Ошибка входа");
-        }
-    };
-
-    return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12, width: 320, padding: 32, border: "1px solid #ddd", borderRadius: 12 }}>
-                <h2 style={{ margin: 0, textAlign: "center" }}>Сессии МАЯК</h2>
-                <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
-                {error && <div style={{ color: "#e53e3e", fontSize: 13 }}>{error}</div>}
-                <button type="submit" style={primaryButtonStyle}>
-                    Войти
-                </button>
-            </form>
-        </div>
-    );
-}
 
 function SessionForm({ ranges, value, onChange, onSubmit, submitting, submitLabel, isEditing }) {
     const selectedRange = ranges.find((range) => (range.sectionId || range.range) === value.sectionId) || null;
@@ -247,6 +206,7 @@ function SessionCard({ session, tokenMap, participants, onEdit, onRemove, removi
 }
 
 export default function AdminMayakSessions() {
+    const router = useRouter();
     const [isAuth, setIsAuth] = useState(false);
     const [loading, setLoading] = useState(true);
     const [sessions, setSessions] = useState([]);
@@ -325,21 +285,35 @@ export default function AdminMayakSessions() {
     }, []);
 
     useEffect(() => {
-        const saved = sessionStorage.getItem(AUTH_KEY);
+        if (!router.isReady) return;
+        let cancelled = false;
+
         async function checkAuth() {
             try {
-                const res = await fetch("/api/admin/mayak-auth");
-                const json = await res.json();
-                if (saved === "true" && json.authenticated) {
+                const { authenticated } = await getMayakAdminAuthStatus();
+                if (cancelled) return;
+
+                if (authenticated) {
                     setIsAuth(true);
                 } else {
-                    sessionStorage.removeItem(AUTH_KEY);
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-sessions"));
                 }
-            } catch {}
-            setLoading(false);
+            } catch {
+                if (!cancelled) {
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-sessions"));
+                }
+            }
+
+            if (!cancelled) {
+                setLoading(false);
+            }
         }
+
         checkAuth();
-    }, []);
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
 
     useEffect(() => {
         if (isAuth) {
@@ -451,7 +425,7 @@ export default function AdminMayakSessions() {
         return (
             <>
                 <Header />
-                {!loading && <LoginForm onLogin={() => setIsAuth(true)} />}
+                {!loading && <div style={{ padding: 32, textAlign: "center" }}>Проверка доступа...</div>}
             </>
         );
     }
@@ -465,17 +439,7 @@ export default function AdminMayakSessions() {
                         <h1 style={{ fontSize: 24, margin: 0, color: "#0f172a" }}>Сессии MAYAK</h1>
                         <div style={{ fontSize: 13, color: "#64748b", marginTop: 6 }}>Сессия создаётся в одном месте, её session-токен генерируется автоматически, а кнопка завершения теперь полностью удаляет сессию без истории.</div>
                     </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <Link href="/admin/mayak-content" style={navLinkStyle}>
-                            Контент
-                        </Link>
-                        <Link href="/admin/mayak-onboarding" style={navLinkStyle}>
-                            MAYAK Onboarding
-                        </Link>
-                        <Link href="/admin/mayak-tokens" style={navLinkStyle}>
-                            Токены
-                        </Link>
-                    </div>
+                    <MayakAdminBackLink />
                 </div>
 
                 {error && <div style={{ ...noticeStyle, background: "#fef2f2", color: "#b91c1c", borderColor: "#fecaca" }}>{error}</div>}
@@ -600,15 +564,6 @@ const cardStyle = {
     padding: 16,
 };
 
-const navLinkStyle = {
-    padding: "8px 14px",
-    borderRadius: 8,
-    background: "#eef2ff",
-    color: "#4338ca",
-    fontSize: 13,
-    fontWeight: 600,
-    textDecoration: "none",
-};
 
 const emptyHintStyle = {
     border: "1px dashed #cbd5e1",
@@ -690,5 +645,6 @@ const noticeStyle = {
     marginBottom: 16,
     fontSize: 13,
 };
+
 
 

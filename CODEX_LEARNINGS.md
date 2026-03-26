@@ -13,6 +13,48 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-26 - MAYAK onboarding runtime data should not live in source control by default
+
+- Problem: onboarding link records, submissions, survey answers, and uploaded participant photos accumulated in tracked `data/` files and started polluting release commits with manual test/runtime data.
+- Root cause: MAYAK onboarding stores both editable config assets and live runtime state under nearby paths, so it is easy to treat everything under `data/mayak-onboarding-*` as commitable project content.
+- Fix: keep runtime onboarding state out of Git by ignoring `data/mayak-onboarding-links.json`, `data/mayak-onboarding-submissions.json`, `data/mayak-onboarding-survey-responses.json`, and `data/mayak-onboarding-files/submissions/`, while leaving intentionally tracked config/media assets under `data/mayak-onboarding-config.json` and `data/mayak-onboarding-files/links/config/`.
+- Prevention: before committing MAYAK onboarding changes, separate config/schema/media updates from live link/submission/survey/upload data and only stage the config side unless the task explicitly requires a fixture migration.
+
+### 2026-03-26 - Bulk Windows rewrites can mojibake UTF-8 MAYAK admin files
+
+- Problem: after scripted cleanup of MAYAK admin pages, Russian UI strings in `mayak-sessions.js` and `mayak-onboarding.js` turned into mojibake even though the code still built.
+- Root cause: a bulk PowerShell rewrite on Windows re-saved UTF-8 JavaScript source through the wrong text path, which preserved code structure but corrupted Cyrillic string literals.
+- Fix: after bulk cleanup, re-read the affected file with explicit UTF-8, reverse the mojibake where needed (`cp1251 bytes -> utf8`), and re-save with explicit UTF-8 without BOM.
+- Prevention: when using scripted bulk edits on MAYAK files with Cyrillic UI text, always verify several Russian string literals and `git diff` immediately after the write instead of trusting a green build alone.
+
+### 2026-03-26 - Hidden JSX still needs its component imports
+
+- Problem: a MAYAK admin page crashed with `ReferenceError: Link is not defined` even though the old nav block was visually hidden with `display: none`.
+- Root cause: React still evaluates JSX inside hidden blocks, so removing the `Link` import without deleting that hidden markup left a live runtime reference.
+- Fix: restore the missing import immediately, then clean dead hidden JSX separately if needed.
+- Prevention: when removing MAYAK navigation code, search for hidden JSX remnants before deleting component imports; hidden markup is still real runtime code.
+
+### 2026-03-26 - MAYAK admin frontend must not require sessionStorage on top of the auth cookie
+
+- Problem: direct opening of a MAYAK admin page could still show a login screen even when the valid MAYAK admin cookie already existed, and each admin page duplicated its own login UI.
+- Root cause: frontend MAYAK admin pages were gating access by two conditions at once: the real server-side auth cookie and an extra page-local `sessionStorage` flag.
+- Fix: keep `/api/admin/mayak-auth` + httpOnly cookie as the only auth source, move the login entry to `/admin`, and redirect unauthenticated MAYAK admin pages to `/admin?next=...`.
+- Prevention: when extending MAYAK admin UX, do not introduce a second required client-side auth flag if the server cookie already represents the canonical admin session.
+
+### 2026-03-25 - MAYAK participant laptop ownership must not gate required onboarding sections
+
+- Problem: in onboarding, choosing that the organization provides the laptop could hide the participant's hardware checklist and service-registration confirmations, which made the flow look complete even though required preparation was skipped.
+- Root cause: `participantLaptopType` was treated as a branching rule for which sections exist, instead of as metadata about who owns the laptop.
+- Fix: keep the laptop-type choice only as informational metadata and always derive participant readiness from the full laptop checklist plus service confirmations once a laptop type is selected.
+- Prevention: when MAYAK onboarding uses a choice only to classify context, do not let that flag remove required sections from progress calculation or UI rendering unless the product contract explicitly says the requirements differ.
+
+### 2026-03-25 - This Next 16 repo must build with explicit `--webpack` until Turbopack config is added
+
+- Problem: `npx next build` failed before useful validation with `This build is using Turbopack, with a webpack config and no turbopack config`.
+- Root cause: after the Next 16 upgrade, Turbopack is the default builder, but this repository still relies on a custom `webpack` configuration and does not yet define a matching `turbopack` config.
+- Fix: run production validation as `npx next build --webpack`, which compiled the project successfully.
+- Prevention: until the repo is migrated to Turbopack or adds an explicit `turbopack` section in `next.config.js`, always use `--webpack` for reliable build verification in this workspace.
+
 ### 2026-03-24 - MAYAK admin file uploads must clear hidden input values after async handlers
 
 - Problem: onboarding constructor image uploads could appear broken when an admin retried the same photo-instruction file for a tech-specialist block.

@@ -3,14 +3,12 @@
 export async function getServerSideProps() {
     return { props: {} };
 }
-import Link from "next/link";
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
-import Notify from "@/assets/general/notify.svg";
-
-const AUTH_STORAGE_KEY = "mayak_admin_auth";
+import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
+import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
 
 export default function AdminMayakTokens() {
     const [tokens, setTokens] = useState([]);
@@ -19,8 +17,6 @@ export default function AdminMayakTokens() {
 
     // Авторизация
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [password, setPassword] = useState("");
-    const [authError, setAuthError] = useState("");
 
     // Форма создания токена
     const [newTokenName, setNewTokenName] = useState("");
@@ -93,44 +89,37 @@ export default function AdminMayakTokens() {
 
     // Проверка авторизации при загрузке
     useEffect(() => {
-        const savedAuth = sessionStorage.getItem(AUTH_STORAGE_KEY);
+        let cancelled = false;
+
         async function checkAuth() {
             try {
-                const res = await fetch("/api/admin/mayak-auth");
-                const json = await res.json();
-                if (savedAuth === "true" && json.authenticated) {
-                    setIsAuthenticated(true);
-                } else {
-                    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-                }
-            } catch {}
-            setLoading(false);
-        }
-        checkAuth();
-    }, []);
+                const { authenticated } = await getMayakAdminAuthStatus();
+                if (cancelled) return;
 
-    // Обработка входа
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setAuthError("");
-        try {
-            const res = await fetch("/api/admin/mayak-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                setAuthError(json.error || "Неверный пароль");
-                setPassword("");
-                return;
+                if (authenticated) {
+                    setIsAuthenticated(true);
+                } else if (typeof window !== "undefined") {
+                    window.location.replace(buildMayakAdminLoginUrl(`${window.location.pathname}${window.location.search}`));
+                    return;
+                }
+            } catch {
+                if (!cancelled && typeof window !== "undefined") {
+                    window.location.replace(buildMayakAdminLoginUrl(`${window.location.pathname}${window.location.search}`));
+                    return;
+                }
             }
-            setIsAuthenticated(true);
-            sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-        } catch {
-            setAuthError("Ошибка входа");
+
+            if (!cancelled) {
+                setLoading(false);
+            }
         }
-    };
+
+        checkAuth();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Загрузка токенов
     const fetchTokens = async () => {
@@ -638,9 +627,6 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
                 </Header>
                 <div className="flex h-full items-center justify-center">
                     <p>Загрузка...</p>
@@ -654,9 +640,7 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
+                    <MayakAdminBackLink />
                 </Header>
                 <div className="flex h-full items-center justify-center">
                     <div className="text-center">
@@ -674,22 +658,9 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
                 </Header>
                 <div className="flex h-full items-center justify-center">
-                    <div className="p-[2rem] rounded-[1rem] border-[1.5px] border-(--color-gray-plus-50) w-full max-w-[400px]">
-                        <h5 className="mb-[1.5rem] text-center">Вход в админ-панель</h5>
-                        <form onSubmit={handleLogin} className="flex flex-col gap-[1rem]">
-                            <div>
-                                <label className="link small text-(--color-gray-black) block mb-[.5rem]">Пароль</label>
-                                <Input type="password" placeholder="Введите пароль" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-                            </div>
-                            {authError && <p className="text-[var(--color-red)] text-center">{authError}</p>}
-                            <Button type="submit">Войти</Button>
-                        </form>
-                    </div>
+                    <div className="text-center text-sm text-[#64748b]">Проверка доступа...</div>
                 </div>
             </Layout>
         );
@@ -699,17 +670,7 @@ export default function AdminMayakTokens() {
         <Layout>
             <Header>
                 <Header.Heading>Токены МАЯК</Header.Heading>
-                <div className="flex items-center gap-[.5rem]">
-                    <Link href="/admin/content" style={{ padding: "6px 14px", borderRadius: 6, background: "#3b82f6", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                        Контент
-                    </Link>
-                    <Link href="/admin/sessions" style={{ padding: "6px 14px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                        Сессии
-                    </Link>
-                    <Button icon>
-                        <Notify />
-                    </Button>
-                </div>
+                <MayakAdminBackLink />
             </Header>
             <div className="hero">
                 <div className="col-span-12 flex flex-col gap-[1.5rem]">
