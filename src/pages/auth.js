@@ -6,7 +6,12 @@ import Header from "@/components/layout/Header";
 import PortalAuthFlow from "@/components/features/auth/PortalAuthFlow";
 import { clearUserData, saveUserData } from "@/utils/auth";
 import { consumePortalAuthReturnPath } from "@/lib/portalAuthReturn";
-import { fetchPortalProfileClient, hasResolvedPortalProfileCache, primePortalProfileCache } from "@/lib/portalProfileClient";
+import {
+    fetchPortalProfileClient,
+    hasResolvedPortalProfileCache,
+    isMissingPortalProfilePayload,
+    primePortalProfileCache,
+} from "@/lib/portalProfileClient";
 
 export default function AuthPage() {
     const router = useRouter();
@@ -21,7 +26,7 @@ export default function AuthPage() {
 
         const bootstrapPortalSession = async () => {
             try {
-                const payload = await fetchPortalProfileClient();
+                const payload = await fetchPortalProfileClient({ force: true });
                 if (!payload) {
                     clearUserData();
                     if (!isCancelled) {
@@ -40,8 +45,9 @@ export default function AuthPage() {
                 }
 
                 const nextPath = consumePortalAuthReturnPath();
+                const fallbackPath = isMissingPortalProfilePayload(payload) ? "/profile?tab=settings" : "/profile";
                 if (!isCancelled) {
-                    router.replace(nextPath || "/profile");
+                    router.replace(nextPath || fallbackPath);
                 }
             } catch (error) {
                 console.error("Auth page session bootstrap failed:", error);

@@ -16,7 +16,7 @@ export default function DropdownInput({
     const handleKeyDown = (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            handleEnter();
+            handleEnter?.();
         }
     };
 

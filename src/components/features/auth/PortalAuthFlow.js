@@ -9,7 +9,7 @@ import Yandex from "@/assets/general/yandex.svg";
 import { saveUserData } from "@/utils/auth";
 import { buildPortalAuthCookieSnapshot } from "@/lib/portalProfile";
 import { clearPortalAuthReturnPath, setPortalAuthReturnPath } from "@/lib/portalAuthReturn";
-import { fetchPortalProfileClient, primePortalProfileCache } from "@/lib/portalProfileClient";
+import { fetchPortalProfileClient, isMissingPortalProfilePayload, primePortalProfileCache } from "@/lib/portalProfileClient";
 
 const YANDEX_LOGIN_URL = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
 
@@ -106,7 +106,7 @@ export default function PortalAuthFlow({
                 return;
             }
 
-            router.replace("/profile");
+            router.replace(isMissingPortalProfilePayload(profilePayload) ? "/profile?tab=settings" : "/profile");
         },
         [onAuthenticated, router]
     );

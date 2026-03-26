@@ -61,6 +61,22 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         onChange?.({ target: { name, value: item.value } });
     };
 
+    const handleEnter = () => {
+        const normalizedInput = String(inputValue || "").toLowerCase();
+        const exactMatch = items.find((item) => String(item.label).toLowerCase() === normalizedInput);
+        if (exactMatch) {
+            handleSelect(exactMatch);
+            return;
+        }
+
+        if (filtered.length > 0) {
+            handleSelect(filtered[0]);
+            return;
+        }
+
+        setShowDropdown(false);
+    };
+
     return {
         inputValue,
         filtered,
@@ -68,5 +84,6 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         setShowDropdown,
         handleInput,
         handleSelect,
+        handleEnter,
     };
 }

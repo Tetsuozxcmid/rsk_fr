@@ -236,6 +236,7 @@ export default function PortalProfileEditor({
                     }}
                     src="/data/regions.txt"
                 />
+                {!region ? <p className="text-(--color-gray-black)">Сначала выберите регион, после этого станет доступна организация.</p> : null}
                 <p className="text-(--color-gray-black)">
                     Если вашей организации нет в списке, заполните{" "}
                     <Link target="_blank" className="text-(--color-blue)" href="https://forms.yandex.ru/u/690391e1068ff0a3ba625eef">

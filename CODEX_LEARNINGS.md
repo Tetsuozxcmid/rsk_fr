@@ -34,6 +34,20 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: tag this backend case explicitly (`PROFILE_NOT_FOUND`), synthesize a client-side missing-profile payload, and route MAYAK settings into `PortalProfileEditor` so the user can complete the profile instead of crashing.
 - Prevention: in MAYAK portal-auth flows, distinguish missing profile data from missing auth; a profile-creation/completion step is a recoverable state, not a runtime exception.
 
+### 2026-03-26 - Shared dropdown hooks must return every callback their input component invokes
+
+- Problem: MAYAK profile completion could crash with `handleEnter is not a function` when the user pressed Enter inside a dropdown field.
+- Root cause: `DropdownInput` called `handleEnter()`, but `useDropdownFilter()` did not return that callback.
+- Fix: implement `handleEnter()` inside the hook, return it together with the other handlers, and keep the component-side call optional (`handleEnter?.()`).
+- Prevention: when a UI component destructures handlers from a shared hook, verify the hook exports the full callback contract before wiring keyboard events.
+
+### 2026-03-26 - Portal auth pages must not redirect missing-profile sessions into legacy profile screens
+
+- Problem: the main portal `Авторизация` / `Регистрация` entry could look broken because the app jumped from `/auth` to a blank `/profile` screen.
+- Root cause: the new client helper correctly treated `Profile not found` as a recoverable session, but legacy portal profile pages still expected only `200` or `401/403` responses and rendered `null` on that synthetic payload.
+- Fix: when portal auth resolves into a missing-profile payload, route directly to profile settings/editor, and update legacy profile pages to load profile state through `fetchPortalProfileClient()` instead of raw `/api/profile/info` fetches.
+- Prevention: after introducing shared auth/profile helpers, audit older portal pages that still parse profile responses manually so new synthetic auth states do not collapse into blank screens.
+
 ### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
 
 - Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.
