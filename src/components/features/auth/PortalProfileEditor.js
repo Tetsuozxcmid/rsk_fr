@@ -113,9 +113,10 @@ export default function PortalProfileEditor({
             return;
         }
 
-        const changes = {
-            id: profileData.id,
-        };
+        const changes = {};
+        if (profileData.id) {
+            changes.id = profileData.id;
+        }
 
         if (String(formData.Surname || "") !== String(initialState.Surname || "")) {
             changes.Surname = formData.Surname;
@@ -139,7 +140,7 @@ export default function PortalProfileEditor({
             changes.role = role;
         }
 
-        if (Object.keys(changes).length === 1) {
+        if (Object.keys(changes).length === 0) {
             if (typeof onSaved === "function") {
                 onSaved(profilePayload);
             }

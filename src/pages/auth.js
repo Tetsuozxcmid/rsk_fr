@@ -32,10 +32,12 @@ export default function AuthPage() {
 
                 primePortalProfileCache(payload);
                 const userInfo = {
-                    email: payload.data.email,
-                    username: payload.data.NameIRL,
+                    email: payload?.data?.email,
+                    username: payload?.data?.NameIRL,
                 };
-                await saveUserData(userInfo);
+                if (userInfo.email || userInfo.username) {
+                    await saveUserData(userInfo);
+                }
 
                 const nextPath = consumePortalAuthReturnPath();
                 if (!isCancelled) {

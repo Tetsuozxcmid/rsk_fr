@@ -10,9 +10,13 @@ export default async function ProfileInfoHandler(req, res) {
         return res.status(200).json({ success: true, data: payload });
     } catch (error) {
         if (error instanceof PortalProfileRequestError) {
+            const isProfileMissing =
+                Number(error.status) === 404 &&
+                /profile not found/i.test(String(error.message || ""));
             return res.status(error.status || 500).json({
                 success: false,
                 error: error.message,
+                errorCode: isProfileMissing ? "PROFILE_NOT_FOUND" : undefined,
                 details: error.payload || null,
             });
         }

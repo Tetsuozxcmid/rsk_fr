@@ -133,6 +133,7 @@ Stabilize MAYAK architecture around:
     - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
 - MAYAK trainer access now uses portal identity: after token validation, settings reuses the current portal session or shows the embedded portal auth flow, then blocks trainer entry until required profile fields are filled.
 - Required portal profile gate for MAYAK is now `NameIRL + Surname + Organization`.
+- If portal auth succeeds but the backend responds with `Profile not found`, MAYAK now routes that user into profile completion instead of crashing during the bootstrap fetch.
 - `active_user.id` is now the portal user id, and session participant registration reuses that id for idempotent session membership.
 - Trainer completion is now finalized server-side through `/api/mayak/completions/finalize`, which stores canonical certificate/log/analytics files in MAYAK storage.
 - Personal-cabinet MAYAK history now reads from `/api/mayak/my-history` and downloads canonical artifacts through `/api/mayak/my-history/[runId]/file`.

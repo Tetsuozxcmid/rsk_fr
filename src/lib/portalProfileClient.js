@@ -1,8 +1,30 @@
 let portalProfileCache = undefined;
 let portalProfileRequestPromise = null;
+const PROFILE_NOT_FOUND_ERROR_CODE = "PROFILE_NOT_FOUND";
 
 function canUseBrowser() {
     return typeof window !== "undefined";
+}
+
+function createMissingPortalProfilePayload() {
+    return {
+        success: true,
+        data: {
+            __portalProfileMissing: true,
+        },
+    };
+}
+
+function isProfileMissingResponse(response, payload) {
+    if (Number(response?.status) !== 404) {
+        return false;
+    }
+
+    if (payload?.errorCode === PROFILE_NOT_FOUND_ERROR_CODE) {
+        return true;
+    }
+
+    return /profile not found/i.test(String(payload?.error || ""));
 }
 
 export function hasResolvedPortalProfileCache() {
@@ -16,6 +38,10 @@ export function getCachedPortalProfilePayload() {
 export function primePortalProfileCache(payload) {
     portalProfileCache = payload || null;
     return portalProfileCache;
+}
+
+export function isMissingPortalProfilePayload(payload) {
+    return Boolean(payload?.data?.__portalProfileMissing);
 }
 
 export function invalidatePortalProfileCache() {
@@ -49,7 +75,13 @@ export async function fetchPortalProfileClient({ force = false } = {}) {
                     return null;
                 }
 
-                const error = new Error(payload?.error || "Не удалось загрузить профиль портала.");
+                if (isProfileMissingResponse(response, payload)) {
+                    const missingPayload = createMissingPortalProfilePayload();
+                    portalProfileCache = missingPayload;
+                    return missingPayload;
+                }
+
+                const error = new Error(payload?.error || "Failed to load portal profile.");
                 error.status = response.status;
                 error.payload = payload;
                 throw error;

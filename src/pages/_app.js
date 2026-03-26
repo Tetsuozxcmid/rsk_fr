@@ -30,10 +30,12 @@ export default function App({ Component, pageProps }) {
 
                 primePortalProfileCache(payload);
                 const userInfo = {
-                    email: payload.data.email,
-                    username: payload.data.NameIRL,
+                    email: payload?.data?.email,
+                    username: payload?.data?.NameIRL,
                 };
-                await saveUserData(userInfo);
+                if (userInfo.email || userInfo.username) {
+                    await saveUserData(userInfo);
+                }
 
                 const nextPath = consumePortalAuthReturnPath();
                 if (nextPath && router.asPath !== nextPath) {

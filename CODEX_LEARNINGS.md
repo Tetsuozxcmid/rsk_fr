@@ -27,6 +27,13 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: add narrow ignore rules for confirmed local/runtime-only paths, and when a new `data/` artifact appears unexpectedly, pause and ask whether it should be added to `.gitignore` instead of assuming it belongs in git.
 - Prevention: when `git status` shows new MAYAK runtime data or uploaded files that do not look like source assets, do not stage them by default; ask whether to ignore that path permanently.
 
+### 2026-03-26 - Portal `Profile not found` must be treated as profile-completion state, not an auth crash
+
+- Problem: MAYAK could throw a runtime error after successful portal auth because `/api/profile/info` returned `Profile not found`.
+- Root cause: the client treated all non-`401/403` profile responses as fatal even though `404 Profile not found` means the portal session exists but the user has no saved profile record yet.
+- Fix: tag this backend case explicitly (`PROFILE_NOT_FOUND`), synthesize a client-side missing-profile payload, and route MAYAK settings into `PortalProfileEditor` so the user can complete the profile instead of crashing.
+- Prevention: in MAYAK portal-auth flows, distinguish missing profile data from missing auth; a profile-creation/completion step is a recoverable state, not a runtime exception.
+
 ### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
 
 - Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.
