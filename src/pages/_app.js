@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/router";
 
 import { saveUserData } from "@/utils/auth";
-import { consumePortalAuthReturnPath, getPortalAuthReturnPath } from "@/lib/portalAuthReturn";
+import { clearPortalAuthReturnPath, consumePortalAuthReturnPath, getPortalAuthReturnPath } from "@/lib/portalAuthReturn";
 import { fetchPortalProfileClient, primePortalProfileCache } from "@/lib/portalProfileClient";
 
 export default function App({ Component, pageProps }) {
@@ -24,6 +24,7 @@ export default function App({ Component, pageProps }) {
             try {
                 const payload = await fetchPortalProfileClient({ force: true });
                 if (!payload) {
+                    clearPortalAuthReturnPath();
                     return;
                 }
 
@@ -39,6 +40,7 @@ export default function App({ Component, pageProps }) {
                     router.replace(nextPath);
                 }
             } catch (error) {
+                clearPortalAuthReturnPath();
                 console.error("App: Error syncing session:", error);
             }
         };

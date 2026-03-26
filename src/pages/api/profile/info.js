@@ -1,42 +1,26 @@
+import { fetchPortalProfileFromRequest, PortalProfileRequestError } from "@/lib/portalProfileServer";
+
 export default async function ProfileInfoHandler(req, res) {
+    if (req.method !== "GET") {
+        return res.status(405).json({ success: false, error: "Method not allowed" });
+    }
+
     try {
-        const cookieToken = req.cookies.users_access_token || req.cookies.access_token || req.cookies.token;
-        const authHeader = req.headers.authorization;
-
-        if (!cookieToken && !authHeader) {
-            return res.status(401).json({ success: false, error: "No token provided" });
-        }
-
-        const headers = {
-            "Content-Type": "application/json",
-            Cookie: req.headers.cookie || "",
-        };
-
-        if (cookieToken) {
-            headers.Authorization = `Bearer ${cookieToken}`;
-        }
-
-        if (authHeader) {
-            headers.Authorization = authHeader;
-        }
-
-        const responseInfo = await fetch("https://api.rosdk.ru/users/profile_interaction/get_my_profile/", {
-            method: "GET",
-            headers,
-        });
-
-        if (!responseInfo.ok) {
-            console.error("Profile API: Backend error:", responseInfo.status);
-            return res.status(responseInfo.status).json({
+        const { payload } = await fetchPortalProfileFromRequest(req);
+        return res.status(200).json({ success: true, data: payload });
+    } catch (error) {
+        if (error instanceof PortalProfileRequestError) {
+            return res.status(error.status || 500).json({
                 success: false,
-                error: "Failed to fetch profile from backend",
+                error: error.message,
+                details: error.payload || null,
             });
         }
 
-        const data = await responseInfo.json();
-        return res.json({ success: true, data });
-    } catch (err) {
-        console.error("Profile API: Internal error:", err);
-        return res.status(500).json({ success: false, error: err.message });
+        console.error("Profile API: Internal error:", error);
+        return res.status(500).json({
+            success: false,
+            error: error.message || "Failed to fetch portal profile",
+        });
     }
 }

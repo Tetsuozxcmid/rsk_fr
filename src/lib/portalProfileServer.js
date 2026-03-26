@@ -8,18 +8,28 @@ export class PortalProfileRequestError extends Error {
     }
 }
 
+function parsePortalResponsePayload(text) {
+    if (!text) {
+        return {};
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { raw: text };
+    }
+}
+
 function buildPortalHeaders(req) {
-    const cookieToken = req.cookies?.users_access_token || req.cookies?.access_token || req.cookies?.token || "";
-    const authHeader = req.headers.authorization || "";
+    const cookieToken = String(req.cookies?.users_access_token || "").trim();
+    const authHeader = String(req.headers.authorization || "").trim();
     const headers = {
-        "Content-Type": "application/json",
-        Cookie: req.headers.cookie || "",
+        Accept: "application/json",
     };
 
     if (cookieToken) {
-        headers.Authorization = `Bearer ${cookieToken}`;
-    }
-    if (authHeader) {
+        headers.Cookie = `users_access_token=${cookieToken}`;
+    } else if (authHeader) {
         headers.Authorization = authHeader;
     }
 
@@ -42,10 +52,16 @@ export async function fetchPortalProfileFromRequest(req) {
         cache: "no-store",
     });
 
-    const payload = await response.json().catch(() => ({}));
+    const responseText = await response.text();
+    const payload = parsePortalResponsePayload(responseText);
 
     if (!response.ok) {
-        throw new PortalProfileRequestError(payload?.detail || payload?.error || "Failed to fetch portal profile", response.status || 500);
+        const error = new PortalProfileRequestError(
+            payload?.detail || payload?.error || payload?.message || payload?.raw || "Failed to fetch portal profile",
+            response.status || 500
+        );
+        error.payload = payload;
+        throw error;
     }
 
     return {

@@ -13,6 +13,20 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-26 - MAYAK portal OAuth return flags must be one-shot and profile proxies must forward only portal auth
+
+- Problem: MAYAK could surface a generic `Failed to fetch profile from backend` runtime error long after a portal auth attempt, and the same error kept repeating on later page opens.
+- Root cause: `_app.js` retried portal-profile bootstrap while `mayak_portal_return_path` stayed in `localStorage`, and `/api/profile/info` masked the upstream response while forwarding extra non-portal auth/cookies into the portal profile endpoint.
+- Fix: consume or clear the MAYAK portal return flag after a failed bootstrap, route `/api/profile/info` through the shared portal profile helper, and forward only the real `users_access_token` cookie plus the upstream error detail/status.
+- Prevention: when MAYAK stores auth-return state in browser storage, treat it as single-use state and do not proxy unrelated cookies or fallback tokens into portal profile requests.
+
+### 2026-03-26 - Local MAYAK runtime data under `data/` should trigger a `.gitignore` check before commit
+
+- Problem: generated MAYAK onboarding runtime files and uploads can appear in `git status` as accidental untracked changes and then get bundled into unrelated commits.
+- Root cause: server-managed JSON/files under `data/` are easy to create during local testing, but not every runtime path was covered by `.gitignore`.
+- Fix: add narrow ignore rules for confirmed local/runtime-only paths, and when a new `data/` artifact appears unexpectedly, pause and ask whether it should be added to `.gitignore` instead of assuming it belongs in git.
+- Prevention: when `git status` shows new MAYAK runtime data or uploaded files that do not look like source assets, do not stage them by default; ask whether to ignore that path permanently.
+
 ### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
 
 - Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.

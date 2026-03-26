@@ -124,7 +124,7 @@ export default function PortalAuthFlow({
 
             return payload;
         } catch (error) {
-            if (silentUnauthorized && (error?.status === 401 || error?.status === 403)) {
+            if (silentUnauthorized) {
                 return null;
             }
             alert(error?.message || "Не удалось загрузить профиль портала.");
