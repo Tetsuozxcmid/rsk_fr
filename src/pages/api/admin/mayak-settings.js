@@ -69,18 +69,11 @@ export default async function handler(req, res) {
 
         const settings = await readMayakSettings();
         let botRestarted = false;
+        const shouldRestartBot = telegramBotToken !== undefined || telegramWebhookUrl !== undefined;
 
         if (telegramBotToken !== undefined) {
             settings.telegramBotToken = telegramBotToken;
             process.env.TELEGRAM_BOT_TOKEN = telegramBotToken;
-
-            try {
-                const { restartBot } = await import("../../../lib/telegramBot.js");
-                await restartBot();
-                botRestarted = true;
-            } catch (err) {
-                console.error("[Settings] Ошибка перезапуска бота:", err.message);
-            }
         }
 
         if (openrouterApiKey !== undefined) {
@@ -141,6 +134,16 @@ export default async function handler(req, res) {
         }
 
         await writeMayakSettings(settings);
+
+        if (shouldRestartBot) {
+            try {
+                const { restartBot } = await import("../../../lib/telegramBot.js");
+                await restartBot();
+                botRestarted = true;
+            } catch (err) {
+                console.error("[Settings] Ошибка перезапуска бота:", err.message);
+            }
+        }
 
         return res.status(200).json({
             success: true,

@@ -64,6 +64,7 @@ data/tokenRequests.json
 data/mayak-settings.json
 data/mayak-onboarding-links.json
 data/mayak-onboarding-submissions.json
+data/.mayak-onboarding-*.tmp
 data/mayak-onboarding-survey-responses.json
 data/mayak-onboarding-files/submissions/
 public/prep-uploads/

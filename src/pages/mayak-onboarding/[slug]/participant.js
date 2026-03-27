@@ -268,12 +268,6 @@ export default function MayakOnboardingParticipantPage() {
                             />
                         </div>
 
-                        {participantLaptopType ? (
-                            <div className="mt-5 rounded-[1.35rem] border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm leading-7 text-stone-700">
-                                Независимо от того, чей ноутбук будет использоваться на сессии, отметьте ниже характеристики устройства и готовность сервисов.
-                            </div>
-                        ) : null}
-
                         {participantLaptopType && laptopItems.length > 0 ? (
                             <div className="mt-6 space-y-3">
                                 {laptopItems.map((item) => (

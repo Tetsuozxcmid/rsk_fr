@@ -32,7 +32,11 @@ export function getSubmissionStorageKey(slug, kind) {
     return `mayak_onboarding_submission:${slug}:${kind}`;
 }
 
-export function getSurveyResponseStorageKey(slug) {
+export function getQuestionnaireCompletionStorageKey(slug) {
+    return `mayak_onboarding_questionnaire:${slug}`;
+}
+
+export function getLegacySurveyResponseStorageKey(slug) {
     return `mayak_onboarding_survey:${slug}`;
 }
 
@@ -67,30 +71,6 @@ export async function getOnboardingLink(slug) {
 
 export async function getChecklistConfig() {
     return parseJson(await fetch("/api/mayak/onboarding-config"));
-}
-
-export async function createOnboardingSurveyResponse(payload) {
-    return parseJson(
-        await fetch("/api/mayak/onboarding-survey-responses", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-    );
-}
-
-export async function getOnboardingSurveyResponse(id) {
-    return parseJson(await fetch(`/api/mayak/onboarding-survey-responses/${encodeURIComponent(id)}`));
-}
-
-export async function updateOnboardingSurveyResponse(id, payload) {
-    return parseJson(
-        await fetch(`/api/mayak/onboarding-survey-responses/${encodeURIComponent(id)}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        })
-    );
 }
 
 export async function startOnboarding(payload) {
@@ -142,19 +122,6 @@ export async function uploadOnboardingPhoto(payload) {
 
 export async function getAdminDashboard() {
     return parseJson(await fetch("/api/admin/mayak-onboarding/dashboard"));
-}
-
-export async function getAdminSurveyResponses(linkId = "") {
-    const query = linkId ? `?linkId=${encodeURIComponent(linkId)}` : "";
-    return parseJson(await fetch(`/api/admin/mayak-onboarding/survey-responses${query}`));
-}
-
-export function getAdminSurveyExportUrl(linkId = "", format = "json") {
-    const params = new URLSearchParams({ format: String(format || "json") });
-    if (linkId) {
-        params.set("linkId", String(linkId));
-    }
-    return `/api/admin/mayak-onboarding/survey-responses/export?${params.toString()}`;
 }
 
 export async function getAdminChecklistConfig() {

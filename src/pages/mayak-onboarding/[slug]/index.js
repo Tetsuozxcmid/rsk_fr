@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import OrganizerHelp from "@/components/mayak-onboarding/OrganizerHelp";
 import { ActionButton, OnboardingShell } from "@/components/mayak-onboarding/MayakOnboardingLayout";
-import { createOnboardingSurveyResponse, getChecklistConfig, getOnboardingLink, getOnboardingSurveyResponse, getSurveyResponseStorageKey, updateOnboardingSurveyResponse } from "@/lib/mayakOnboardingClient";
-import { getSurveyQuestions, validateSurveyAnswers } from "@/lib/mayakOnboardingSurvey";
+import QuestionnaireQrCode from "@/components/mayak-onboarding/QuestionnaireQrCode";
+import { formatOnboardingDate, getChecklistConfig, getLegacySurveyResponseStorageKey, getOnboardingLink, getQuestionnaireCompletionStorageKey } from "@/lib/mayakOnboardingClient";
+import { isMayakOnboardingQuestionnaireUrlConfigured } from "@/lib/mayakOnboardingQuestionnaire";
 
 function RoleCard({ href, badge, title, text, cta, tone = "participant" }) {
     const pillClassName = tone === "tech" ? "border-sky-200 bg-sky-50 text-sky-800" : "border-amber-200 bg-amber-50 text-amber-800";
@@ -26,64 +27,7 @@ function RoleCard({ href, badge, title, text, cta, tone = "participant" }) {
     );
 }
 
-function SurveySingleChoiceQuestion({ question, value, onChange, error }) {
-    return (
-        <div className={`rounded-[1.5rem] border p-5 ${error ? "border-red-300 bg-red-50/70" : "border-stone-200 bg-white"}`}>
-            <div className="text-lg font-bold text-stone-950">{question.title}</div>
-            {question.description ? <div className="mt-2 text-sm leading-6 text-stone-500">{question.description}</div> : null}
-            <div className="mt-4 space-y-3">
-                {(question.options || []).map((option) => {
-                    const checked = value === option.id;
-                    return (
-                        <label key={option.id} className={`flex cursor-pointer items-start gap-3 rounded-[1.2rem] border px-4 py-4 transition ${checked ? "border-stone-950 bg-stone-50" : "border-stone-200 hover:border-stone-300"}`}>
-                            <input type="radio" className="mt-1 h-4 w-4 accent-stone-950" checked={checked} onChange={() => onChange(option.id)} />
-                            <span className="text-sm leading-6 text-stone-700">{option.label}</span>
-                        </label>
-                    );
-                })}
-            </div>
-            {error ? <div className="mt-3 text-sm font-medium text-red-600">{error}</div> : null}
-        </div>
-    );
-}
-
-function SurveyMatrixQuestion({ question, value, onChange, error }) {
-    return (
-        <div className={`rounded-[1.5rem] border p-5 ${error ? "border-red-300 bg-red-50/70" : "border-stone-200 bg-white"}`}>
-            <div className="text-lg font-bold text-stone-950">{question.title}</div>
-            {question.description ? <div className="mt-2 text-sm leading-6 text-stone-500">{question.description}</div> : null}
-            <div className="mt-4 overflow-x-auto">
-                <div className="min-w-[720px] rounded-[1.2rem] border border-stone-200">
-                    <div className="grid grid-cols-[minmax(260px,1fr)_repeat(5,72px)] border-b border-stone-200 bg-stone-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                        <div>Утверждение</div>
-                        {[1, 2, 3, 4, 5].map((column) => (
-                            <div key={column} className="text-center">
-                                {column}
-                            </div>
-                        ))}
-                    </div>
-                    {(question.rows || []).map((row, rowIndex) => (
-                        <div key={row.id} className={`grid grid-cols-[minmax(260px,1fr)_repeat(5,72px)] items-center px-4 py-4 ${rowIndex !== (question.rows || []).length - 1 ? "border-b border-stone-200" : ""}`}>
-                            <div className="pr-4 text-sm leading-6 text-stone-700">{row.label}</div>
-                            {[1, 2, 3, 4, 5].map((column) => (
-                                <label key={column} className="flex justify-center">
-                                    <input type="radio" className="h-4 w-4 accent-stone-950" checked={Number(value?.[row.id]) === column} onChange={() => onChange(row.id, column)} />
-                                </label>
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-4 text-xs text-stone-500">
-                {question.minLabel ? <span>{question.minLabel}</span> : null}
-                {question.maxLabel ? <span>{question.maxLabel}</span> : null}
-            </div>
-            {error ? <div className="mt-3 text-sm font-medium text-red-600">{error}</div> : null}
-        </div>
-    );
-}
-
-function SurveySummaryTable({ title, items, emptyText, showPhotos = false }) {
+function OnboardingSummaryTable({ title, items, emptyText, showPhotos = false }) {
     return (
         <div className="rounded-[1.5rem] border border-stone-200 bg-white p-5 shadow-[0_12px_30px_rgba(28,25,23,0.05)]">
             <div className="text-lg font-black text-stone-950">{title}</div>
@@ -112,16 +56,6 @@ function SurveySummaryTable({ title, items, emptyText, showPhotos = false }) {
     );
 }
 
-function scrollToSurveyQuestion(questionId) {
-    if (typeof window === "undefined" || !questionId) return;
-    window.requestAnimationFrame(() => {
-        const element = document.getElementById(`survey-question-${questionId}`);
-        if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-    });
-}
-
 function pluralizeRu(count, one, few, many) {
     const mod10 = count % 10;
     const mod100 = count % 100;
@@ -135,102 +69,56 @@ export default function MayakOnboardingIndexPage() {
     const [link, setLink] = useState(null);
     const [summary, setSummary] = useState(null);
     const [config, setConfig] = useState(null);
-    const [surveyResponseId, setSurveyResponseId] = useState("");
-    const [surveyAnswers, setSurveyAnswers] = useState({});
-    const [surveyErrors, setSurveyErrors] = useState({});
-    const [surveyCompleted, setSurveyCompleted] = useState(false);
+    const [questionnaireCompleted, setQuestionnaireCompleted] = useState(false);
     const [error, setError] = useState("");
-    const [submitting, setSubmitting] = useState(false);
     const [showHelp, setShowHelp] = useState(false);
     const slug = typeof router.query.slug === "string" ? router.query.slug : "";
-    const survey = config?.survey || null;
-    const surveyStorageKey = slug ? getSurveyResponseStorageKey(slug) : "";
+    const questionnaire = config?.questionnaire || null;
+    const questionnaireStorageKey = slug ? getQuestionnaireCompletionStorageKey(slug) : "";
+    const legacySurveyStorageKey = slug ? getLegacySurveyResponseStorageKey(slug) : "";
+    const questionnaireUrl = questionnaire?.formUrl || "";
+    const hasQuestionnaireUrl = isMayakOnboardingQuestionnaireUrlConfigured(questionnaireUrl);
+    const dateLabel = link?.eventDate ? (link.endDate && link.endDate !== link.eventDate ? `${formatOnboardingDate(link.eventDate)} - ${formatOnboardingDate(link.endDate)}` : formatOnboardingDate(link.eventDate)) : "";
+    const heroMeta = [link?.title, dateLabel].filter(Boolean).join(" • ");
 
     useEffect(() => {
         if (!router.isReady || !slug) return;
 
+        let cancelled = false;
+
         (async () => {
             try {
                 const [linkResponse, configResponse] = await Promise.all([getOnboardingLink(slug), getChecklistConfig()]);
+                if (cancelled) return;
+
                 setLink(linkResponse.link);
                 setSummary(linkResponse.summary || null);
                 setConfig(configResponse.config);
                 setError("");
 
-                if (typeof window === "undefined") return;
-                const storedResponseId = localStorage.getItem(surveyStorageKey);
-                if (!storedResponseId) return;
-
-                try {
-                    const responseData = await getOnboardingSurveyResponse(storedResponseId);
-                    const response = responseData.response;
-                    if (!response) {
-                        localStorage.removeItem(surveyStorageKey);
-                        return;
-                    }
-
-                    setSurveyResponseId(response.id || "");
-                    setSurveyAnswers(response.answers || {});
-                    setSurveyCompleted(Boolean(response.completedAt));
-                } catch {
-                    localStorage.removeItem(surveyStorageKey);
+                if (typeof window !== "undefined") {
+                    const hasCompletionMarker = Boolean(localStorage.getItem(questionnaireStorageKey) || localStorage.getItem(legacySurveyStorageKey));
+                    setQuestionnaireCompleted(hasCompletionMarker);
                 }
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Ссылка недоступна.");
+                if (!cancelled) {
+                    setError(err instanceof Error ? err.message : "Ссылка недоступна.");
+                }
             }
         })();
-    }, [router.isReady, slug, surveyStorageKey]);
 
-    const validation = useMemo(() => (survey ? validateSurveyAnswers(survey, surveyAnswers) : { valid: false, errors: {} }), [survey, surveyAnswers]);
-    const dateLabel = link?.eventDate ? (link.endDate && link.endDate !== link.eventDate ? `${link.eventDate} - ${link.endDate}` : link.eventDate) : "";
-    const heroMeta = [link?.title, dateLabel].filter(Boolean).join(" • ");
-    const visibleQuestions = useMemo(() => getSurveyQuestions(survey || {}), [survey]);
+        return () => {
+            cancelled = true;
+        };
+    }, [legacySurveyStorageKey, questionnaireStorageKey, router.isReady, slug]);
 
-    const handleSingleChoiceAnswer = (questionId, value) => {
-        setSurveyAnswers((current) => ({ ...current, [questionId]: value }));
-        setSurveyErrors((current) => ({ ...current, [questionId]: null }));
-    };
+    const handleStartQuestionnaire = () => {
+        if (!hasQuestionnaireUrl || typeof window === "undefined") return;
 
-    const handleMatrixAnswer = (questionId, rowId, value) => {
-        setSurveyAnswers((current) => ({
-            ...current,
-            [questionId]: {
-                ...(current?.[questionId] && typeof current[questionId] === "object" ? current[questionId] : {}),
-                [rowId]: value,
-            },
-        }));
-        setSurveyErrors((current) => ({ ...current, [questionId]: null }));
-    };
-
-    const handleSubmitSurvey = async () => {
-        if (!survey || !slug) return;
-        const nextValidation = validateSurveyAnswers(survey, surveyAnswers);
-        if (!nextValidation.valid) {
-            setSurveyErrors(nextValidation.errors);
-            const firstInvalidQuestion = visibleQuestions.find((question) => nextValidation.errors?.[question.id]);
-            scrollToSurveyQuestion(firstInvalidQuestion?.id);
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            const payload = { answers: nextValidation.answers, completed: true };
-            const responseData = surveyResponseId ? await updateOnboardingSurveyResponse(surveyResponseId, payload) : await createOnboardingSurveyResponse({ slug, ...payload });
-            const response = responseData.response;
-
-            setSurveyResponseId(response.id);
-            setSurveyAnswers(response.answers || nextValidation.answers);
-            setSurveyCompleted(Boolean(response.completedAt));
-            setSurveyErrors({});
-            setError("");
-            if (typeof window !== "undefined") {
-                localStorage.setItem(surveyStorageKey, response.id);
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Не удалось сохранить анкету.");
-        } finally {
-            setSubmitting(false);
-        }
+        window.open(questionnaireUrl, "_blank", "noopener,noreferrer");
+        localStorage.setItem(questionnaireStorageKey, "done");
+        setQuestionnaireCompleted(true);
+        setError("");
     };
 
     const baseClassName = "flex min-h-screen items-center justify-center bg-[#f8f8f6] px-4";
@@ -251,63 +139,42 @@ export default function MayakOnboardingIndexPage() {
         );
     }
 
-    if (!link || !config) return null;
+    if (!link || !config || !questionnaire) return null;
 
     return (
         <>
             <OnboardingShell
                 badge="Подготовка к сессии"
-                title={surveyCompleted ? link.title : survey?.title || link.title}
-                subtitle={surveyCompleted ? "Выберите нужный поток подготовки. Ниже видна текущая сводка по участникам и технической подготовке." : survey?.description || "Сначала заполните обязательную анкету."}
+                title={questionnaireCompleted ? link.title : questionnaire.title || link.title}
+                subtitle={
+                    questionnaireCompleted
+                        ? "Выберите нужный поток подготовки. Ниже видна текущая сводка по участникам и технической подготовке."
+                        : questionnaire.description || "Перед онбордингом пройдите анкету диагностики цифровой трансформации."
+                }
                 meta={heroMeta}>
                 {error ? <div className="rounded-[1rem] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#b91c1c]">{error}</div> : null}
 
-                {!surveyCompleted ? (
+                {!questionnaireCompleted ? (
                     <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-[0_12px_30px_rgba(28,25,23,0.05)] md:p-7">
-                        <div className="space-y-8">
-                            {(survey?.sections || []).map((section) => (
-                                <div key={section.id} className="space-y-4">
-                                    <div>
-                                        <div className="text-[1.4rem] font-black text-stone-950">{section.title}</div>
-                                        {section.description ? <div className="mt-2 text-sm leading-7 text-stone-500">{section.description}</div> : null}
+                        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_220px] lg:items-center">
+                            <div className="space-y-5">
+                                <div className="rounded-[1.5rem] border border-stone-200 bg-stone-50 p-5">
+                                    <div className="text-sm leading-7 text-stone-600">
+                                        Перед онбордингом пройдите анкету диагностики цифровой трансформации.
                                     </div>
-                                    {(section.questions || []).map((question) => (
-                                        <div key={question.id} id={`survey-question-${question.id}`}>
-                                            {question.type === "matrix_1_5" ? (
-                                                <SurveyMatrixQuestion
-                                                    question={question}
-                                                    value={surveyAnswers?.[question.id]}
-                                                    error={surveyErrors?.[question.id]?.message}
-                                                    onChange={(rowId, value) => handleMatrixAnswer(question.id, rowId, value)}
-                                                />
-                                            ) : (
-                                                <SurveySingleChoiceQuestion
-                                                    question={question}
-                                                    value={surveyAnswers?.[question.id] || ""}
-                                                    error={surveyErrors?.[question.id]?.message}
-                                                    onChange={(value) => handleSingleChoiceAnswer(question.id, value)}
-                                                />
-                                            )}
-                                        </div>
-                                    ))}
                                 </div>
-                            ))}
-                        </div>
 
-                        <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[1.5rem] border border-stone-200 bg-stone-50 px-5 py-4">
-                            <div className="text-sm text-stone-600">{`Заполнено вопросов: ${
-                                Object.keys(validation.answers || {}).filter((questionId) => {
-                                    const question = visibleQuestions.find((item) => item.id === questionId);
-                                    if (!question) return false;
-                                    if (question.type === "matrix_1_5") {
-                                        return Object.keys(validation.answers?.[questionId] || {}).length === (question.rows || []).length;
-                                    }
-                                    return Boolean(validation.answers?.[questionId]);
-                                }).length
-                            } из ${visibleQuestions.length}`}</div>
-                            <ActionButton onClick={handleSubmitSurvey} disabled={submitting}>
-                                {submitting ? "Сохраняем..." : survey?.submitLabel || "Отправить анкету"}
-                            </ActionButton>
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <ActionButton onClick={handleStartQuestionnaire} disabled={!hasQuestionnaireUrl}>
+                                        {questionnaire.buttonLabel || "Пройти анкетирование"}
+                                    </ActionButton>
+                                    <span className="text-sm leading-6 text-stone-500">{questionnaire.returnText}</span>
+                                </div>
+
+                                {!hasQuestionnaireUrl ? <div className="text-sm font-medium text-[#b91c1c]">Ссылка на анкетирование пока не настроена. Обратитесь к администратору.</div> : null}
+                            </div>
+
+                            <QuestionnaireQrCode value={questionnaireUrl} size={200} emptyText="QR-код появится после настройки ссылки." />
                         </div>
                     </section>
                 ) : (
@@ -342,8 +209,13 @@ export default function MayakOnboardingIndexPage() {
                             </div>
 
                             <div className="grid gap-4 xl:grid-cols-2">
-                                <SurveySummaryTable title="Участники" items={summary?.participants || []} emptyText="Пока никто не начал или не завершил подготовку участника." />
-                                <SurveySummaryTable title={(summary?.techCount || 0) === 1 ? "Техспециалист" : "Техспециалисты"} items={summary?.tech || []} emptyText="Пока техспециалист не начал или не завершил техническую подготовку." showPhotos />
+                                <OnboardingSummaryTable title="Участники" items={summary?.participants || []} emptyText="Пока никто не начал или не завершил подготовку участника." />
+                                <OnboardingSummaryTable
+                                    title={(summary?.techCount || 0) === 1 ? "Техспециалист" : "Техспециалисты"}
+                                    items={summary?.tech || []}
+                                    emptyText="Пока техспециалист не начал или не завершил техническую подготовку."
+                                    showPhotos
+                                />
                             </div>
 
                             {(summary?.tech || []).some((item) => Array.isArray(item.photos) && item.photos.length > 0) ? (

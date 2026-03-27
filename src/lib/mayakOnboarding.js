@@ -7,13 +7,11 @@ import {
     writeOnboardingLinks,
     readOnboardingSubmissions,
     writeOnboardingSubmissions,
-    readOnboardingSurveyResponses,
-    writeOnboardingSurveyResponses,
     writeOnboardingFile,
     removeOnboardingDir,
 } from "./mayakOnboardingStorage.js";
 import { getOnboardingSubmissionProgress, getStructuredChecklistItems as getProgressStructuredChecklistItems } from "./mayakOnboardingProgress.js";
-import { DEFAULT_MAYAK_ONBOARDING_SURVEY, getSurveyResponseEntries, normalizeMayakOnboardingSurvey, normalizeSurveyAnswers, validateSurveyAnswers } from "./mayakOnboardingSurvey.js";
+import { normalizeMayakOnboardingQuestionnaire } from "./mayakOnboardingQuestionnaire.js";
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -24,6 +22,7 @@ function normalizeChecklistSection(section = {}, prefix = "section", index = 0) 
     const requirePhoto = Boolean(section.requirePhoto);
     const parsedMinPhotos = Number.parseInt(String(section.minPhotos ?? section.requiredPhotoCount ?? ""), 10);
     const minPhotos = requirePhoto ? Math.max(Number.isFinite(parsedMinPhotos) ? parsedMinPhotos : 1, 1) : 0;
+
     return {
         id,
         title: String(section.title || "").trim(),
@@ -85,7 +84,7 @@ export function normalizeChecklistConfig(rawConfig = {}) {
                   }
                 : section
         ),
-        survey: normalizeMayakOnboardingSurvey(rawConfig.survey || DEFAULT_MAYAK_ONBOARDING_SURVEY),
+        questionnaire: normalizeMayakOnboardingQuestionnaire(rawConfig.questionnaire || {}, rawConfig.survey || {}),
     };
 }
 
@@ -154,19 +153,6 @@ function normalizeLink(link = {}) {
     };
 }
 
-function normalizeSurveyResponse(response = {}) {
-    const schemaSnapshot = normalizeMayakOnboardingSurvey(response?.schemaSnapshot || DEFAULT_MAYAK_ONBOARDING_SURVEY);
-    return {
-        id: String(response.id || ""),
-        linkId: String(response.linkId || ""),
-        answers: normalizeSurveyAnswers(schemaSnapshot, response.answers || {}),
-        schemaSnapshot,
-        createdAt: response.createdAt || null,
-        updatedAt: response.updatedAt || null,
-        completedAt: response.completedAt || null,
-    };
-}
-
 function decorateSubmission(config, submission, { includeContact = true } = {}) {
     const progress = getOnboardingSubmissionProgress(config, submission);
     return {
@@ -214,7 +200,7 @@ function buildPublicSummary(config, submissions = []) {
     };
 }
 
-function validateSurveyLink(link) {
+function validateActiveLink(link) {
     if (!link || link.status !== "active") {
         throw new Error("Ссылка онбординга не найдена");
     }
@@ -263,10 +249,6 @@ export async function createMayakOnboardingLink(payload = {}) {
     }
 
     const endDate = String(payload.endDate || "").trim();
-    if (!endDate && false /* single-day onboarding keeps endDate optional */) {
-        throw new Error("Укажите дату окончания");
-    }
-
     if (endDate && endDate < eventDate) {
         throw new Error("Дата окончания не может быть раньше даты начала");
     }
@@ -298,7 +280,6 @@ export async function createMayakOnboardingLink(payload = {}) {
 export async function deleteMayakOnboardingLink(linkId) {
     const links = await listMayakOnboardingLinks();
     const submissions = (await readOnboardingSubmissions()).map(normalizeSubmission);
-    const surveyResponses = (await readOnboardingSurveyResponses()).map(normalizeSurveyResponse);
     const target = links.find((link) => link.id === linkId);
     if (!target) {
         throw new Error("Ссылка не найдена");
@@ -307,11 +288,9 @@ export async function deleteMayakOnboardingLink(linkId) {
     const remainingLinks = links.filter((link) => link.id !== linkId);
     const removedSubmissions = submissions.filter((submission) => submission.linkId === linkId);
     const remainingSubmissions = submissions.filter((submission) => submission.linkId !== linkId);
-    const remainingSurveyResponses = surveyResponses.filter((response) => response.linkId !== linkId);
 
     await writeOnboardingLinks(remainingLinks);
     await writeOnboardingSubmissions(remainingSubmissions);
-    await writeOnboardingSurveyResponses(remainingSurveyResponses);
     await removeOnboardingDir("links", linkId);
     await Promise.all(removedSubmissions.map((submission) => removeOnboardingDir("submissions", submission.id)));
     return target;
@@ -319,7 +298,7 @@ export async function deleteMayakOnboardingLink(linkId) {
 
 export async function createMayakOnboardingSubmission({ slug, kind, name, contact = "" }) {
     const link = await getMayakOnboardingLinkBySlug(slug);
-    validateSurveyLink(link);
+    validateActiveLink(link);
 
     const trimmedName = String(name || "").trim();
     if (!trimmedName) {
@@ -374,109 +353,15 @@ export async function updateMayakOnboardingSubmission(submissionId, payload = {}
     return nextSubmission;
 }
 
-export async function createMayakOnboardingSurveyResponse({ slug, answers = {}, completed = true } = {}) {
-    const link = await getMayakOnboardingLinkBySlug(slug);
-    validateSurveyLink(link);
-
-    const config = await getMayakOnboardingConfig();
-    const schemaSnapshot = normalizeMayakOnboardingSurvey(config.survey || DEFAULT_MAYAK_ONBOARDING_SURVEY);
-    const validation = validateSurveyAnswers(schemaSnapshot, answers);
-    if (completed && !validation.valid) {
-        const firstError = Object.values(validation.errors)[0];
-        throw new Error(firstError?.message || "Заполните анкету полностью");
-    }
-
-    const timestamp = new Date().toISOString();
-    const responses = (await readOnboardingSurveyResponses()).map(normalizeSurveyResponse);
-    const nextResponse = normalizeSurveyResponse({
-        id: randomUUID(),
-        linkId: link.id,
-        answers: validation.answers,
-        schemaSnapshot,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-        completedAt: completed ? timestamp : null,
-    });
-
-    responses.push(nextResponse);
-    await writeOnboardingSurveyResponses(responses);
-    return nextResponse;
-}
-
-export async function listMayakOnboardingSurveyResponses({ linkId = "" } = {}) {
-    const responses = (await readOnboardingSurveyResponses()).map(normalizeSurveyResponse);
-    return responses.filter((response) => !linkId || response.linkId === linkId).sort((a, b) => String(b.completedAt || b.updatedAt || "").localeCompare(String(a.completedAt || a.updatedAt || "")));
-}
-
-export async function getMayakOnboardingSurveyResponse(responseId) {
-    const responses = (await readOnboardingSurveyResponses()).map(normalizeSurveyResponse);
-    return responses.find((response) => response.id === responseId) || null;
-}
-
-export async function updateMayakOnboardingSurveyResponse(responseId, payload = {}) {
-    const responses = (await readOnboardingSurveyResponses()).map(normalizeSurveyResponse);
-    const targetIndex = responses.findIndex((response) => response.id === responseId);
-    if (targetIndex === -1) {
-        throw new Error("Ответ анкеты не найден");
-    }
-
-    const current = responses[targetIndex];
-    const schemaSnapshot = normalizeMayakOnboardingSurvey(payload.schemaSnapshot || current.schemaSnapshot || DEFAULT_MAYAK_ONBOARDING_SURVEY);
-    const completed = payload.completedAt === null ? false : Boolean(payload.completed || payload.completedAt || current.completedAt);
-    const validation = validateSurveyAnswers(schemaSnapshot, payload.answers ?? current.answers ?? {});
-    if (completed && !validation.valid) {
-        const firstError = Object.values(validation.errors)[0];
-        throw new Error(firstError?.message || "Заполните анкету полностью");
-    }
-
-    const now = new Date().toISOString();
-    const nextCompletedAt = payload.completedAt === null ? null : payload.completedAt || (completed && current.completedAt ? current.completedAt : completed ? now : null);
-    const nextResponse = normalizeSurveyResponse({
-        ...current,
-        answers: validation.answers,
-        schemaSnapshot,
-        updatedAt: now,
-        completedAt: nextCompletedAt,
-    });
-
-    responses[targetIndex] = nextResponse;
-    await writeOnboardingSurveyResponses(responses);
-    return nextResponse;
-}
-
 export async function getMayakOnboardingLinkSummary(linkId) {
     const config = await getMayakOnboardingConfig();
     const submissions = (await readOnboardingSubmissions()).map(normalizeSubmission).filter((submission) => submission.linkId === linkId);
     return buildPublicSummary(config, submissions);
 }
 
-export async function getMayakOnboardingSurveyResults(linkId = "") {
-    const [responses, links] = await Promise.all([listMayakOnboardingSurveyResponses({ linkId }), listMayakOnboardingLinks()]);
-    const linkMap = new Map(links.map((link) => [link.id, link]));
-
-    return responses.map((response) => {
-        const link = linkMap.get(response.linkId) || null;
-        return {
-            ...clone(response),
-            link: link
-                ? {
-                      id: link.id,
-                      slug: link.slug,
-                      title: link.title,
-                      eventDate: link.eventDate,
-                      endDate: link.endDate,
-                  }
-                : null,
-            entries: getSurveyResponseEntries(response.schemaSnapshot, response.answers),
-        };
-    });
-}
-
 export async function getMayakOnboardingDashboard() {
-    const [links, config, submissions, surveyResponses] = await Promise.all([listMayakOnboardingLinks(), getMayakOnboardingConfig(), readOnboardingSubmissions(), readOnboardingSurveyResponses()]);
-
+    const [links, config, submissions] = await Promise.all([listMayakOnboardingLinks(), getMayakOnboardingConfig(), readOnboardingSubmissions()]);
     const normalizedSubmissions = submissions.map(normalizeSubmission);
-    const normalizedSurveyResponses = surveyResponses.map(normalizeSurveyResponse);
 
     return links.map((link) => {
         const linkSubmissions = normalizedSubmissions.filter((submission) => submission.linkId === link.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
@@ -489,7 +374,6 @@ export async function getMayakOnboardingDashboard() {
             techCount: summary.techCount,
             participantReady: summary.participantReady,
             techReady: summary.techReady,
-            surveyResponseCount: normalizedSurveyResponses.filter((response) => response.linkId === link.id).length,
             submissions: decoratedSubmissions.map(clone),
         };
     });

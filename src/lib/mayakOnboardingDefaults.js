@@ -1,4 +1,4 @@
-import { DEFAULT_MAYAK_ONBOARDING_SURVEY } from "./mayakOnboardingSurvey.js";
+import { DEFAULT_MAYAK_ONBOARDING_QUESTIONNAIRE } from "./mayakOnboardingQuestionnaire.js";
 
 export const DEFAULT_MAYAK_ONBOARDING_CONFIG = {
     organizer: {
@@ -152,5 +152,5 @@ export const DEFAULT_MAYAK_ONBOARDING_CONFIG = {
             items: [],
         },
     ],
-    survey: DEFAULT_MAYAK_ONBOARDING_SURVEY,
+    questionnaire: DEFAULT_MAYAK_ONBOARDING_QUESTIONNAIRE,
 };

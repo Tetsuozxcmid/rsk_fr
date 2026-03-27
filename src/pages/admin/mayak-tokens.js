@@ -240,7 +240,7 @@ export default function AdminMayakTokens() {
             telegramBotToken: { value: settingsTgToken, clear: () => setSettingsTgToken(""), emptyMsg: "Введите токен бота", successMsg: (d) => (d.botRestarted ? "Токен сохранён, бот перезапущен" : "Токен сохранён") },
             openrouterApiKey: { value: settingsOrKey, clear: () => setSettingsOrKey(""), emptyMsg: "Введите API-ключ", successMsg: () => "API-ключ сохранён" },
             telegramBotUsername: { value: settingsBotUsername, clear: () => setSettingsBotUsername(""), emptyMsg: "Введите username бота", successMsg: () => "Username бота сохранён" },
-            telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: () => "Webhook URL сохранён" },
+            telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: (d) => (d.botRestarted ? "Webhook URL сохранён, бот перезапущен" : "Webhook URL сохранён") },
             baseUrl: { value: settingsBaseUrl, clear: () => setSettingsBaseUrl(""), emptyMsg: null, successMsg: () => "Base URL сохранён" },
             qwenBackupToken: { value: settingsQwenBackupToken, clear: () => setSettingsQwenBackupToken(""), emptyMsg: null, successMsg: () => "Резервный токен сохранён" },
         };
@@ -865,7 +865,7 @@ export default function AdminMayakTokens() {
                                         </div>
                                         <div className="flex-1 min-w-[200px]">
                                             <label className="link small text-(--color-gray-black) block mb-[.25rem]">
-                                                Webhook URL (требует перезапуска сервера)
+                                                Webhook URL
                                                 {settingsInfo.telegramWebhookUrlIsSet ? (
                                                     <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>(задан)</span>
                                                 ) : (

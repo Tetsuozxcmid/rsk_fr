@@ -13,12 +13,19 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-27 - MAYAK Telegram bot must read saved webhook settings before choosing polling
+
+- Problem: the MAYAK Telegram bot could keep falling back to polling and spamming noisy polling errors even after the operator saved a webhook URL in admin settings.
+- Root cause: bot startup read `TELEGRAM_WEBHOOK_URL` only from runtime env, while admin saved mutable bot settings in `data/mayak-settings.json`; webhook-only saves also did not trigger a bot restart.
+- Fix: make bot startup resolve token/webhook from saved MAYAK settings with env fallback, and restart the bot after token or webhook changes only after both env values are updated.
+- Prevention: when MAYAK admin can mutate bot runtime settings, make the bot read the same persisted source and restart once after all related fields are applied instead of relying on env-only state.
+
 ### 2026-03-26 - MAYAK onboarding runtime data should not live in source control by default
 
-- Problem: onboarding link records, submissions, survey answers, and uploaded participant photos accumulated in tracked `data/` files and started polluting release commits with manual test/runtime data.
+- Problem: onboarding link records, submissions, and uploaded participant photos accumulated in tracked `data/` files and started polluting release commits with manual test/runtime data.
 - Root cause: MAYAK onboarding stores both editable config assets and live runtime state under nearby paths, so it is easy to treat everything under `data/mayak-onboarding-*` as commitable project content.
-- Fix: keep runtime onboarding state out of Git by ignoring `data/mayak-onboarding-links.json`, `data/mayak-onboarding-submissions.json`, `data/mayak-onboarding-survey-responses.json`, and `data/mayak-onboarding-files/submissions/`, while leaving intentionally tracked config/media assets under `data/mayak-onboarding-config.json` and `data/mayak-onboarding-files/links/config/`.
-- Prevention: before committing MAYAK onboarding changes, separate config/schema/media updates from live link/submission/survey/upload data and only stage the config side unless the task explicitly requires a fixture migration.
+- Fix: keep runtime onboarding state out of Git by ignoring `data/mayak-onboarding-links.json`, `data/mayak-onboarding-submissions.json`, and `data/mayak-onboarding-files/submissions/`, while leaving intentionally tracked config/media assets under `data/mayak-onboarding-config.json` and `data/mayak-onboarding-files/links/config/`.
+- Prevention: before committing MAYAK onboarding changes, separate config/schema/media updates from live link/submission/upload data and only stage the config side unless the task explicitly requires a fixture migration.
 
 ### 2026-03-26 - Bulk Windows rewrites can mojibake UTF-8 MAYAK admin files
 
@@ -293,7 +300,7 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: remove `ADMIN_BYPASS_TOKEN` handling from the MAYAK token validation API and let both token checks and token usage go only through `validateToken()` and `useToken()` from the shared token store.
 - Prevention: when cleaning MAYAK auth or token flows, audit both client and API layers; removing a bypass only on the frontend is incomplete.
 
-- 2026-03-11: PowerShell write flows can corrupt Cyrillic in MAYAK JS files into mojibake/question marks. Root cause: `Set-Content`, `Out-File`, or here-string -> node replacements can pass through the wrong encoding/BOM path on Windows. Fix: prefer `apply_patch`; if a script fallback is unavoidable, force UTF-8 without BOM and verify the saved bytes with Node or Git diff, not PowerShell display alone. Prevention: do not use generic PowerShell file writes for MAYAK source files that contain Cyrillic UI or business strings.
+- 2026-03-11: PowerShell write flows can corrupt Cyrillic in MAYAK source/config files into mojibake/question marks. Root cause: `Set-Content`, `Out-File`, or here-string -> node replacements can pass through the wrong encoding/BOM path on Windows. Fix: prefer `apply_patch`; if a script fallback is unavoidable, force UTF-8 without BOM and verify the saved bytes with Node or Git diff, not PowerShell display alone. Prevention: do not use generic PowerShell file writes for MAYAK files that contain Cyrillic UI, config text, or business strings.
 
 ### 2026-03-11 - MAYAK refactor progress should be tracked in a dedicated status file before context compression
 

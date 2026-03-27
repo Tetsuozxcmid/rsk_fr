@@ -4,11 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import Header from "@/components/layout/Header";
 import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
-import SurveyEditor from "@/components/mayak-onboarding/SurveyEditor";
-import SurveyResponsesTable from "@/components/mayak-onboarding/SurveyResponsesTable";
+import QuestionnaireSettingsEditor from "@/components/mayak-onboarding/QuestionnaireSettingsEditor";
 import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
-import { archiveOnboardingLink, createOnboardingLink, getAdminChecklistConfig, getAdminDashboard, getAdminSurveyExportUrl, updateAdminChecklistConfig, uploadAdminInstructionAsset } from "@/lib/mayakOnboardingClient";
-import { normalizeMayakOnboardingSurvey } from "@/lib/mayakOnboardingSurvey";
+import { archiveOnboardingLink, createOnboardingLink, getAdminChecklistConfig, getAdminDashboard, updateAdminChecklistConfig, uploadAdminInstructionAsset } from "@/lib/mayakOnboardingClient";
+import { normalizeMayakOnboardingQuestionnaire } from "@/lib/mayakOnboardingQuestionnaire";
 
 const DRAFT_KEY = "mayak_onboarding_constructor_draft";
 const inputClassName =
@@ -85,119 +84,6 @@ function CompactEditorField({ label, children, className = "" }) {
             <div className="mt-2">{children}</div>
         </label>
     );
-}
-
-function normalizeImportedSection(section = {}, prefix = "section", index = 0) {
-    const id = String(section.id || `${prefix}-${index + 1}`).trim();
-    return {
-        id,
-        title: String(section.title || ""),
-        description: String(section.description || ""),
-        requirePhoto: Boolean(section.requirePhoto),
-        minPhotos: Boolean(section.requirePhoto) ? Math.max(Number(section.minPhotos || 1), 1) : 0,
-        photoLabel: String(section.photoLabel || ""),
-        examplePhotoHint: String(section.examplePhotoHint || ""),
-        examplePhotos: Array.isArray(section.examplePhotos) ? section.examplePhotos.map((photo) => ({ image: String(photo?.image || ""), caption: String(photo?.caption || "") })) : [],
-        items: Array.isArray(section.items)
-            ? section.items.map((item, itemIndex) => ({
-                  id: String(item?.id || `${id}-item-${itemIndex + 1}`),
-                  title: String(item?.title || ""),
-              }))
-            : [],
-    };
-}
-
-function normalizeImportedService(service = {}, index = 0) {
-    return {
-        id: String(service.id || `service-${index + 1}`),
-        name: String(service.name || ""),
-        url: String(service.url || ""),
-        instructionImage: String(service.instructionImage || ""),
-        instructionHint: String(service.instructionHint || ""),
-    };
-}
-
-function getConstructorExportPayload(view, config) {
-    if (view === "participant") {
-        return {
-            scope: "participant",
-            participantSections: (config.participantSections || []).map((section, index) => normalizeImportedSection(section, "participant", index)),
-        };
-    }
-
-    if (view === "tech") {
-        return {
-            scope: "tech",
-            techSections: (config.techSections || []).map((section, index) => normalizeImportedSection(section, "tech", index)),
-        };
-    }
-
-    if (view === "survey") {
-        return {
-            scope: "survey",
-            survey: normalizeMayakOnboardingSurvey(config.survey || {}),
-        };
-    }
-
-    return {
-        scope: "services",
-        organizer: {
-            name: String(config.organizer?.name || ""),
-            phone: String(config.organizer?.phone || ""),
-        },
-        services: (config.services || []).map((service, index) => normalizeImportedService(service, index)),
-    };
-}
-
-function applyImportedConstructorPayload(view, payload, currentConfig) {
-    if (view === "participant") {
-        const participantSections = Array.isArray(payload) ? payload : Array.isArray(payload?.participantSections) ? payload.participantSections : null;
-        if (!participantSections) {
-            throw new Error("JSON участника должен содержать массив participantSections.");
-        }
-
-        return {
-            ...currentConfig,
-            participantSections: participantSections.map((section, index) => normalizeImportedSection(section, "participant", index)),
-        };
-    }
-
-    if (view === "tech") {
-        const techSections = Array.isArray(payload) ? payload : Array.isArray(payload?.techSections) ? payload.techSections : null;
-        if (!techSections) {
-            throw new Error("JSON техспециалиста должен содержать массив techSections.");
-        }
-
-        return {
-            ...currentConfig,
-            techSections: techSections.map((section, index) => normalizeImportedSection(section, "tech", index)),
-        };
-    }
-
-    if (view === "survey") {
-        const surveyPayload = payload?.survey || payload;
-        if (!surveyPayload || typeof surveyPayload !== "object") {
-            throw new Error("JSON анкеты должен содержать объект survey.");
-        }
-
-        return {
-            ...currentConfig,
-            survey: normalizeMayakOnboardingSurvey(surveyPayload),
-        };
-    }
-
-    if (!payload || typeof payload !== "object" || !Array.isArray(payload?.services)) {
-        throw new Error("JSON сервисов должен содержать organizer и services.");
-    }
-
-    return {
-        ...currentConfig,
-        organizer: {
-            name: String(payload?.organizer?.name || ""),
-            phone: String(payload?.organizer?.phone || ""),
-        },
-        services: Array.isArray(payload?.services) ? payload.services.map((service, index) => normalizeImportedService(service, index)) : [],
-    };
 }
 
 function SectionEditor({ section, onChange, onDelete, onUploadExamplePhoto }) {
@@ -436,8 +322,6 @@ export default function AdminMayakOnboardingPage() {
 
         return nextErrors;
     }, [form]);
-    const totalSurveyResponses = useMemo(() => links.reduce((sum, link) => sum + Number(link?.surveyResponseCount || 0), 0), [links]);
-
     const loadAll = useCallback(async () => {
         const [dashboardResponse, configResponse] = await Promise.all([getAdminDashboard(), getAdminChecklistConfig()]);
         setLinks(dashboardResponse.links || []);
@@ -451,7 +335,7 @@ export default function AdminMayakOnboardingPage() {
                     nextConfig = {
                         ...configResponse.config,
                         ...parsedDraft,
-                        survey: normalizeMayakOnboardingSurvey(parsedDraft?.survey || configResponse.config?.survey),
+                        questionnaire: normalizeMayakOnboardingQuestionnaire(parsedDraft?.questionnaire || configResponse.config?.questionnaire, parsedDraft?.survey || configResponse.config?.survey),
                     };
                 } catch {
                     localStorage.removeItem(DRAFT_KEY);
@@ -461,7 +345,7 @@ export default function AdminMayakOnboardingPage() {
 
         setConfig({
             ...nextConfig,
-            survey: normalizeMayakOnboardingSurvey(nextConfig?.survey || configResponse.config?.survey),
+            questionnaire: normalizeMayakOnboardingQuestionnaire(nextConfig?.questionnaire || configResponse.config?.questionnaire, nextConfig?.survey || configResponse.config?.survey),
         });
         setSavedConfigJson(JSON.stringify(configResponse.config));
     }, []);
@@ -516,10 +400,9 @@ export default function AdminMayakOnboardingPage() {
     }, [copiedLinkId]);
 
     const isDirty = useMemo(() => Boolean(config) && JSON.stringify(config) !== savedConfigJson, [config, savedConfigJson]);
-    const activeConfigView = activeTab === "survey" ? "survey" : constructorView;
 
     const confirmLeaveEditor = useCallback(() => {
-        if (!["constructor", "survey"].includes(activeTab) || !isDirty || typeof window === "undefined") {
+        if (!["constructor", "questionnaire"].includes(activeTab) || !isDirty || typeof window === "undefined") {
             return true;
         }
 
@@ -527,7 +410,7 @@ export default function AdminMayakOnboardingPage() {
     }, [activeTab, isDirty]);
 
     useEffect(() => {
-        if (!["constructor", "survey"].includes(activeTab) || !isDirty || typeof window === "undefined") return undefined;
+        if (!["constructor", "questionnaire"].includes(activeTab) || !isDirty || typeof window === "undefined") return undefined;
 
         const handleBeforeUnload = (event) => {
             event.preventDefault();
@@ -550,7 +433,7 @@ export default function AdminMayakOnboardingPage() {
     const handleTabChange = useCallback(
         (nextTab) => {
             if (nextTab === activeTab) return;
-            if (["constructor", "survey"].includes(activeTab) && !["constructor", "survey"].includes(nextTab) && !confirmLeaveEditor()) return;
+            if (["constructor", "questionnaire"].includes(activeTab) && !["constructor", "questionnaire"].includes(nextTab) && !confirmLeaveEditor()) return;
             setActiveTab(nextTab);
         },
         [activeTab, confirmLeaveEditor]
@@ -614,47 +497,13 @@ export default function AdminMayakOnboardingPage() {
             setConfig(response.config);
             setSavedConfigJson(JSON.stringify(response.config));
             if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
-            setMessage(activeTab === "survey" ? "Анкета сохранена" : "Конструктор сохранён");
+            setMessage(activeTab === "questionnaire" ? "Анкетирование сохранено" : "Конструктор сохранён");
             setError("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : activeTab === "survey" ? "Не удалось сохранить анкету." : "Не удалось сохранить конструктор.");
+            setError(err instanceof Error ? err.message : activeTab === "questionnaire" ? "Не удалось сохранить анкетирование." : "Не удалось сохранить конструктор.");
             setMessage("");
         }
     };
-
-    const handleExportConstructor = useCallback(() => {
-        const payload = getConstructorExportPayload(activeConfigView, config);
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `mayak-onboarding-${activeConfigView}.json`;
-        anchor.click();
-        URL.revokeObjectURL(url);
-        setMessage(activeConfigView === "survey" ? "JSON анкеты экспортирован" : "JSON экспортирован");
-        setError("");
-    }, [activeConfigView, config]);
-
-    const handleImportConstructor = useCallback(
-        async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const payload = JSON.parse(text);
-                const nextConfig = applyImportedConstructorPayload(activeConfigView, payload, config);
-                setConfig(nextConfig);
-                setMessage(activeConfigView === "survey" ? "JSON анкеты импортирован" : "JSON импортирован в конструктор");
-                setError("");
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Не удалось импортировать JSON.");
-                setMessage("");
-            }
-        },
-        [activeConfigView, config]
-    );
 
     if (!isAuth) {
         return (
@@ -699,7 +548,7 @@ export default function AdminMayakOnboardingPage() {
                                 <button type="button" className={activeTab === "constructor" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("constructor")}>
                                     Конструктор
                                 </button>
-                                <button type="button" className={activeTab === "survey" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("survey")}>
+                                <button type="button" className={activeTab === "questionnaire" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("questionnaire")}>
                                     Анкета
                                 </button>
                             </div>
@@ -757,7 +606,6 @@ export default function AdminMayakOnboardingPage() {
                                                         <div className="text-[1.55rem] font-black text-(--color-black)">{link.title}</div>
                                                         <div className="mt-2 text-sm text-[#64748b]">{formatDates(link.eventDate, link.endDate)}</div>
                                                         <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">
-                                                            <span>{`Анкет: ${link.surveyResponseCount || 0}`}</span>
                                                             <span>{`Участники: ${participantItems.length}`}</span>
                                                             <span>{`${pluralizeRu(techItems.length, "Техспециалист", "Техспециалиста", "Техспециалистов")}: ${techItems.length}`}</span>
                                                         </div>
@@ -784,7 +632,6 @@ export default function AdminMayakOnboardingPage() {
                                                     <div className="mt-2 text-sm text-[#64748b]">{formatDates(link.eventDate, link.endDate)}</div>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">
-                                                    <span className="rounded-full border border-(--color-gray-plus-50) bg-[#f8fafc] px-3 py-2">{`Анкет: ${link.surveyResponseCount || 0}`}</span>
                                                     <span className="rounded-full border border-(--color-gray-plus-50) bg-[#f8fafc] px-3 py-2">{`Участники: ${participantItems.length}`}</span>
                                                     <span className="rounded-full border border-(--color-gray-plus-50) bg-[#f8fafc] px-3 py-2">{`${pluralizeRu(techItems.length, "Техспециалист", "Техспециалиста", "Техспециалистов")}: ${techItems.length}`}</span>
                                                 </div>
@@ -849,33 +696,22 @@ export default function AdminMayakOnboardingPage() {
                         <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <div className="text-lg font-black text-(--color-black)">{activeTab === "survey" ? "Анкета" : "Что редактируем"}</div>
-                                    <div className="mt-1 text-sm text-[#64748b]">{activeTab === "survey" ? "Здесь редактируется схема анкеты и доступна единая выгрузка всех ответов." : "Конструктор разделён по ролям и общим сервисам."}</div>
+                                    <div className="text-lg font-black text-(--color-black)">{activeTab === "questionnaire" ? "Анкета" : "Что редактируем"}</div>
+                                    <div className="mt-1 text-sm text-[#64748b]">{activeTab === "questionnaire" ? "Здесь настраивается внешняя Яндекс Форма и сразу показывается QR-код для публичной страницы." : "Конструктор разделён по ролям и общим сервисам."}</div>
                                 </div>
-                                <div className="flex flex-col items-stretch gap-2">
-                                    {activeTab === "constructor" ? (
-                                        <div className="flex flex-wrap gap-2">
-                                            <button type="button" className={constructorView === "participant" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("participant")}>
-                                                Участник
-                                            </button>
-                                            <button type="button" className={constructorView === "tech" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("tech")}>
-                                                Техспециалист
-                                            </button>
-                                            <button type="button" className={constructorView === "services" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("services")}>
-                                                Сервисы
-                                            </button>
-                                        </div>
-                                    ) : null}
+                                {activeTab === "constructor" ? (
                                     <div className="flex flex-wrap gap-2">
-                                        <button type="button" className={secondaryButtonClassName} onClick={handleExportConstructor}>
-                                            Скачать JSON
+                                        <button type="button" className={constructorView === "participant" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("participant")}>
+                                            Участник
                                         </button>
-                                        <label className={secondaryButtonClassName}>
-                                            Загрузить JSON
-                                            <input type="file" accept="application/json,.json" className="hidden" onChange={handleImportConstructor} />
-                                        </label>
+                                        <button type="button" className={constructorView === "tech" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("tech")}>
+                                            Техспециалист
+                                        </button>
+                                        <button type="button" className={constructorView === "services" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("services")}>
+                                            Сервисы
+                                        </button>
                                     </div>
-                                </div>
+                                ) : null}
                             </div>
                         </section>
 
@@ -960,28 +796,7 @@ export default function AdminMayakOnboardingPage() {
                                 </div>
                             </section>
                         ) : null}
-                        {activeTab === "survey" ? (
-                            <>
-                                <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
-                                    <div className="mb-4 text-lg font-black text-(--color-black)">Экспорт ответов анкеты</div>
-                                    <SurveyResponsesTable
-                                        title="Все ответы анкеты"
-                                        description="Единая выгрузка без разделения по ссылкам. Внутри файла остаются колонки с сессией, slug и датой, чтобы при необходимости можно было отфильтровать ответы."
-                                        countLabel={`${pluralizeRu(totalSurveyResponses, "Анкета", "Анкеты", "Анкет")}: ${totalSurveyResponses}`}
-                                        jsonUrl={getAdminSurveyExportUrl("", "json")}
-                                        xlsxUrl={getAdminSurveyExportUrl("", "xlsx")}
-                                        secondaryButtonClassName={secondaryButtonClassName}
-                                    />
-                                </section>
-                                <SurveyEditor
-                                    survey={config.survey}
-                                    onChange={(nextSurvey) => setConfig({ ...config, survey: nextSurvey })}
-                                    inputClassName={inputClassName}
-                                    secondaryButtonClassName={secondaryButtonClassName}
-                                    dangerButtonClassName={dangerButtonClassName}
-                                />
-                            </>
-                        ) : null}
+                        {activeTab === "questionnaire" ? <QuestionnaireSettingsEditor questionnaire={config.questionnaire} onChange={(nextQuestionnaire) => setConfig({ ...config, questionnaire: nextQuestionnaire })} inputClassName={inputClassName} /> : null}
                         {activeTab === "constructor" && constructorView === "services" ? (
                             <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                                 <div className="mb-4 text-lg font-black text-(--color-black)">Организатор и сервисы</div>
