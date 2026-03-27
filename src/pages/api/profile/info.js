@@ -1,3 +1,16 @@
+function decodeJwtPayload(token) {
+    try {
+        const [, payload = ""] = String(token || "").split(".");
+        if (!payload) return null;
+
+        const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+        return JSON.parse(Buffer.from(padded, "base64").toString("utf8"));
+    } catch {
+        return null;
+    }
+}
+
 export default async function ProfileInfoHandler(req, res) {
     try {
         // Пытаемся найти токен в разных местах: разные имена кук или заголовок
@@ -44,7 +57,11 @@ export default async function ProfileInfoHandler(req, res) {
         }
 
         const data = await response_info.json();
-        return res.json({ success: true, data });
+        const jwtSource = cookieToken || (authHeader ? authHeader.replace(/^Bearer\s+/i, "") : "");
+        const jwtPayload = decodeJwtPayload(jwtSource);
+        const userId = jwtPayload?.sub ? String(jwtPayload.sub) : null;
+
+        return res.json({ success: true, data, userId });
     } catch (err) {
         console.error("Profile API: Internal error:", err);
         return res.status(500).json({ success: false, error: err.message });

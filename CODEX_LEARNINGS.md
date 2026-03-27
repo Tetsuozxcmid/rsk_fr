@@ -13,6 +13,20 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-27 - MAYAK portal auth must gate on profile name completeness, not on auth alone
+
+- Problem: an already authorized platform user could still enter MAYAK with an empty profile name, which left certificate/history data without the required FIO.
+- Root cause: the first linked MAYAK auth step treated a valid portal session and readable profile as sufficient, but certificate/runtime identity actually depends on `NameIRL + Surname`.
+- Fix: keep the embedded portal auth flow, but after profile fetch explicitly require `Surname` and `NameIRL`; if either is missing, show an in-MAYAK mandatory FIO form and save it through `/api/profile/update` before trainer entry.
+- Prevention: when MAYAK reuses platform identity for completion artifacts, validate the exact profile fields needed for those artifacts instead of assuming that “authorized user” automatically means “certificate-ready user”.
+
+### 2026-03-27 - Embedded MAYAK OAuth needs an explicit return hook outside component state
+
+- Problem: when platform OAuth was opened from MAYAK settings, Yandex could return the browser to the generic frontend entry instead of resuming the MAYAK token flow, and popup-based VK auth could finish without the original MAYAK tab noticing.
+- Root cause: the backend OAuth callbacks redirect to the shared frontend URL, so an embedded MAYAK auth panel cannot rely on local React state alone to remember where to return or when auth finished.
+- Fix: persist the MAYAK return target and pending token in web storage before external auth, redirect back to `/tools/mayak-oko` from `_app.js`, restore the pending token in MAYAK settings, and poll `/api/profile/info` for popup-based VK completion.
+- Prevention: when embedding platform OAuth inside MAYAK instead of a dedicated auth page, always preserve return routing and token context outside the component tree before leaving the page.
+
 ### 2026-03-27 - MAYAK Telegram bot must read saved webhook settings before choosing polling
 
 - Problem: the MAYAK Telegram bot could keep falling back to polling and spamming noisy polling errors even after the operator saved a webhook URL in admin settings.

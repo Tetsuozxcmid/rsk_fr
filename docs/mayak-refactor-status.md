@@ -26,6 +26,9 @@ Stabilize MAYAK architecture around:
 - Removed old client-side token bypass logic from `tools-2` trainer flow.
 - Removed server-side bypass token handling from `/api/mayak/validate-token`.
 - Reintroduced `fffff` only for localhost development through API behavior, not as a production bypass.
+- Replaced the old MAYAK post-token participant form in `tools-2/settings` with the embedded platform auth flow (login, registration, VK, Yandex).
+- MAYAK token entry now resumes external Yandex auth back into `/tools/mayak-oko`, while popup-based VK auth is detected in place without leaving the trainer settings flow.
+- MAYAK settings now block trainer entry until the platform profile contains at least `Фамилия + Имя`; if an authorized user has no FIO yet, the trainer shows an in-place mandatory FIO form and saves it back into the platform profile before entry.
 
 ### Content architecture
 
@@ -158,6 +161,8 @@ Stabilize MAYAK architecture around:
 - Tech specialist phone remains admin-only and is excluded from the public summary contract.
 - Onboarding admin now supports external questionnaire-link management with auto-generated QR preview instead of embedded survey-schema editing and response export.
 - MAYAK admin frontend pages now trust the shared `/api/admin/mayak-auth` cookie directly and redirect unauthenticated users to `/admin?next=...` instead of keeping separate page-local login flows.
+- MAYAK settings now build `active_user` from the platform profile snapshot (`portal user id + full name`) and keep the legacy `results.json` snapshot only as a compatibility mirror fed from portal data.
+- MAYAK certificate/history identity now relies on the platform profile full name; organization stays optional and is omitted from MAYAK surfaces when empty instead of showing a placeholder.
 
 ## Remaining Work
 

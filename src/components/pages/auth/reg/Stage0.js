@@ -9,7 +9,7 @@ import Yandex from "@/assets/general/yandex.svg";
 import VK from "@/assets/general/vk.svg";
 import VKWidget from "@/components/features/auth/VKWidget";
 
-export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
+export default function RegStage0({ onContinue, pageVariants, custom = 1, onOAuthStart }) {
     const [userType, setUserType] = useState("student");
     const [formData, setFormData] = useState({
         name: "",
@@ -149,12 +149,15 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                         inverted
                         className="flex-1"
                         onClick={() => {
+                            if (typeof onOAuthStart === "function") {
+                                onOAuthStart("yandex");
+                            }
                             window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
                         }}>
                         Яндекс ID <Yandex />
                     </Button>
                     <div className="flex-1 overflow-hidden h-[46px] flex items-center justify-center">
-                        <VKWidget />
+                        <VKWidget onStart={onOAuthStart} />
                     </div>
                 </div>
             </div>

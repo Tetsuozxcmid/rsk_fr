@@ -1,10 +1,23 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/router";
+
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
-import Input from "@/components/ui/Input/Input";
+
+const ITEMS_PER_PAGE = 30;
+
+function formatFullName(item = {}) {
+    return [item.lastName, item.firstName, item.patronymic]
+        .map((part) => String(part || "").trim())
+        .filter(Boolean)
+        .join(" ");
+}
+
+function formatOrganization(item = {}) {
+    return String(item.college || "").trim();
+}
 
 export default function AdminMayakResults() {
     const router = useRouter();
@@ -15,21 +28,20 @@ export default function AdminMayakResults() {
     const [activeMatchIndex, setActiveMatchIndex] = useState(0);
     const [highlightedId, setHighlightedId] = useState(null);
     const highlightRef = useRef(null);
-    const itemsPerPage = 30;
 
     const fetchResults = async () => {
         try {
-            const res = await fetch("/api/admin/mayak-results", {
+            const response = await fetch("/api/admin/mayak-results", {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
 
-            if (res.ok) {
-                const data = await res.json();
+            if (response.ok) {
+                const data = await response.json();
                 setResults(data);
             }
-        } catch (err) {
-            console.error("Ошибка:", err);
+        } catch (error) {
+            console.error("Ошибка:", error);
         } finally {
             setLoading(false);
         }
@@ -39,52 +51,50 @@ export default function AdminMayakResults() {
         fetchResults();
     }, []);
 
-    // Читаем query-параметр ?id= из URL и подсвечиваем строку по userId
     useEffect(() => {
         if (!router.isReady || results.length === 0) return;
 
         const idParam = router.query.id;
-        if (idParam) {
-            setHighlightedId(idParam);
+        if (!idParam) return;
 
-            // Находим индекс в списке и переключаем на нужную страницу
-            const targetIndex = results.findIndex(item => item.id === idParam);
-            if (targetIndex !== -1) {
-                const targetPage = Math.ceil((targetIndex + 1) / itemsPerPage);
-                setCurrentPage(targetPage);
+        setHighlightedId(idParam);
 
-                // Прокручиваем к строке после рендера
-                setTimeout(() => {
-                    if (highlightRef.current) {
-                        highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }
-                }, 200);
+        const targetIndex = results.findIndex((item) => item.id === idParam);
+        if (targetIndex === -1) return;
+
+        const targetPage = Math.ceil((targetIndex + 1) / ITEMS_PER_PAGE);
+        setCurrentPage(targetPage);
+
+        setTimeout(() => {
+            if (highlightRef.current) {
+                highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
             }
-        }
-    }, [router.isReady, router.query.id, results.length]);
+        }, 200);
+    }, [router.isReady, router.query.id, results]);
 
-    // Поиск совпадений (всех подходящих элементов в полном списке)
     const matches = useMemo(() => {
         if (!searchQuery.trim() || searchQuery.length < 2) return [];
+
         const query = searchQuery.toLowerCase();
+
         return results
             .map((item, index) => {
-                const fullName = `${item.lastName} ${item.firstName}`.toLowerCase();
-                const college = (item.college || "").toLowerCase();
-                if (fullName.includes(query) || college.includes(query)) {
+                const fullName = formatFullName(item).toLowerCase();
+                const organization = formatOrganization(item).toLowerCase();
+
+                if (fullName.includes(query) || organization.includes(query)) {
                     return index;
                 }
+
                 return null;
             })
-            .filter(index => index !== null);
+            .filter((index) => index !== null);
     }, [results, searchQuery]);
 
-    // Сброс индекса при новом поиске
     useEffect(() => {
         setActiveMatchIndex(0);
     }, [searchQuery]);
 
-    // Переход к конкретному совпадению
     const goToMatch = (index) => {
         if (matches.length === 0) return;
 
@@ -92,32 +102,37 @@ export default function AdminMayakResults() {
         setActiveMatchIndex(safeIndex);
 
         const targetResultIndex = matches[safeIndex];
-        const targetPage = Math.ceil((targetResultIndex + 1) / itemsPerPage);
+        const targetPage = Math.ceil((targetResultIndex + 1) / ITEMS_PER_PAGE);
 
         setCurrentPage(targetPage);
     };
 
-    // Расчет данных для текущей страницы
     const currentData = useMemo(() => {
-        const start = (currentPage - 1) * itemsPerPage;
-        return results.slice(start, start + itemsPerPage);
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        return results.slice(start, start + ITEMS_PER_PAGE);
     }, [results, currentPage]);
 
-    const totalPages = Math.ceil(results.length / itemsPerPage);
+    const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
 
-    // Функция для подсветки текста (только при ручном поиске)
     const highlightText = (text, query, isCurrentMatch) => {
         if (!query || !text) return text;
+
         const parts = text.split(new RegExp(`(${query})`, "gi"));
-        return parts.map((part, i) =>
-            part.toLowerCase() === query.toLowerCase()
-                ? <mark key={i} className={isCurrentMatch ? "bg-orange-400 text-black px-0.5 rounded" : "bg-yellow-200 text-black px-0.5 rounded"}>{part}</mark>
-                : part
+
+        return parts.map((part, index) =>
+            part.toLowerCase() === query.toLowerCase() ? (
+                <mark key={index} className={isCurrentMatch ? "bg-orange-400 text-black px-0.5 rounded" : "bg-yellow-200 text-black px-0.5 rounded"}>
+                    {part}
+                </mark>
+            ) : (
+                part
+            )
         );
     };
 
     const formatDate = (dateString) => {
         if (!dateString) return "—";
+
         const date = new Date(dateString);
         return date.toLocaleString("ru-RU", {
             day: "2-digit",
@@ -131,25 +146,30 @@ export default function AdminMayakResults() {
     if (loading) {
         return (
             <Layout>
-                <Header><Header.Heading>Протокол аттестаций</Header.Heading></Header>
-                <div className="flex h-full items-center justify-center"><p>Загрузка...</p></div>
+                <Header>
+                    <Header.Heading>Протокол аттестаций</Header.Heading>
+                </Header>
+                <div className="flex h-full items-center justify-center">
+                    <p>Загрузка...</p>
+                </div>
             </Layout>
         );
     }
 
     return (
         <Layout>
-            <Header><Header.Heading>Протокол аттестаций</Header.Heading></Header>
+            <Header>
+                <Header.Heading>Протокол аттестаций</Header.Heading>
+            </Header>
 
             <div className="p-3 sm:p-6 flex flex-col gap-4">
-                {/* Умный поиск как в Google Docs */}
                 <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-200 shadow-sm max-w-[500px]">
                     <div className="flex-1">
                         <input
                             type="text"
                             placeholder="Поиск по протоколу..."
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(event) => setSearchQuery(event.target.value)}
                             className="w-full px-3 py-1 outline-none text-sm"
                         />
                     </div>
@@ -164,14 +184,18 @@ export default function AdminMayakResults() {
                                     className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                                     disabled={matches.length === 0}
                                 >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 15l-6-6-6 6"/></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M18 15l-6-6-6 6" />
+                                    </svg>
                                 </button>
                                 <button
                                     onClick={() => goToMatch(activeMatchIndex + 1)}
                                     className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                                     disabled={matches.length === 0}
                                 >
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                        <path d="M6 9l6 6 6-6" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -179,7 +203,6 @@ export default function AdminMayakResults() {
                 </div>
 
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    {/* Десктоп: оригинальная таблица */}
                     <div className="hidden sm:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
@@ -192,10 +215,12 @@ export default function AdminMayakResults() {
                             </thead>
                             <tbody>
                                 {currentData.map((item, index) => {
-                                    const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                                    const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
                                     const isMatch = matches.includes(globalIndex);
                                     const isCurrentMatch = isMatch && matches[activeMatchIndex] === globalIndex;
                                     const isQrHighlighted = highlightedId && item.id === highlightedId;
+                                    const fullName = formatFullName(item);
+                                    const organization = formatOrganization(item);
 
                                     return (
                                         <tr
@@ -211,16 +236,10 @@ export default function AdminMayakResults() {
                                         >
                                             <td className="p-4 text-sm text-gray-500">{globalIndex + 1}</td>
                                             <td className="p-4 text-sm font-bold text-gray-900">
-                                                {isQrHighlighted
-                                                    ? `${item.lastName} ${item.firstName}`
-                                                    : highlightText(`${item.lastName} ${item.firstName}`, searchQuery, isCurrentMatch)
-                                                }
+                                                {isQrHighlighted ? fullName : highlightText(fullName, searchQuery, isCurrentMatch)}
                                             </td>
                                             <td className="p-4 text-sm text-gray-700">
-                                                {isQrHighlighted
-                                                    ? (item.college || "—")
-                                                    : highlightText(item.college || "—", searchQuery, isCurrentMatch)
-                                                }
+                                                {isQrHighlighted ? organization : highlightText(organization, searchQuery, isCurrentMatch)}
                                             </td>
                                             <td className="p-4 text-sm text-gray-500 text-right font-mono">{formatDate(item.timestamp)}</td>
                                         </tr>
@@ -230,13 +249,14 @@ export default function AdminMayakResults() {
                         </table>
                     </div>
 
-                    {/* Мобильный: карточки */}
                     <div className="sm:hidden divide-y divide-gray-100">
                         {currentData.map((item, index) => {
-                            const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
                             const isMatch = matches.includes(globalIndex);
                             const isCurrentMatch = isMatch && matches[activeMatchIndex] === globalIndex;
                             const isQrHighlighted = highlightedId && item.id === highlightedId;
+                            const fullName = formatFullName(item);
+                            const organization = formatOrganization(item);
 
                             return (
                                 <div
@@ -254,20 +274,14 @@ export default function AdminMayakResults() {
                                         <span className="text-xs text-gray-400 pt-0.5 flex-shrink-0 w-6 text-right">{globalIndex + 1}.</span>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-900 break-words">
-                                                {isQrHighlighted
-                                                    ? `${item.lastName} ${item.firstName}`
-                                                    : highlightText(`${item.lastName} ${item.firstName}`, searchQuery, isCurrentMatch)
-                                                }
+                                                {isQrHighlighted ? fullName : highlightText(fullName, searchQuery, isCurrentMatch)}
                                             </p>
-                                            <p className="text-xs text-gray-500 mt-0.5 break-words">
-                                                {isQrHighlighted
-                                                    ? (item.college || "—")
-                                                    : highlightText(item.college || "—", searchQuery, isCurrentMatch)
-                                                }
-                                            </p>
-                                            <p className="text-[11px] text-gray-400 font-mono mt-1">
-                                                {formatDate(item.timestamp)}
-                                            </p>
+                                            {organization && (
+                                                <p className="text-xs text-gray-500 mt-0.5 break-words">
+                                                    {isQrHighlighted ? organization : highlightText(organization, searchQuery, isCurrentMatch)}
+                                                </p>
+                                            )}
+                                            <p className="text-[11px] text-gray-400 font-mono mt-1">{formatDate(item.timestamp)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -276,14 +290,13 @@ export default function AdminMayakResults() {
                     </div>
                 </div>
 
-                {/* Пагинация */}
                 <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
                     <div className="text-xs text-gray-500">
                         Страница {currentPage} из {totalPages || 1}
                     </div>
                     <div className="flex items-center gap-1">
                         <button
-                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                             disabled={currentPage === 1}
                             style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: currentPage === 1 ? 0.3 : 1 }}
                             className="px-3 py-1 text-sm rounded"
@@ -301,8 +314,8 @@ export default function AdminMayakResults() {
                                     pages.push("dots-left");
                                 }
 
-                                for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-                                    pages.push(i);
+                                for (let page = Math.max(2, currentPage - delta); page <= Math.min(totalPages - 1, currentPage + delta); page += 1) {
+                                    pages.push(page);
                                 }
 
                                 if (currentPage + delta < totalPages - 1) {
@@ -315,8 +328,13 @@ export default function AdminMayakResults() {
 
                                 return pages.map((page) => {
                                     if (typeof page === "string") {
-                                        return <span key={page} className="w-8 h-8 flex items-center justify-center text-sm text-gray-400">...</span>;
+                                        return (
+                                            <span key={page} className="w-8 h-8 flex items-center justify-center text-sm text-gray-400">
+                                                ...
+                                            </span>
+                                        );
                                     }
+
                                     const isActive = currentPage === page;
                                     return (
                                         <button
@@ -336,11 +354,13 @@ export default function AdminMayakResults() {
                                 });
                             })()}
                         </div>
-                        <span className="sm:hidden text-xs text-gray-500 px-2">{currentPage}/{totalPages || 1}</span>
+                        <span className="sm:hidden text-xs text-gray-500 px-2">
+                            {currentPage}/{totalPages || 1}
+                        </span>
                         <button
-                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                             disabled={currentPage === totalPages || totalPages === 0}
-                            style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: (currentPage === totalPages || totalPages === 0) ? 0.3 : 1 }}
+                            style={{ background: "#fff", color: "#111", border: "1px solid #e5e7eb", opacity: currentPage === totalPages || totalPages === 0 ? 0.3 : 1 }}
                             className="px-3 py-1 text-sm rounded"
                         >
                             Вперед

@@ -1,13 +1,79 @@
-﻿import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import Header from "@/components/layout/Header";
-import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
-import { v4 as uuidv4 } from "uuid";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input/Input";
 
 import CloseIcon from "@/assets/general/close.svg";
 
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input/Input";
+import { saveUserData } from "@/utils/auth";
+import {
+    clearMayakPendingToken,
+    markMayakPortalAuthPending,
+    readMayakPendingToken,
+    stashMayakPendingToken,
+} from "@/utils/mayakPortalAuth";
+
+import MayakPlatformAuthFlow from "./MayakPlatformAuthFlow";
+import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
+
+const EMPTY_SESSION_INFO = {
+    tokenType: "legacy",
+    sessionId: null,
+    sessionName: "",
+    tableCount: 0,
+};
+
+const EMPTY_PORTAL_STATE = {
+    status: "checking",
+    profile: null,
+    error: "",
+};
+
+const EMPTY_PROFILE_FORM = {
+    firstName: "",
+    lastName: "",
+    patronymic: "",
+};
+
+function hasRequiredMayakName(profile = null) {
+    return Boolean(String(profile?.firstName || "").trim() && String(profile?.lastName || "").trim());
+}
+
+function buildPortalFullName({ firstName = "", lastName = "", patronymic = "", username = "", email = "" }) {
+    const fullName = [lastName, firstName, patronymic]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+    return fullName || String(username || "").trim() || String(email || "").trim() || "Участник";
+}
+
+function normalizePortalProfile(payload = {}) {
+    const profileData = payload?.data || {};
+    const organization = profileData.Organization || null;
+    const firstName = String(profileData.NameIRL || "").trim();
+    const lastName = String(profileData.Surname || "").trim();
+    const patronymic = String(profileData.Patronymic || "").trim();
+    const email = String(profileData.email || "").trim();
+    const username = String(profileData.username || "").trim();
+    const organizationName = String(organization?.name || organization?.short_name || organization?.full_name || "").trim();
+    const organizationId = profileData.Organization_id ?? profileData.organization_id ?? organization?.id ?? null;
+    const userId = String(payload?.userId || "").trim();
+
+    return {
+        userId,
+        firstName,
+        lastName,
+        patronymic,
+        email,
+        username,
+        organizationName,
+        organizationId,
+        fullName: buildPortalFullName({ firstName, lastName, patronymic, username, email }),
+    };
+}
 
 async function validateTokenAPI(tokenValue) {
     try {
@@ -82,9 +148,74 @@ async function loginMayakAdmin(password) {
             error: data.error || null,
         };
     } catch (error) {
-        console.error("?????? ??????????? ??????????????:", error);
-        return { success: false, error: "?????? ???????" };
+        console.error("Ошибка авторизации локального входа:", error);
+        return { success: false, error: "Ошибка сервера" };
     }
+}
+
+async function fetchPortalProfile({ retries = 0, delayMs = 800 } = {}) {
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+            const response = await fetch("/api/profile/info", {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+            });
+
+            const payload = await response.json().catch(() => ({}));
+            if (response.ok) {
+                return { success: true, payload };
+            }
+
+            if (response.status === 404 && attempt < retries) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+                continue;
+            }
+
+            return {
+                success: false,
+                status: response.status,
+                error: payload.error || "Не удалось получить данные профиля",
+            };
+        } catch (error) {
+            if (attempt < retries) {
+                await new Promise((resolve) => setTimeout(resolve, delayMs));
+                continue;
+            }
+
+            return {
+                success: false,
+                status: 500,
+                error: error.message || "Ошибка соединения с платформой",
+            };
+        }
+    }
+
+    return {
+        success: false,
+        status: 500,
+        error: "Не удалось получить данные профиля",
+    };
+}
+
+async function updatePortalProfileNames({ firstName, lastName, patronymic }) {
+    const response = await fetch("/api/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+            NameIRL: String(firstName || "").trim(),
+            Surname: String(lastName || "").trim(),
+            Patronymic: String(patronymic || "").trim(),
+        }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || !payload?.success) {
+        throw new Error(payload?.error || "Не удалось сохранить ФИО в профиль платформы");
+    }
+
+    return payload;
 }
 
 export default function SettingsPage({ goTo }) {
@@ -95,162 +226,191 @@ export default function SettingsPage({ goTo }) {
     const [isDevBypass, setIsDevBypass] = useState(false);
     const [bypassPassword, setBypassPassword] = useState("");
     const [bypassPasswordError, setBypassPasswordError] = useState("");
-
-    const [userData, setUserData] = useState({
-        lastName: "",
-        firstName: "",
-        college: "",
-        tableNumber: "",
-    });
-    const [sessionInfo, setSessionInfo] = useState({
-        tokenType: "legacy",
-        sessionId: null,
-        sessionName: "",
-        tableCount: 0,
-    });
+    const [selectedTableNumber, setSelectedTableNumber] = useState("");
+    const [sessionInfo, setSessionInfo] = useState(EMPTY_SESSION_INFO);
+    const [portalState, setPortalState] = useState(EMPTY_PORTAL_STATE);
     const [hasRegisteredUser, setHasRegisteredUser] = useState(false);
-
     const [isLoading, setIsLoading] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-
     const [max, setMax] = useState(180);
     const [value, setValue] = useState(0);
-
     const [tokenRemainingAttempts, setTokenRemainingAttempts] = useState(0);
     const [tokenError, setTokenError] = useState("");
     const [isValidating, setIsValidating] = useState(false);
+    const [shouldPollPortalAuth, setShouldPollPortalAuth] = useState(false);
+    const [profileForm, setProfileForm] = useState(EMPTY_PROFILE_FORM);
+    const [profileFormError, setProfileFormError] = useState("");
+    const [isSavingProfileName, setIsSavingProfileName] = useState(false);
 
-    const syncRegisteredUserState = (nextSessionInfo, nextTokenValue = token) => {
+    const syncRegisteredUserState = (nextSessionInfo = sessionInfo, nextPortalProfile = portalState.profile, nextTokenExists = tokenExists) => {
         const activeUser = getUserFromCookies();
-        if (!activeUser?.id) {
+        const portalUserId = String(nextPortalProfile?.userId || "").trim();
+
+        if (!hasRequiredMayakName(nextPortalProfile) || !nextTokenExists || !activeUser?.id || !portalUserId || String(activeUser.id) !== portalUserId) {
             setHasRegisteredUser(false);
             return false;
         }
 
-        const isSessionToken = (nextSessionInfo?.tokenType || "legacy") === "session";
-        if (isSessionToken) {
-            const isSameSession = !!nextSessionInfo?.sessionId && activeUser.sessionId === nextSessionInfo.sessionId;
+        if ((nextSessionInfo?.tokenType || "legacy") === "session") {
+            const sameSession = !!nextSessionInfo?.sessionId && String(activeUser.sessionId || "") === String(nextSessionInfo.sessionId || "");
             const hasTable = !!String(activeUser.tableNumber || "").trim();
-            const hasTokenType = activeUser.tokenType === "session";
-            const registered = isSameSession && hasTable && hasTokenType;
-            setHasRegisteredUser(registered);
-            return registered;
+            const ready = sameSession && hasTable && activeUser.tokenType === "session";
+
+            if (ready) {
+                setSelectedTableNumber(String(activeUser.tableNumber || ""));
+            }
+
+            setHasRegisteredUser(ready);
+            return ready;
         }
 
-        const registered = activeUser.tokenType !== "session" || !String(activeUser.sessionId || "").trim();
-        setHasRegisteredUser(registered && !!String(nextTokenValue || "").trim());
-        return registered;
+        const ready = activeUser.tokenType !== "session";
+        setHasRegisteredUser(ready);
+        return ready;
     };
 
-    async function getRecordsCount() {
-        try {
-            const response = await fetch("/api/mayak/count");
-            if (!response.ok) {
-                throw new Error("Не удалось получить количество записей");
-            }
-            const data = await response.json();
-            return data.count;
-        } catch (error) {
-            console.error("Ошибка при получении количества записей:", error);
-            return 0;
+    const syncPortalProfile = async ({ retries = 0, delayMs = 800, silent = false } = {}) => {
+        if (!silent) {
+            setPortalState((prev) => ({
+                ...prev,
+                status: "checking",
+                error: "",
+            }));
         }
-    }
 
-    const getRangeClass = (val) => {
-        if (val < 30) return "range-low";
-        if (val < 80) return "range-mid";
-        return "range-high";
+        const result = await fetchPortalProfile({ retries, delayMs });
+        if (!result.success) {
+            if (result.status === 401) {
+                setPortalState({
+                    status: "unauthenticated",
+                    profile: null,
+                    error: "",
+                });
+                setHasRegisteredUser(false);
+                return false;
+            }
+
+            setPortalState({
+                status: result.status === 404 ? "profile_missing" : "error",
+                profile: null,
+                error: result.status === 404 ? "Профиль платформы еще не успел подготовиться. Повторите проверку через несколько секунд." : result.error || "Не удалось проверить авторизацию на платформе.",
+            });
+            setHasRegisteredUser(false);
+            return false;
+        }
+
+        const normalizedProfile = normalizePortalProfile(result.payload);
+        if (!normalizedProfile.userId) {
+            setPortalState({
+                status: "error",
+                profile: null,
+                error: "Платформа вернула профиль без идентификатора пользователя.",
+            });
+            setHasRegisteredUser(false);
+            return false;
+        }
+
+        await saveUserData({
+            email: normalizedProfile.email,
+            username: normalizedProfile.firstName || normalizedProfile.username,
+        });
+
+        setProfileForm({
+            firstName: normalizedProfile.firstName,
+            lastName: normalizedProfile.lastName,
+            patronymic: normalizedProfile.patronymic,
+        });
+        setProfileFormError("");
+
+        setPortalState({
+            status: hasRequiredMayakName(normalizedProfile) ? "ready" : "needs_fio",
+            profile: normalizedProfile,
+            error: "",
+        });
+        syncRegisteredUserState(sessionInfo, normalizedProfile, tokenExists);
+        return true;
     };
 
     const validateToken = async (tokenToValidate) => {
-        if (!tokenToValidate || tokenToValidate.trim() === "") {
+        const nextTokenValue = String(tokenToValidate || "").trim();
+        if (!nextTokenValue) {
             setIsTokenValid(false);
             setShowNotification(false);
             setTokenError("");
             setIsDevBypass(false);
             setBypassPasswordError("");
+            setTokenRemainingAttempts(0);
+            setSessionInfo(EMPTY_SESSION_INFO);
+            setHasRegisteredUser(false);
+            setSelectedTableNumber("");
+            clearMayakPendingToken();
             return;
         }
 
         setIsValidating(true);
-        const result = await validateTokenAPI(tokenToValidate);
+        const result = await validateTokenAPI(nextTokenValue);
         const isAccessible = result.valid || (result.isExhausted && result.isActive);
-
-        setIsTokenValid(isAccessible);
-        setTokenRemainingAttempts(result.remainingAttempts);
-        setIsDevBypass(Boolean(result.isBypass));
         const nextSessionInfo = {
             tokenType: result.tokenType || "legacy",
             sessionId: result.sessionId || null,
             sessionName: result.sessionName || "",
             tableCount: Number(result.tableCount) || 0,
         };
+
+        setIsTokenValid(isAccessible);
+        setTokenRemainingAttempts(result.remainingAttempts);
+        setIsDevBypass(Boolean(result.isBypass));
         setSessionInfo(nextSessionInfo);
-        syncRegisteredUserState(nextSessionInfo, tokenToValidate);
+        setValue(result.remainingAttempts || 0);
+        if (result.usageLimit > 0) {
+            setMax(result.usageLimit);
+        }
+
         if (!result.isBypass) {
             setBypassPassword("");
             setBypassPasswordError("");
         }
 
-        if ((result.tokenType || "legacy") !== "session") {
-            setUserData((prev) => ({ ...prev, tableNumber: "" }));
-        }
-
-        if (result.usageLimit > 0) {
-            setMax(result.usageLimit);
-            setValue(result.remainingAttempts);
-        }
-
-        if (isAccessible) {
-            setShowNotification(true);
-            setTokenError("");
-        } else {
+        if (!isAccessible) {
             setTokenError(result.error || "Токен недействителен");
             setShowNotification(false);
+            setHasRegisteredUser(false);
+            clearMayakPendingToken();
+            setIsValidating(false);
+            return;
         }
 
+        if (!result.isBypass) {
+            stashMayakPendingToken(nextTokenValue);
+        }
+
+        setShowNotification(true);
+        setTokenError("");
+        syncRegisteredUserState(nextSessionInfo, portalState.profile, tokenExists);
+
+        if (result.isBypass) {
+            setIsValidating(false);
+            return;
+        }
+
+        await syncPortalProfile({
+            retries: 2,
+            delayMs: 800,
+            silent: true,
+        });
         setIsValidating(false);
     };
 
     useEffect(() => {
-        async function fetchTokenAndUsage() {
+        syncPortalProfile({ silent: true });
+    }, []);
+
+    useEffect(() => {
+        async function restoreTokenState() {
             const keyInCookies = await getKeyFromCookies();
-            if (keyInCookies && keyInCookies.text) {
-                if (keyInCookies.text === "ADMIN-BYPASS-TOKEN") {
-                    await removeKeyCookie();
-                    await clearUserCookie();
-                    setToken("");
-                    setTokenExists(false);
-                    setShowNotification(false);
-                    setIsTokenValid(false);
-                    setIsDevBypass(false);
-                    setSessionInfo({ tokenType: "legacy", sessionId: null, sessionName: "", tableCount: 0 });
-                    setHasRegisteredUser(false);
-                    return;
-                }
-                setToken(keyInCookies.text);
-                setTokenExists(true);
-                const result = await validateTokenAPI(keyInCookies.text);
-                const isAccessible = result.valid || (result.isExhausted && result.isActive);
-                setIsTokenValid(isAccessible);
-                setTokenRemainingAttempts(result.remainingAttempts);
-                setIsDevBypass(Boolean(result.isBypass));
-                const nextSessionInfo = {
-                    tokenType: result.tokenType || "legacy",
-                    sessionId: result.sessionId || null,
-                    sessionName: result.sessionName || "",
-                    tableCount: Number(result.tableCount) || 0,
-                };
-                setSessionInfo(nextSessionInfo);
-                syncRegisteredUserState(nextSessionInfo, keyInCookies.text);
-                if (result.usageLimit > 0) {
-                    setMax(result.usageLimit);
-                    setValue(result.remainingAttempts);
-                }
-                if (isAccessible) {
-                    setShowNotification(true);
-                }
-            } else {
+            const pendingToken = readMayakPendingToken();
+            const restoredToken = keyInCookies?.text || pendingToken || "";
+
+            if (!restoredToken) {
                 setToken("");
                 setTokenExists(false);
                 setShowNotification(false);
@@ -260,70 +420,153 @@ export default function SettingsPage({ goTo }) {
                 setBypassPasswordError("");
                 setTokenRemainingAttempts(0);
                 setTokenError("");
-                setSessionInfo({ tokenType: "legacy", sessionId: null, sessionName: "", tableCount: 0 });
+                setSessionInfo(EMPTY_SESSION_INFO);
                 setHasRegisteredUser(false);
+                setSelectedTableNumber("");
+                return;
             }
+
+            setToken(restoredToken);
+            setTokenExists(Boolean(keyInCookies?.text));
         }
-        fetchTokenAndUsage();
+
+        restoreTokenState();
     }, []);
 
     useEffect(() => {
-        if (!token || token.trim() === "") {
+        if (!token || !String(token).trim()) {
             return undefined;
         }
 
-        const delayDebounceFn = setTimeout(() => {
+        const timerId = window.setTimeout(() => {
             validateToken(token);
         }, 500);
 
-        return () => clearTimeout(delayDebounceFn);
+        return () => window.clearTimeout(timerId);
     }, [token]);
 
     useEffect(() => {
-        if (sessionInfo.tokenType === "session" && Number(sessionInfo.tableCount) > 0 && !String(userData.tableNumber || "").trim()) {
-            setUserData((prev) => ({
-                ...prev,
-                tableNumber: "1",
-            }));
+        if (sessionInfo.tokenType === "session" && Number(sessionInfo.tableCount) > 0 && !String(selectedTableNumber || "").trim()) {
+            setSelectedTableNumber("1");
             return;
         }
 
-        if (sessionInfo.tokenType !== "session" && userData.tableNumber) {
-            setUserData((prev) => ({
-                ...prev,
-                tableNumber: "",
-            }));
+        if (sessionInfo.tokenType !== "session" && selectedTableNumber) {
+            setSelectedTableNumber("");
         }
-    }, [sessionInfo.tokenType, sessionInfo.tableCount, userData.tableNumber]);
+    }, [selectedTableNumber, sessionInfo.tableCount, sessionInfo.tokenType]);
 
-    const handleUserDataChange = (e) => {
-        const { name, value: fieldValue } = e.target;
-        setUserData((prev) => ({
-            ...prev,
-            [name]: fieldValue,
-        }));
-    };
+    useEffect(() => {
+        if (!shouldPollPortalAuth) {
+            return undefined;
+        }
+
+        const intervalId = window.setInterval(async () => {
+            const isReady = await syncPortalProfile({ retries: 1, delayMs: 800, silent: true });
+            if (isReady) {
+                setShouldPollPortalAuth(false);
+            }
+        }, 2000);
+
+        return () => window.clearInterval(intervalId);
+    }, [shouldPollPortalAuth]);
 
     const enterWithDevBypass = async () => {
         setBypassPasswordError("");
 
         if (!bypassPassword) {
-            setBypassPasswordError("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430");
+            setBypassPasswordError("Введите пароль администратора");
             return;
         }
 
         const authResult = await loginMayakAdmin(bypassPassword);
         if (!authResult.success) {
-            setBypassPasswordError(authResult.error || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0430\u0432\u0442\u043e\u0440\u0438\u0437\u043e\u0432\u0430\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434");
+            setBypassPasswordError(authResult.error || "Не удалось авторизовать локальный вход");
             return;
         }
 
         await addKeyToCookies(token);
-        await addUserToCookies("dev-bypass", "\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434");
+        await addUserToCookies("dev-bypass", "Локальный вход");
+        setTokenExists(true);
         goTo("trainer");
     };
 
-    const saveData = async () => {
+    const handlePortalAuthenticated = async () => {
+        const isReady = await syncPortalProfile({
+            retries: 4,
+            delayMs: 1000,
+            silent: false,
+        });
+
+        if (!isReady) {
+            return;
+        }
+    };
+
+    const handlePortalOAuthStart = (provider) => {
+        sessionStorage.setItem("currentPage", "settings");
+        stashMayakPendingToken(token);
+
+        if (provider === "yandex") {
+            markMayakPortalAuthPending({ provider });
+            return;
+        }
+
+        if (provider === "vk") {
+            setShouldPollPortalAuth(true);
+        }
+    };
+
+    const handleProfileFormChange = (event) => {
+        const { name, value: nextValue } = event.target;
+        setProfileForm((prev) => ({
+            ...prev,
+            [name]: nextValue,
+        }));
+        setProfileFormError("");
+    };
+
+    const handleSaveProfileName = async () => {
+        const nextFirstName = String(profileForm.firstName || "").trim();
+        const nextLastName = String(profileForm.lastName || "").trim();
+        const nextPatronymic = String(profileForm.patronymic || "").trim();
+
+        if (!nextLastName || !nextFirstName) {
+            setProfileFormError("Для входа в MAYAK заполните фамилию и имя.");
+            return false;
+        }
+
+        setIsSavingProfileName(true);
+        setProfileFormError("");
+
+        try {
+            await updatePortalProfileNames({
+                firstName: nextFirstName,
+                lastName: nextLastName,
+                patronymic: nextPatronymic,
+            });
+
+            const isReady = await syncPortalProfile({
+                retries: 2,
+                delayMs: 800,
+                silent: false,
+            });
+
+            if (!isReady) {
+                throw new Error("Профиль обновлен, но MAYAK не смог перечитать его сразу. Повторите попытку.");
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Ошибка сохранения ФИО профиля:", error);
+            setProfileFormError(error.message || "Не удалось сохранить ФИО в профиль.");
+            return false;
+        } finally {
+            setIsSavingProfileName(false);
+        }
+    };
+
+    const activatePortalUser = async () => {
         if (isDevBypass) {
             await enterWithDevBypass();
             return;
@@ -334,12 +577,18 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
-        if (!userData.lastName || !userData.firstName || !userData.college) {
-            alert("Пожалуйста, заполните обязательные поля: Фамилия, Имя и Организация");
+        const hasPortalSession = ["ready", "needs_fio"].includes(portalState.status) && portalState.profile?.userId;
+        if (!hasPortalSession) {
+            alert("Сначала войдите в платформенный аккаунт");
             return;
         }
 
-        if (sessionInfo.tokenType === "session" && !userData.tableNumber) {
+        if (!hasRequiredMayakName(portalState.profile)) {
+            alert("Перед входом в MAYAK заполните фамилию и имя в профиле");
+            return;
+        }
+
+        if (sessionInfo.tokenType === "session" && !String(selectedTableNumber || "").trim()) {
             alert("Пожалуйста, выберите ваш стол");
             return;
         }
@@ -349,35 +598,44 @@ export default function SettingsPage({ goTo }) {
         try {
             const useResult = await useTokenAPI(token);
             if (!useResult.success) {
-                alert(useResult.error || "Ошибка при использовании токена");
-                setIsLoading(false);
-                return;
+                throw new Error(useResult.error || "Ошибка при использовании токена");
             }
 
-            const userId = uuidv4();
+            const portalProfile = portalState.profile;
+            const userId = String(portalProfile.userId);
             const userRecord = {
                 id: userId,
-                userData,
+                portalUserId: userId,
                 sessionId: sessionInfo.sessionId,
                 tokenType: sessionInfo.tokenType,
+                userData: {
+                    firstName: portalProfile.firstName,
+                    lastName: portalProfile.lastName,
+                    patronymic: portalProfile.patronymic,
+                    college: portalProfile.organizationName,
+                },
+                portalProfile: {
+                    email: portalProfile.email,
+                    username: portalProfile.username,
+                    organizationId: portalProfile.organizationId,
+                    fullName: portalProfile.fullName,
+                },
             };
 
-            const dataToSave = {
-                key: token,
-                userId,
-                data: userRecord,
-            };
-
-            const response = await fetch("/api/mayak/save", {
+            const saveResponse = await fetch("/api/mayak/save", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(dataToSave),
+                body: JSON.stringify({
+                    key: token,
+                    userId,
+                    data: userRecord,
+                }),
             });
 
-            if (!response.ok) {
-                throw new Error("Ошибка при сохранении данных");
+            if (!saveResponse.ok) {
+                throw new Error("Не удалось сохранить пользователя MAYAK");
             }
 
             if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
@@ -389,9 +647,9 @@ export default function SettingsPage({ goTo }) {
                     body: JSON.stringify({
                         sessionId: sessionInfo.sessionId,
                         userId,
-                        name: `${userData.lastName} ${userData.firstName}`.trim(),
-                        organization: userData.college,
-                        tableNumber: userData.tableNumber,
+                        name: portalProfile.fullName,
+                        organization: portalProfile.organizationName,
+                        tableNumber: selectedTableNumber,
                     }),
                 });
 
@@ -401,32 +659,32 @@ export default function SettingsPage({ goTo }) {
                 }
             }
 
-            setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 3000);
             await addKeyToCookies(token);
-            await addUserToCookies(userId, `${userData.lastName} ${userData.firstName}`, {
+            await addUserToCookies(userId, portalProfile.fullName, {
                 sessionId: sessionInfo.sessionId,
-                tableNumber: userData.tableNumber || "",
+                tableNumber: sessionInfo.tokenType === "session" ? String(selectedTableNumber || "") : "",
                 tokenType: sessionInfo.tokenType,
             });
+
+            setTokenExists(true);
             setHasRegisteredUser(true);
-
-            const updatedRecordsCount = await getRecordsCount();
-            setValue(max - updatedRecordsCount);
-
-            setUserData({
-                lastName: "",
-                firstName: "",
-                college: "",
-                tableNumber: "",
-            });
+            setValue(useResult.remainingAttempts || 0);
+            setTokenRemainingAttempts(useResult.remainingAttempts || 0);
+            clearMayakPendingToken();
+            setShouldPollPortalAuth(false);
+            goTo("trainer");
         } catch (error) {
-            console.error("Ошибка:", error);
-            alert("Произошла ошибка при сохранении данных");
+            console.error("Ошибка активации MAYAK:", error);
+            alert(error.message || "Не удалось активировать тренажер");
         } finally {
             setIsLoading(false);
-            goTo("trainer");
         }
+    };
+
+    const getRangeClass = (val) => {
+        if (val < 30) return "range-low";
+        if (val < 80) return "range-mid";
+        return "range-high";
     };
 
     return (
@@ -442,38 +700,67 @@ export default function SettingsPage({ goTo }) {
                     <CloseIcon />
                 </Button>
             </Header>
+
             <div className="hero" style={{ placeItems: "center" }}>
                 <div className="flex flex-col gap-[1.6rem] items-center h-full col-span-4 col-start-5 col-end-9">
                     <h3>Настройки</h3>
-                    <div className="flex flex-col gap-[0.75rem]">
+
+                    <div className="flex flex-col gap-[0.75rem] w-full">
                         <div className="flex flex-col gap-[0.5rem]">
                             <span className="big">Данные токена</span>
-                            <p className="small text-(--color-gray-black)">Это ваш токен доступа. Он имеет ограниченное количество использований. На шкале под полем отображается, сколько запросов уже израсходовано</p>
+                            <p className="small text-(--color-gray-black)">Введите токен доступа к MAYAK. После успешной проверки откроется платформенный вход, а повторная авторизация не понадобится, если сессия уже активна.</p>
                             {sessionInfo.tokenType === "session" && sessionInfo.sessionName && (
                                 <p className="small text-(--color-gray-black)">
-                                    Сессионный вход: <b>{sessionInfo.sessionName}</b>. После регистрации выбор стола обязателен.
+                                    Сессионный вход: <b>{sessionInfo.sessionName}</b>. Для этой сессии перед входом в тренажер нужно выбрать стол.
                                 </p>
                             )}
                         </div>
+
                         <Input
                             placeholder="Введите ваш токен"
                             value={token}
-                            onChange={(e) => {
-                                const nextToken = e.target.value;
+                            onChange={(event) => {
+                                const nextToken = event.target.value;
                                 setToken(nextToken);
+                                setTokenExists(false);
                                 setTokenError("");
                                 setShowNotification(false);
                                 setIsTokenValid(false);
                                 setIsDevBypass(false);
                                 setBypassPasswordError("");
+                                setHasRegisteredUser(false);
                             }}
                         />
 
                         {isValidating && <span className="small text-blue-600 block text-center">Проверка токена...</span>}
 
-                        {showNotification && tokenExists && !isDevBypass && hasRegisteredUser && (
+                        {tokenError && !showNotification && !isValidating && (
+                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{tokenError}</span>
+                        )}
+
+                        {showNotification && isDevBypass && (
                             <div className="flex flex-col gap-[1rem] items-center">
-                                <span className="big p-3 bg-green-100 text-green-700 rounded-md">Тренажер активирован</span>
+                                <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Локальный вход доступен. Для входа подтвердите пароль администратора.</span>
+                                <Input
+                                    type="password"
+                                    placeholder="Пароль администратора"
+                                    value={bypassPassword}
+                                    onChange={(event) => {
+                                        setBypassPassword(event.target.value);
+                                        setBypassPasswordError("");
+                                    }}
+                                />
+                                {bypassPasswordError && <span className="small text-red-600 block text-center">{bypassPasswordError}</span>}
+                                <Button onClick={enterWithDevBypass} className="w-full">
+                                    Войти в тренажер
+                                </Button>
+                            </div>
+                        )}
+
+                        {showNotification && !isDevBypass && hasRegisteredUser && (
+                            <div className="flex flex-col gap-[1rem] items-center">
+                                <span className="big p-3 bg-green-100 text-green-700 rounded-md text-center">Токен активирован, платформенный аккаунт подтвержден.</span>
+                                {portalState.profile?.fullName && <span className="small text-(--color-gray-black)">Вы вошли как: {portalState.profile.fullName}</span>}
                                 <span className="small text-(--color-gray-black)">Осталось попыток: {tokenRemainingAttempts}</span>
                                 <Button onClick={() => goTo("trainer")} className="w-full">
                                     Войти в тренажер
@@ -481,33 +768,30 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && isDevBypass && (
-                            <div className="flex flex-col gap-[1rem] items-center">
-                                <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">{"\u041b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u0432\u0445\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d. \u0414\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430."}</span>
-                                <Input
-                                    type="password"
-                                    placeholder={"\u041f\u0430\u0440\u043e\u043b\u044c \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0430"}
-                                    value={bypassPassword}
-                                    onChange={(e) => {
-                                        setBypassPassword(e.target.value);
-                                        setBypassPasswordError("");
-                                    }}
-                                />
-                                {bypassPasswordError && <span className="small text-red-600 block text-center">{bypassPasswordError}</span>}
-                                <Button onClick={enterWithDevBypass} className="w-full">
-                                    {"\u0412\u043e\u0439\u0442\u0438 \u0432 \u0442\u0440\u0435\u043d\u0430\u0436\u0435\u0440"}
+                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "checking" && (
+                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Проверяем платформенную авторизацию...</span>
+                        )}
+
+                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "unauthenticated" && (
+                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Теперь войдите в платформенный аккаунт, чтобы открыть MAYAK.</span>
+                        )}
+
+                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "profile_missing" && (
+                            <div className="flex flex-col gap-[0.75rem]">
+                                <span className="big p-3 bg-amber-100 text-amber-700 rounded-md block text-center">{portalState.error}</span>
+                                <Button inverted className="w-full" onClick={() => syncPortalProfile({ retries: 4, delayMs: 1000, silent: false })}>
+                                    Проверить профиль снова
                                 </Button>
                             </div>
                         )}
 
-                        {showNotification && (!tokenExists || !hasRegisteredUser) && !isDevBypass && (
-                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">
-                                Токен подходит. Заполните форму ниже для активации тренажера.
-                            </span>
-                        )}
-
-                        {tokenError && !showNotification && !isValidating && (
-                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{tokenError}</span>
+                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "error" && (
+                            <div className="flex flex-col gap-[0.75rem]">
+                                <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{portalState.error}</span>
+                                <Button inverted className="w-full" onClick={() => syncPortalProfile({ retries: 2, delayMs: 800, silent: false })}>
+                                    Повторить проверку
+                                </Button>
+                            </div>
                         )}
 
                         {isTokenValid && !isDevBypass && (
@@ -515,98 +799,95 @@ export default function SettingsPage({ goTo }) {
                                 <span className={getRangeClass(value)}>
                                     {value}/{max}
                                 </span>
-                                <meter id="meter-my" min="0" max={max} low="30" high="80" optimum="100" value={value} className={getRangeClass(value)}></meter>
+                                <meter id="meter-my" min="0" max={max} low="30" high="80" optimum="100" value={value} className={getRangeClass(value)} />
                             </div>
                         )}
                     </div>
 
-                    {showNotification && (!tokenExists || !hasRegisteredUser) && !isDevBypass && (
-                        <>
-                            <div className="flex flex-col gap-[0.75rem] w-full">
-                                <span className="big">Личные данные</span>
-                                <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                                    <div>
-                                        <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Фамилия *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="lastName"
-                                            name="lastName"
-                                            value={userData.lastName}
-                                            onChange={handleUserDataChange}
-                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Имя *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="firstName"
-                                            name="firstName"
-                                            value={userData.firstName}
-                                            onChange={handleUserDataChange}
-                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-1">
-                                            Организация *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            id="college"
-                                            name="college"
-                                            value={userData.college}
-                                            onChange={handleUserDataChange}
-                                            className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            required
-                                        />
-                                    </div>
-                                    {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
-                                        <div>
-                                            <label htmlFor="tableNumber" className="block text-sm font-medium text-gray-700 mb-1">
-                                                Выберите ваш стол *
-                                            </label>
-                                            <select
-                                                id="tableNumber"
-                                                name="tableNumber"
-                                                value={userData.tableNumber}
-                                                onChange={handleUserDataChange}
-                                                className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                required
-                                            >
-                                                {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
-                                                    const value = String(index + 1);
-                                                    return (
-                                                        <option key={value} value={value}>
-                                                            Стол {value}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                        </div>
-                                    )}
+                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "unauthenticated" && (
+                        <div className="w-full">
+                            <MayakPlatformAuthFlow onAuthenticated={handlePortalAuthenticated} onOAuthStart={handlePortalOAuthStart} />
+                        </div>
+                    )}
+
+                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "needs_fio" && (
+                        <div className="flex flex-col gap-[1rem] w-full">
+                            <div className="flex flex-col gap-[0.5rem] p-4 bg-amber-50 rounded-[1rem] border border-amber-200">
+                                <span className="big">Заполните ФИО для входа в MAYAK</span>
+                                <span className="small text-(--color-gray-black)">
+                                    Профиль платформы найден, но для сертификата не хватает обязательных данных. Заполните фамилию и имя.
+                                </span>
+                                {portalState.profile?.email && (
+                                    <span className="small text-(--color-gray-black)">Аккаунт: {portalState.profile.email}</span>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col gap-[0.75rem]">
+                                <Input
+                                    name="lastName"
+                                    placeholder="Фамилия *"
+                                    value={profileForm.lastName}
+                                    onChange={handleProfileFormChange}
+                                />
+                                <Input
+                                    name="firstName"
+                                    placeholder="Имя *"
+                                    value={profileForm.firstName}
+                                    onChange={handleProfileFormChange}
+                                />
+                                <Input
+                                    name="patronymic"
+                                    placeholder="Отчество"
+                                    value={profileForm.patronymic}
+                                    onChange={handleProfileFormChange}
+                                />
+                                {profileFormError && <span className="small text-red-600 block text-center">{profileFormError}</span>}
+                            </div>
+
+                            <Button onClick={handleSaveProfileName} disabled={isSavingProfileName} className="w-full">
+                                {isSavingProfileName ? "Сохраняем ФИО..." : "Сохранить ФИО"}
+                            </Button>
+                        </div>
+                    )}
+
+                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "ready" && (
+                        <div className="flex flex-col gap-[1rem] w-full">
+                            <div className="flex flex-col gap-[0.5rem] p-4 bg-slate-50 rounded-[1rem] border border-slate-200">
+                                <span className="big">Платформенный профиль</span>
+                                <span className="small text-(--color-gray-black)">ФИО: {portalState.profile.fullName}</span>
+                                {portalState.profile.organizationName && (
+                                    <span className="small text-(--color-gray-black)">Организация: {portalState.profile.organizationName}</span>
+                                )}
+                            </div>
+
+                            {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
+                                <div className="flex flex-col gap-[0.5rem]">
+                                    <label htmlFor="tableNumber" className="block text-sm font-medium text-gray-700">
+                                        Выберите ваш стол *
+                                    </label>
+                                    <select
+                                        id="tableNumber"
+                                        name="tableNumber"
+                                        value={selectedTableNumber}
+                                        onChange={(event) => setSelectedTableNumber(event.target.value)}
+                                        className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required>
+                                        {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
+                                            const optionValue = String(index + 1);
+                                            return (
+                                                <option key={optionValue} value={optionValue}>
+                                                    Стол {optionValue}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
                                 </div>
-                            </div>
+                            )}
 
-                            <div className="flex justify-center w-full">
-                                <button
-                                    onClick={saveData}
-                                    disabled={isLoading}
-                                    className={`px-8 py-3 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                        isLoading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500"
-                                    }`}>
-                                    {isLoading ? "Сохранение..." : "Сохранить результаты"}
-                                </button>
-                            </div>
-
-                            {saveSuccess && <div className="mt-6 p-3 bg-green-100 text-green-700 text-center rounded-md">Данные успешно сохранены!</div>}
-                        </>
+                            <Button onClick={activatePortalUser} disabled={isLoading} className="w-full">
+                                {isLoading ? "Подключаем MAYAK..." : "Войти в тренажер"}
+                            </Button>
+                        </div>
                     )}
                 </div>
             </div>
