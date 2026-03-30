@@ -292,7 +292,10 @@ export default function SettingsPage({ goTo }) {
             setPortalState({
                 status: result.status === 404 ? "profile_missing" : "error",
                 profile: null,
-                error: result.status === 404 ? "Профиль платформы еще не успел подготовиться. Повторите проверку через несколько секунд." : result.error || "Не удалось проверить авторизацию на платформе.",
+                error:
+                    result.status === 404
+                        ? "Платформа не вернула профиль для этого аккаунта. Если вы только что зарегистрировались, попробуйте войти заново. Если сообщение не исчезает, профиль не создан или авторизация не завершилась на стороне платформы."
+                        : result.error || "Не удалось проверить авторизацию на платформе.",
             });
             setHasRegisteredUser(false);
             return false;
@@ -577,13 +580,14 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
-        const hasPortalSession = ["ready", "needs_fio"].includes(portalState.status) && portalState.profile?.userId;
+        const portalProfile = portalState.profile;
+        const hasPortalSession = ["ready", "needs_fio"].includes(portalState.status) && portalProfile?.userId;
         if (!hasPortalSession) {
             alert("Сначала войдите в платформенный аккаунт");
             return;
         }
 
-        if (!hasRequiredMayakName(portalState.profile)) {
+        if (!hasRequiredMayakName(portalProfile)) {
             alert("Перед входом в MAYAK заполните фамилию и имя в профиле");
             return;
         }
@@ -661,6 +665,9 @@ export default function SettingsPage({ goTo }) {
 
             await addKeyToCookies(token);
             await addUserToCookies(userId, portalProfile.fullName, {
+                firstName: portalProfile.firstName,
+                lastName: portalProfile.lastName,
+                patronymic: portalProfile.patronymic,
                 sessionId: sessionInfo.sessionId,
                 tableNumber: sessionInfo.tokenType === "session" ? String(selectedTableNumber || "") : "",
                 tokenType: sessionInfo.tokenType,
@@ -812,7 +819,7 @@ export default function SettingsPage({ goTo }) {
 
                     {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "needs_fio" && (
                         <div className="flex flex-col gap-[1rem] w-full">
-                            <div className="flex flex-col gap-[0.5rem] p-4 bg-amber-50 rounded-[1rem] border border-amber-200">
+                            <div className="flex flex-col gap-[0.35rem]">
                                 <span className="big">Заполните ФИО для входа в MAYAK</span>
                                 <span className="small text-(--color-gray-black)">
                                     Профиль платформы найден, но для сертификата не хватает обязательных данных. Заполните фамилию и имя.

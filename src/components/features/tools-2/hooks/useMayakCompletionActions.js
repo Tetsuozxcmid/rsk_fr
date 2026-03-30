@@ -1,11 +1,51 @@
-﻿import { useCallback } from "react";
+import { useCallback } from "react";
 
 import { blobToBase64, buildMayakSessionArtifacts } from "../utils/mayakSessionArtifacts";
 import { clearMayakSessionCompletionState, executeMayakSessionCompletion } from "../utils/mayakSessionCompletion";
 import { buildMayakCertificateBlob, buildMayakQrDataUrl, buildMayakSessionLogBlob, downloadMayakBlob } from "../utils/mayakSessionDocuments";
-import { getUserFromCookies } from "../actions";
+import { getKeyFromCookies, getUserFromCookies } from "../actions";
 
 const ENABLE_MAYAK_TELEGRAM_COMPLETION_DELIVERY = false;
+
+function buildFullMayakName(userData) {
+    const explicitParts = [userData?.lastName, userData?.firstName, userData?.patronymic]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+
+    if (explicitParts.length > 0) {
+        return explicitParts.join(" ");
+    }
+
+    return String(userData?.name || "").trim() || "Участник";
+}
+
+function buildCertificateMayakName(userData) {
+    const explicitParts = [userData?.lastName, userData?.firstName]
+        .map((item) => String(item || "").trim())
+        .filter(Boolean);
+
+    if (explicitParts.length > 0) {
+        return explicitParts.join(" ");
+    }
+
+    const fallbackName = buildFullMayakName(userData);
+    const fallbackParts = fallbackName.split(/\s+/).filter(Boolean);
+
+    if (fallbackParts.length >= 2) {
+        return fallbackParts.slice(0, 2).join(" ");
+    }
+
+    return fallbackName;
+}
+
+function buildSafeMayakFilePart(value) {
+    const prepared = String(value || "")
+        .trim()
+        .replace(/[^\p{L}\p{N}_-]+/gu, "_")
+        .replace(/^_+|_+$/g, "");
+
+    return prepared || "Participant";
+}
 
 export const useMayakCompletionActions = ({
     elapsedTime,
@@ -30,7 +70,7 @@ export const useMayakCompletionActions = ({
     const handleDownloadLogs = useCallback(async () => {
         try {
             const userData = getUserFromCookies();
-            const userName = userData?.name || "Участник";
+            const userName = buildFullMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
             const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
                 getStorageKey,
@@ -53,7 +93,7 @@ export const useMayakCompletionActions = ({
     const handleDownloadCertificate = useCallback(async () => {
         try {
             const userData = getUserFromCookies();
-            const userName = userData?.name || "Участник";
+            const userName = buildCertificateMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
             const userId = userData?.id || "";
             const qrDataUrl = await buildMayakQrDataUrl(userId);
@@ -67,7 +107,7 @@ export const useMayakCompletionActions = ({
     const handleDownloadAnalytics = useCallback(async () => {
         try {
             const userData = getUserFromCookies();
-            const userName = userData?.name || "Участник";
+            const userName = buildFullMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
             const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
                 getStorageKey,
@@ -106,14 +146,20 @@ export const useMayakCompletionActions = ({
         if (!ENABLE_MAYAK_TELEGRAM_COMPLETION_DELIVERY) {
             return;
         }
+
         setTelegramLoading(true);
+
         try {
             const userData = getUserFromCookies();
-            const userName = userData?.name || "Участник";
+            const userName = buildFullMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
             const userId = userData?.id || "";
             const qrDataUrl = await buildMayakQrDataUrl(userId);
-            const certBlob = await buildMayakCertificateBlob({ userName, dateStr, qrDataUrl });
+            const certBlob = await buildMayakCertificateBlob({
+                userName: buildCertificateMayakName(userData),
+                dateStr,
+                qrDataUrl,
+            });
             const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
                 getStorageKey,
                 tokenSectionId,
@@ -149,7 +195,9 @@ export const useMayakCompletionActions = ({
                 }),
             });
 
-            if (!res.ok) throw new Error("Ошибка подготовки сессии");
+            if (!res.ok) {
+                throw new Error("Ошибка подготовки сессии");
+            }
 
             const { deepLink } = await res.json();
             setTelegramLink(deepLink);
@@ -162,6 +210,122 @@ export const useMayakCompletionActions = ({
         }
     }, [formatTaskTime, getStorageKey, selectedRole, setTelegramLink, setTelegramLoading, tokenSectionId]);
 
+    const handleSaveArtifactsToProfile = useCallback(async () => {
+        const activeUser = getUserFromCookies();
+        const activeKey = await getKeyFromCookies();
+        const fullUserName = buildFullMayakName(activeUser);
+        const certificateUserName = buildCertificateMayakName(activeUser);
+        const safeNamePart = buildSafeMayakFilePart(fullUserName);
+        const dateStr = new Date().toLocaleDateString("ru-RU");
+        const fileStamp = new Date().toISOString().replace(/[:]/g, "-").replace(/\.\d+Z$/, "Z");
+        const userId = activeUser?.id || "";
+
+        if (!activeKey?.text) {
+            throw new Error("Не найден активный токен MAYAK");
+        }
+
+        if (!userId) {
+            throw new Error("Не найден активный пользователь MAYAK");
+        }
+
+        const qrDataUrl = await buildMayakQrDataUrl(userId);
+        const certificateBlob = await buildMayakCertificateBlob({
+            userName: certificateUserName,
+            dateStr,
+            qrDataUrl,
+        });
+
+        const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
+            getStorageKey,
+            tokenSectionId,
+        });
+        const totalTime = formatTaskTime(totalSessionSeconds);
+        const logData = {
+            userName: fullUserName,
+            userRole: selectedRole,
+            date: dateStr,
+            totalTime,
+            rankingData,
+            tasks: enrichedTasks,
+        };
+
+        const logBlob = await buildMayakSessionLogBlob({
+            userName: fullUserName,
+            userRole: selectedRole,
+            dateStr,
+            totalTime,
+            rankingData,
+            tasks: enrichedTasks,
+        });
+
+        let analyticsBlob = null;
+
+        try {
+            const analyticsResponse = await fetch("/api/mayak/session-analytics", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ logData }),
+            });
+
+            if (!analyticsResponse.ok) {
+                const payload = await analyticsResponse.json().catch(() => ({}));
+                throw new Error(payload.error || "Не удалось сформировать аналитический отчёт");
+            }
+
+            analyticsBlob = await analyticsResponse.blob();
+        } catch (error) {
+            console.error("Не удалось сформировать аналитику MAYAK, сохраняем остальные материалы:", error);
+        }
+        const filesToSave = [
+            {
+                kind: "certificate",
+                fileName: `Certificate_Mayak_${safeNamePart}_${fileStamp}.pdf`,
+                contentType: "application/pdf",
+                base64: await blobToBase64(certificateBlob),
+            },
+            {
+                kind: "log",
+                fileName: `Log_Mayak_${safeNamePart}_${fileStamp}.pdf`,
+                contentType: "application/pdf",
+                base64: await blobToBase64(logBlob),
+            },
+        ];
+
+        if (analyticsBlob) {
+            filesToSave.push({
+                kind: "analytics",
+                fileName: `Analytics_Mayak_${safeNamePart}_${fileStamp}.pdf`,
+                contentType: "application/pdf",
+                base64: await blobToBase64(analyticsBlob),
+            });
+        }
+
+        const saveResponse = await fetch("/api/profile/mayak-artifacts", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({
+                key: activeKey.text,
+                completedAt: new Date().toISOString(),
+                sectionId: tokenSectionId,
+                role: selectedRole,
+                sessionId: activeUser?.sessionId || "",
+                tableNumber: activeUser?.tableNumber || "",
+                tokenType: activeUser?.tokenType || "legacy",
+                files: filesToSave,
+            }),
+        });
+
+        if (!saveResponse.ok) {
+            const payload = await saveResponse.json().catch(() => ({}));
+            throw new Error(payload.error || "Не удалось сохранить материалы в личном кабинете");
+        }
+
+        return saveResponse.json().catch(() => ({}));
+    }, [formatTaskTime, getStorageKey, selectedRole, tokenSectionId]);
+
     const handleSaveSessionCompletion = useCallback(async () => {
         setTelegramLoading(true);
 
@@ -169,9 +333,7 @@ export const useMayakCompletionActions = ({
             await executeMayakSessionCompletion({
                 elapsedTime,
                 levels,
-                onDownloadAnalytics: handleDownloadAnalytics,
-                onDownloadCertificate: handleDownloadCertificate,
-                onDownloadLogs: handleDownloadLogs,
+                onPersistArtifacts: handleSaveArtifactsToProfile,
                 onSendToTelegram: handleSendToTelegram,
                 onClearState: () =>
                     clearMayakSessionCompletionState({
@@ -185,10 +347,11 @@ export const useMayakCompletionActions = ({
             });
         } catch (error) {
             console.error("Ошибка в процессе завершения:", error);
-            alert("Произошла ошибка. Если сертификат не скачался, проверьте папку загрузок.");
-            window.location.href = "/";
+            alert(error.message || "Не удалось сохранить материалы MAYAK в личном кабинете.");
+        } finally {
+            setTelegramLoading(false);
         }
-    }, [elapsedTime, getStorageKey, handleDownloadAnalytics, handleDownloadCertificate, handleDownloadLogs, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
+    }, [elapsedTime, getStorageKey, handleSaveArtifactsToProfile, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
 
     return {
         handleDownloadAnalytics,

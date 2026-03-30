@@ -36,13 +36,10 @@ export function clearMayakSessionCompletionState({ getStorageKey, removeKeyCooki
     localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
 }
 
-
 export async function executeMayakSessionCompletion({
     elapsedTime,
     levels,
-    onDownloadAnalytics,
-    onDownloadCertificate,
-    onDownloadLogs,
+    onPersistArtifacts,
     onSendToTelegram,
     onClearState,
 }) {
@@ -62,19 +59,17 @@ export async function executeMayakSessionCompletion({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-    }).catch((e) => console.error("Ошибка сохранения (не критично):", e));
+    }).catch((error) => console.error("Ошибка сохранения измерений MAYAK (не критично):", error));
 
-    await onDownloadCertificate();
-    await onDownloadLogs();
-    await onDownloadAnalytics();
+    await onPersistArtifacts();
 
     try {
         await onSendToTelegram();
-    } catch (e) {
-        console.error("Telegram отправка не удалась (не критично):", e);
+    } catch (error) {
+        console.error("Telegram-отправка не удалась (не критично):", error);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await new Promise((resolve) => setTimeout(resolve, 1200));
     onClearState();
-    window.location.href = "/";
+    window.location.href = "/profile";
 }

@@ -1,0 +1,76 @@
+
+> rsk@0.1.0 dev
+> next dev --webpack -p 1234
+
+▲ Next.js 16.1.1 (webpack)
+- Local:         http://localhost:1234
+- Network:       http://10.8.1.1:1234
+- Environments: .env.local
+
+✓ Starting...
+✓ Ready in 2.1s
+ GET /tools/mayak-oko 200 in 717ms (compile: 660ms, render: 57ms)
+ GET / 200 in 424ms (compile: 408ms, render: 16ms)
+ GET / 200 in 15ms (compile: 3ms, render: 13ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 378ms (compile: 353ms, render: 25ms)
+ GET /api/mayak/settings 200 in 324ms (compile: 293ms, render: 31ms)
+ GET /api/mayak/settings 200 in 322ms (compile: 290ms, render: 32ms)
+ GET /api/mayak/content-data 304 in 394ms (compile: 356ms, render: 38ms)
+ GET /api/mayak/content-data 304 in 5ms (compile: 1526µs, render: 4ms)
+ GET /api/mayak/content-data 304 in 5ms (compile: 1976µs, render: 3ms)
+ GET /api/mayak/validate-token?token=a 200 in 101ms (compile: 91ms, render: 10ms)
+ GET /api/mayak/validate-token?token=ffff 304 in 5ms (compile: 2ms, render: 3ms)
+ GET /api/mayak/validate-token?token=fffff 304 in 4ms (compile: 2ms, render: 2ms)
+ POST /api/admin/mayak-auth 200 in 71ms (compile: 65ms, render: 6ms)
+ GET /api/mayak/settings 200 in 9ms (compile: 4ms, render: 5ms)
+ GET /api/mayak/content-data 304 in 10ms (compile: 6ms, render: 4ms)
+ GET /api/mayak/settings 200 in 6ms (compile: 3ms, render: 2ms)
+ GET /api/mayak/content-data 304 in 6ms (compile: 1515µs, render: 5ms)
+ GET /api/mayak/validate-token?token=fffff 304 in 10ms (compile: 7ms, render: 3ms)
+ GET /api/mayak/validate-token?token=fffff 304 in 5ms (compile: 3ms, render: 2ms)
+ GET /api/admin/mayak-auth 200 in 3ms (compile: 910µs, render: 1919µs)
+ GET /api/admin/mayak-auth 304 in 3ms (compile: 730µs, render: 2ms)
+ GET /api/mayak/content-bundle 200 in 163ms (compile: 157ms, render: 7ms)
+ GET /admin 200 in 508ms (compile: 488ms, render: 20ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 23ms (compile: 6ms, render: 18ms)
+ GET /api/admin/mayak-auth 304 in 27ms (compile: 25ms, render: 1907µs)
+ POST /api/admin/mayak-auth 200 in 4ms (compile: 1054µs, render: 3ms)
+ GET /admin?view=sections 200 in 12ms (compile: 4ms, render: 8ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 4ms (compile: 966µs, render: 3ms)
+ GET /api/admin/mayak-auth 200 in 3ms (compile: 1732µs, render: 1440µs)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 4ms (compile: 934µs, render: 3ms)
+ GET /admin/mayak-content 200 in 543ms (compile: 523ms, render: 20ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 9ms (compile: 6ms, render: 3ms)
+ GET /api/admin/mayak-auth 304 in 13ms (compile: 11ms, render: 2ms)
+ GET /api/admin/mayak-tokens 200 in 474ms (compile: 463ms, render: 11ms)
+ GET /api/admin/mayak-settings 200 in 476ms (compile: 463ms, render: 13ms)
+ GET /api/admin/mayak-content/ranges 200 in 479ms (compile: 464ms, render: 15ms)
+ GET /api/admin/mayak-auth 304 in 5ms (compile: 2ms, render: 3ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 9ms (compile: 7ms, render: 2ms)
+ GET /api/admin/mayak-auth 304 in 3ms (compile: 843µs, render: 1831µs)
+ GET /admin/mayak-content 200 in 42ms (compile: 33ms, render: 9ms)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 3ms (compile: 935µs, render: 2ms)
+ GET /api/admin/mayak-auth 304 in 5ms (compile: 3ms, render: 1563µs)
+ GET /api/admin/mayak-tokens 304 in 4ms (compile: 3ms, render: 1387µs)
+ GET /api/admin/mayak-settings 304 in 6ms (compile: 4ms, render: 1940µs)
+ GET /api/admin/mayak-content/ranges 304 in 9ms (compile: 1503µs, render: 7ms)
+ GET /api/admin/mayak-auth 304 in 3ms (compile: 1784µs, render: 1329µs)
+Profile API: Cookie Token present: false
+Profile API: Auth Header present: false
+ GET /api/profile/info 401 in 6ms (compile: 4ms, render: 2ms)
+ GET /api/admin/mayak-auth 304 in 2ms (compile: 811µs, render: 1334µs)
+[?25h

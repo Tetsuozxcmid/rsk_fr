@@ -11,6 +11,9 @@ export default async function handler(req, res) {
         const settings = await readMayakSettings();
         const telegramBotToken = settings.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || "";
         const openrouterApiKey = settings.openrouterApiKey || process.env.OPENROUTER_API_KEY || "";
+        const finalFileOpenrouterApiKey =
+            settings.finalFileOpenrouterApiKey || process.env.MAYAK_FINAL_FILE_OPENROUTER_API_KEY || openrouterApiKey || "";
+        const finalFileModel = settings.finalFileModel || process.env.MAYAK_FINAL_FILE_MODEL || "google/gemini-3-flash-preview";
         const telegramBotUsername = settings.telegramBotUsername || process.env.TELEGRAM_BOT_USERNAME || "";
         const telegramWebhookUrl = settings.telegramWebhookUrl || process.env.TELEGRAM_WEBHOOK_URL || "";
         const baseUrl = settings.baseUrl || process.env.BASE_URL || "";
@@ -26,6 +29,9 @@ export default async function handler(req, res) {
                 telegramBotTokenIsSet: !!telegramBotToken,
                 openrouterApiKey: maskSecret(openrouterApiKey),
                 openrouterApiKeyIsSet: !!openrouterApiKey,
+                finalFileOpenrouterApiKey: maskSecret(finalFileOpenrouterApiKey),
+                finalFileOpenrouterApiKeyIsSet: !!finalFileOpenrouterApiKey,
+                finalFileModel,
                 telegramBotUsername,
                 telegramBotUsernameIsSet: !!telegramBotUsername,
                 telegramWebhookUrl,
@@ -56,6 +62,8 @@ export default async function handler(req, res) {
         const {
             telegramBotToken,
             openrouterApiKey,
+            finalFileOpenrouterApiKey,
+            finalFileModel,
             telegramBotUsername,
             telegramWebhookUrl,
             baseUrl,
@@ -79,6 +87,16 @@ export default async function handler(req, res) {
         if (openrouterApiKey !== undefined) {
             settings.openrouterApiKey = openrouterApiKey;
             process.env.OPENROUTER_API_KEY = openrouterApiKey;
+        }
+
+        if (finalFileOpenrouterApiKey !== undefined) {
+            settings.finalFileOpenrouterApiKey = typeof finalFileOpenrouterApiKey === "string" ? finalFileOpenrouterApiKey.trim() : "";
+            process.env.MAYAK_FINAL_FILE_OPENROUTER_API_KEY = settings.finalFileOpenrouterApiKey;
+        }
+
+        if (finalFileModel !== undefined) {
+            settings.finalFileModel = typeof finalFileModel === "string" ? finalFileModel.trim() : "";
+            process.env.MAYAK_FINAL_FILE_MODEL = settings.finalFileModel;
         }
 
         if (telegramBotUsername !== undefined) {

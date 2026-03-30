@@ -59,6 +59,8 @@ export default function AdminMayakTokens() {
     // Настройки API-ключей
     const [settingsTgToken, setSettingsTgToken] = useState("");
     const [settingsOrKey, setSettingsOrKey] = useState("");
+    const [settingsFinalFileOrKey, setSettingsFinalFileOrKey] = useState("");
+    const [settingsFinalFileModel, setSettingsFinalFileModel] = useState("");
     const [settingsQwenTokenName, setSettingsQwenTokenName] = useState("");
     const [settingsQwenTokens, setSettingsQwenTokens] = useState("");
     const [settingsQwenBackupTokenName, setSettingsQwenBackupTokenName] = useState("");
@@ -71,6 +73,9 @@ export default function AdminMayakTokens() {
         telegramBotTokenIsSet: false,
         openrouterApiKey: null,
         openrouterApiKeyIsSet: false,
+        finalFileOpenrouterApiKey: null,
+        finalFileOpenrouterApiKeyIsSet: false,
+        finalFileModel: "google/gemini-3-flash-preview",
         telegramBotUsername: "",
         telegramBotUsernameIsSet: false,
         telegramWebhookUrl: "",
@@ -239,6 +244,8 @@ export default function AdminMayakTokens() {
         const fieldMap = {
             telegramBotToken: { value: settingsTgToken, clear: () => setSettingsTgToken(""), emptyMsg: "Введите токен бота", successMsg: (d) => (d.botRestarted ? "Токен сохранён, бот перезапущен" : "Токен сохранён") },
             openrouterApiKey: { value: settingsOrKey, clear: () => setSettingsOrKey(""), emptyMsg: "Введите API-ключ", successMsg: () => "API-ключ сохранён" },
+            finalFileOpenrouterApiKey: { value: settingsFinalFileOrKey, clear: () => setSettingsFinalFileOrKey(""), emptyMsg: "Введите API-ключ для итогового файла", successMsg: () => "Ключ итогового файла сохранён" },
+            finalFileModel: { value: settingsFinalFileModel, clear: () => setSettingsFinalFileModel(""), emptyMsg: "Введите модель для итогового файла", successMsg: () => "Модель итогового файла сохранена" },
             telegramBotUsername: { value: settingsBotUsername, clear: () => setSettingsBotUsername(""), emptyMsg: "Введите username бота", successMsg: () => "Username бота сохранён" },
             telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: (d) => (d.botRestarted ? "Webhook URL сохранён, бот перезапущен" : "Webhook URL сохранён") },
             baseUrl: { value: settingsBaseUrl, clear: () => setSettingsBaseUrl(""), emptyMsg: null, successMsg: () => "Base URL сохранён" },
@@ -764,6 +771,54 @@ export default function AdminMayakTokens() {
                                         <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("openrouterApiKey")} disabled={settingsSaving}>
                                             {settingsSaving ? "..." : "Сохранить"}
                                         </Button>
+                                    </div>
+                                    <div className="rounded-[.75rem] border border-(--color-gray-plus-50) bg-white p-[.75rem]">
+                                        <div className="flex flex-col gap-[.25rem] mb-[.75rem]">
+                                            <span className="link small text-(--color-gray-black)">Итоговый файл: аналитика</span>
+                                            <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                Отдельные настройки для генерации итогового аналитического PDF. Если ключ не задан, используется общий OpenRouter API Key.
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-[.75rem]">
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[200px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        OpenRouter API Key для итогового файла
+                                                        {settingsInfo.finalFileOpenrouterApiKeyIsSet ? (
+                                                            <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>({settingsInfo.finalFileOpenrouterApiKey})</span>
+                                                        ) : (
+                                                            <span style={{ color: "#ef4444", marginLeft: 6, fontSize: 11 }}>(не задан)</span>
+                                                        )}
+                                                    </label>
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="Введите отдельный ключ OpenRouter для итогового файла"
+                                                        value={settingsFinalFileOrKey}
+                                                        onChange={(e) => setSettingsFinalFileOrKey(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("finalFileOpenrouterApiKey")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[260px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Модель итогового файла
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>({settingsInfo.finalFileModel || "google/gemini-3-flash-preview"})</span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.finalFileModel || "google/gemini-3-flash-preview"}
+                                                        value={settingsFinalFileModel}
+                                                        onChange={(e) => setSettingsFinalFileModel(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("finalFileModel")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-[.75rem]">
                                         <div className="flex flex-col gap-[.5rem]">
