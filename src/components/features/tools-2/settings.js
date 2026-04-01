@@ -7,12 +7,7 @@ import Input from "@/components/ui/Input/Input";
 import CloseIcon from "@/assets/general/close.svg";
 
 import { saveUserData } from "@/utils/auth";
-import {
-    clearMayakPendingToken,
-    markMayakPortalAuthPending,
-    readMayakPendingToken,
-    stashMayakPendingToken,
-} from "@/utils/mayakPortalAuth";
+import { clearMayakPendingToken, markMayakPortalAuthPending, readMayakPendingToken, stashMayakPendingToken } from "@/utils/mayakPortalAuth";
 
 import MayakPlatformAuthFlow from "./MayakPlatformAuthFlow";
 import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
@@ -268,6 +263,19 @@ export default function SettingsPage({ goTo }) {
         return ready;
     };
 
+    const getResolvedTableNumber = (nextSessionInfo = sessionInfo, preferredTableNumber = selectedTableNumber) => {
+        if ((nextSessionInfo?.tokenType || "legacy") !== "session") {
+            return "";
+        }
+
+        const normalizedTableNumber = String(preferredTableNumber || "").trim();
+        if (normalizedTableNumber) {
+            return normalizedTableNumber;
+        }
+
+        return Number(nextSessionInfo?.tableCount) === 1 ? "1" : "";
+    };
+
     const syncPortalProfile = async ({ retries = 0, delayMs = 800, silent = false } = {}) => {
         if (!silent) {
             setPortalState((prev) => ({
@@ -330,7 +338,7 @@ export default function SettingsPage({ goTo }) {
             error: "",
         });
         syncRegisteredUserState(sessionInfo, normalizedProfile, tokenExists);
-        return true;
+        return normalizedProfile;
     };
 
     const validateToken = async (tokenToValidate) => {
@@ -449,7 +457,7 @@ export default function SettingsPage({ goTo }) {
     }, [token]);
 
     useEffect(() => {
-        if (sessionInfo.tokenType === "session" && Number(sessionInfo.tableCount) > 0 && !String(selectedTableNumber || "").trim()) {
+        if (sessionInfo.tokenType === "session" && Number(sessionInfo.tableCount) === 1 && !String(selectedTableNumber || "").trim()) {
             setSelectedTableNumber("1");
             return;
         }
@@ -465,9 +473,12 @@ export default function SettingsPage({ goTo }) {
         }
 
         const intervalId = window.setInterval(async () => {
-            const isReady = await syncPortalProfile({ retries: 1, delayMs: 800, silent: true });
-            if (isReady) {
+            const syncedProfile = await syncPortalProfile({ retries: 1, delayMs: 800, silent: true });
+            if (syncedProfile) {
                 setShouldPollPortalAuth(false);
+                if (canAutoActivatePortalUser(syncedProfile)) {
+                    await activatePortalUser(syncedProfile);
+                }
             }
         }, 2000);
 
@@ -495,14 +506,18 @@ export default function SettingsPage({ goTo }) {
     };
 
     const handlePortalAuthenticated = async () => {
-        const isReady = await syncPortalProfile({
+        const syncedProfile = await syncPortalProfile({
             retries: 4,
             delayMs: 1000,
             silent: false,
         });
 
-        if (!isReady) {
+        if (!syncedProfile) {
             return;
+        }
+
+        if (canAutoActivatePortalUser(syncedProfile)) {
+            await activatePortalUser(syncedProfile);
         }
     };
 
@@ -529,6 +544,18 @@ export default function SettingsPage({ goTo }) {
         setProfileFormError("");
     };
 
+    const canAutoActivatePortalUser = (nextProfile = portalState.profile) => {
+        if (!hasRequiredMayakName(nextProfile) || !showNotification || !isTokenValid || isDevBypass) {
+            return false;
+        }
+
+        if ((sessionInfo.tokenType || "legacy") !== "session") {
+            return true;
+        }
+
+        return Boolean(getResolvedTableNumber(sessionInfo, selectedTableNumber));
+    };
+
     const handleSaveProfileName = async () => {
         const nextFirstName = String(profileForm.firstName || "").trim();
         const nextLastName = String(profileForm.lastName || "").trim();
@@ -549,14 +576,18 @@ export default function SettingsPage({ goTo }) {
                 patronymic: nextPatronymic,
             });
 
-            const isReady = await syncPortalProfile({
+            const syncedProfile = await syncPortalProfile({
                 retries: 2,
                 delayMs: 800,
                 silent: false,
             });
 
-            if (!isReady) {
+            if (!syncedProfile) {
                 throw new Error("Профиль обновлен, но MAYAK не смог перечитать его сразу. Повторите попытку.");
+            }
+
+            if (canAutoActivatePortalUser(syncedProfile)) {
+                await activatePortalUser(syncedProfile);
             }
 
             return true;
@@ -569,7 +600,7 @@ export default function SettingsPage({ goTo }) {
         }
     };
 
-    const activatePortalUser = async () => {
+    const activatePortalUser = async (profileOverride = null) => {
         if (isDevBypass) {
             await enterWithDevBypass();
             return;
@@ -580,8 +611,8 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
-        const portalProfile = portalState.profile;
-        const hasPortalSession = ["ready", "needs_fio"].includes(portalState.status) && portalProfile?.userId;
+        const portalProfile = profileOverride || portalState.profile;
+        const hasPortalSession = Boolean(portalProfile?.userId) && (Boolean(profileOverride) || ["ready", "needs_fio"].includes(portalState.status));
         if (!hasPortalSession) {
             alert("Сначала войдите в платформенный аккаунт");
             return;
@@ -592,9 +623,14 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
-        if (sessionInfo.tokenType === "session" && !String(selectedTableNumber || "").trim()) {
+        const resolvedTableNumber = getResolvedTableNumber(sessionInfo, selectedTableNumber);
+        if (sessionInfo.tokenType === "session" && !resolvedTableNumber) {
             alert("Пожалуйста, выберите ваш стол");
             return;
+        }
+
+        if (resolvedTableNumber && resolvedTableNumber !== selectedTableNumber) {
+            setSelectedTableNumber(resolvedTableNumber);
         }
 
         setIsLoading(true);
@@ -605,7 +641,6 @@ export default function SettingsPage({ goTo }) {
                 throw new Error(useResult.error || "Ошибка при использовании токена");
             }
 
-            const portalProfile = portalState.profile;
             const userId = String(portalProfile.userId);
             const userRecord = {
                 id: userId,
@@ -653,7 +688,7 @@ export default function SettingsPage({ goTo }) {
                         userId,
                         name: portalProfile.fullName,
                         organization: portalProfile.organizationName,
-                        tableNumber: selectedTableNumber,
+                        tableNumber: resolvedTableNumber,
                     }),
                 });
 
@@ -669,7 +704,7 @@ export default function SettingsPage({ goTo }) {
                 lastName: portalProfile.lastName,
                 patronymic: portalProfile.patronymic,
                 sessionId: sessionInfo.sessionId,
-                tableNumber: sessionInfo.tokenType === "session" ? String(selectedTableNumber || "") : "",
+                tableNumber: sessionInfo.tokenType === "session" ? resolvedTableNumber : "",
                 tokenType: sessionInfo.tokenType,
             });
 
@@ -736,14 +771,13 @@ export default function SettingsPage({ goTo }) {
                                 setIsDevBypass(false);
                                 setBypassPasswordError("");
                                 setHasRegisteredUser(false);
+                                setSelectedTableNumber("");
                             }}
                         />
 
                         {isValidating && <span className="small text-blue-600 block text-center">Проверка токена...</span>}
 
-                        {tokenError && !showNotification && !isValidating && (
-                            <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{tokenError}</span>
-                        )}
+                        {tokenError && !showNotification && !isValidating && <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{tokenError}</span>}
 
                         {showNotification && isDevBypass && (
                             <div className="flex flex-col gap-[1rem] items-center">
@@ -821,33 +855,14 @@ export default function SettingsPage({ goTo }) {
                         <div className="flex flex-col gap-[1rem] w-full">
                             <div className="flex flex-col gap-[0.35rem]">
                                 <span className="big">Заполните ФИО для входа в MAYAK</span>
-                                <span className="small text-(--color-gray-black)">
-                                    Профиль платформы найден, но для сертификата не хватает обязательных данных. Заполните фамилию и имя.
-                                </span>
-                                {portalState.profile?.email && (
-                                    <span className="small text-(--color-gray-black)">Аккаунт: {portalState.profile.email}</span>
-                                )}
+                                <span className="small text-(--color-gray-black)">Профиль платформы найден, но для сертификата не хватает обязательных данных. Заполните фамилию и имя.</span>
+                                {portalState.profile?.email && <span className="small text-(--color-gray-black)">Аккаунт: {portalState.profile.email}</span>}
                             </div>
 
                             <div className="flex flex-col gap-[0.75rem]">
-                                <Input
-                                    name="lastName"
-                                    placeholder="Фамилия *"
-                                    value={profileForm.lastName}
-                                    onChange={handleProfileFormChange}
-                                />
-                                <Input
-                                    name="firstName"
-                                    placeholder="Имя *"
-                                    value={profileForm.firstName}
-                                    onChange={handleProfileFormChange}
-                                />
-                                <Input
-                                    name="patronymic"
-                                    placeholder="Отчество"
-                                    value={profileForm.patronymic}
-                                    onChange={handleProfileFormChange}
-                                />
+                                <Input name="lastName" placeholder="Фамилия *" value={profileForm.lastName} onChange={handleProfileFormChange} />
+                                <Input name="firstName" placeholder="Имя *" value={profileForm.firstName} onChange={handleProfileFormChange} />
+                                <Input name="patronymic" placeholder="Отчество" value={profileForm.patronymic} onChange={handleProfileFormChange} />
                                 {profileFormError && <span className="small text-red-600 block text-center">{profileFormError}</span>}
                             </div>
 
@@ -862,9 +877,7 @@ export default function SettingsPage({ goTo }) {
                             <div className="flex flex-col gap-[0.5rem] p-4 bg-slate-50 rounded-[1rem] border border-slate-200">
                                 <span className="big">Платформенный профиль</span>
                                 <span className="small text-(--color-gray-black)">ФИО: {portalState.profile.fullName}</span>
-                                {portalState.profile.organizationName && (
-                                    <span className="small text-(--color-gray-black)">Организация: {portalState.profile.organizationName}</span>
-                                )}
+                                {portalState.profile.organizationName && <span className="small text-(--color-gray-black)">Организация: {portalState.profile.organizationName}</span>}
                             </div>
 
                             {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
