@@ -31,6 +31,10 @@ const EMPTY_PROFILE_FORM = {
     patronymic: "",
 };
 
+function isEventLike(value) {
+    return Boolean(value && typeof value === "object" && typeof value.preventDefault === "function");
+}
+
 function hasRequiredMayakName(profile = null) {
     return Boolean(String(profile?.firstName || "").trim() && String(profile?.lastName || "").trim());
 }
@@ -611,8 +615,9 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
-        const portalProfile = profileOverride || portalState.profile;
-        const hasPortalSession = Boolean(portalProfile?.userId) && (Boolean(profileOverride) || ["ready", "needs_fio"].includes(portalState.status));
+        const normalizedProfileOverride = isEventLike(profileOverride) ? null : profileOverride;
+        const portalProfile = normalizedProfileOverride || portalState.profile;
+        const hasPortalSession = Boolean(portalProfile?.userId) && (Boolean(normalizedProfileOverride) || ["ready", "needs_fio"].includes(portalState.status));
         if (!hasPortalSession) {
             alert("Сначала войдите в платформенный аккаунт");
             return;
@@ -904,7 +909,7 @@ export default function SettingsPage({ goTo }) {
                                 </div>
                             )}
 
-                            <Button onClick={activatePortalUser} disabled={isLoading} className="w-full">
+                            <Button onClick={() => activatePortalUser()} disabled={isLoading} className="w-full">
                                 {isLoading ? "Подключаем MAYAK..." : "Войти в тренажер"}
                             </Button>
                         </div>
