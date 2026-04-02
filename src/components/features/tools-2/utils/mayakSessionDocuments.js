@@ -8,8 +8,8 @@ export async function buildMayakQrDataUrl(userId) {
     return QRCode.toDataURL(qrUrl, { width: 200, margin: 1 });
 }
 
-export async function buildMayakCertificateBlob({ userName, dateStr, qrDataUrl }) {
-    return pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} />).toBlob();
+export async function buildMayakCertificateBlob({ userName, dateStr, qrDataUrl, certificateNumber }) {
+    return pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} certificateNumber={certificateNumber} />).toBlob();
 }
 
 export async function buildMayakSessionLogBlob({ userName, userRole, dateStr, totalTime, rankingData, tasks }) {

@@ -216,6 +216,7 @@ export default function AdminMayakResults() {
                             <tbody>
                                 {currentData.map((item, index) => {
                                     const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+                                    const certificateNumber = item.certificateNumber || globalIndex + 1;
                                     const isMatch = matches.includes(globalIndex);
                                     const isCurrentMatch = isMatch && matches[activeMatchIndex] === globalIndex;
                                     const isQrHighlighted = highlightedId && item.id === highlightedId;
@@ -234,7 +235,7 @@ export default function AdminMayakResults() {
                                                         : "hover:bg-gray-50"
                                             }`}
                                         >
-                                            <td className="p-4 text-sm text-gray-500">{globalIndex + 1}</td>
+                                            <td className="p-4 text-sm text-gray-500">{certificateNumber}</td>
                                             <td className="p-4 text-sm font-bold text-gray-900">
                                                 {isQrHighlighted ? fullName : highlightText(fullName, searchQuery, isCurrentMatch)}
                                             </td>
@@ -252,6 +253,7 @@ export default function AdminMayakResults() {
                     <div className="sm:hidden divide-y divide-gray-100">
                         {currentData.map((item, index) => {
                             const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+                            const certificateNumber = item.certificateNumber || globalIndex + 1;
                             const isMatch = matches.includes(globalIndex);
                             const isCurrentMatch = isMatch && matches[activeMatchIndex] === globalIndex;
                             const isQrHighlighted = highlightedId && item.id === highlightedId;
@@ -271,7 +273,7 @@ export default function AdminMayakResults() {
                                     }`}
                                 >
                                     <div className="flex items-start gap-2">
-                                        <span className="text-xs text-gray-400 pt-0.5 flex-shrink-0 w-6 text-right">{globalIndex + 1}.</span>
+                                        <span className="text-xs text-gray-400 pt-0.5 flex-shrink-0 w-6 text-right">{certificateNumber}.</span>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-900 break-words">
                                                 {isQrHighlighted ? fullName : highlightText(fullName, searchQuery, isCurrentMatch)}

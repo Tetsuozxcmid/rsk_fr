@@ -122,7 +122,7 @@ async function validateTokenAPI(tokenValue) {
     }
 }
 
-async function useTokenAPI(tokenValue) {
+async function consumeTokenAPI(tokenValue) {
     try {
         const response = await fetch("/api/mayak/validate-token", {
             method: "POST",
@@ -515,11 +515,100 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
+        const resolvedTableNumber = getResolvedTableNumber(sessionInfo, selectedTableNumber);
+        if (sessionInfo.tokenType === "session" && !resolvedTableNumber) {
+            setBypassPasswordError("РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІС‹Р±РµСЂРёС‚Рµ РІР°С€ СЃС‚РѕР»");
+            return;
+        }
+
+        const bypassProfile = portalState.profile || (await syncPortalProfile({
+            retries: 1,
+            delayMs: 400,
+            silent: true,
+        })) || null;
+
+        const localUserId = String(bypassProfile?.userId || "local-mayak-user").trim();
+        const localFullName = String(bypassProfile?.fullName || "Р›РѕРєР°Р»СЊРЅС‹Р№ РІС…РѕРґ").trim() || "Р›РѕРєР°Р»СЊРЅС‹Р№ РІС…РѕРґ";
+        const userRecord = {
+            id: localUserId,
+            portalUserId: localUserId,
+            sessionId: sessionInfo.sessionId,
+            tokenType: sessionInfo.tokenType || "legacy",
+            userData: {
+                firstName: bypassProfile?.firstName || "",
+                lastName: bypassProfile?.lastName || "",
+                patronymic: bypassProfile?.patronymic || "",
+                college: bypassProfile?.organizationName || "",
+            },
+            portalProfile: {
+                email: bypassProfile?.email || "",
+                username: bypassProfile?.username || "",
+                organizationId: bypassProfile?.organizationId || null,
+                fullName: localFullName,
+            },
+        };
+
+        const saveResponse = await fetch("/api/mayak/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                key: token,
+                userId: localUserId,
+                data: userRecord,
+            }),
+        });
+
+        if (!saveResponse.ok) {
+            throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ Р»РѕРєР°Р»СЊРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ MAYAK");
+        }
+
+        const savePayload = await saveResponse.json().catch(() => ({}));
+        const certificateNumber = savePayload?.certificateNumber || savePayload?.data?.certificateNumber || "";
+
+        if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
+            const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    sessionId: sessionInfo.sessionId,
+                    userId: localUserId,
+                    name: localFullName,
+                    organization: bypassProfile?.organizationName || "",
+                    tableNumber: resolvedTableNumber,
+                }),
+            });
+
+            const participantPayload = await participantResponse.json().catch(() => ({}));
+            if (!participantResponse.ok || !participantPayload.success) {
+                throw new Error(participantPayload.error || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ Р»РѕРєР°Р»СЊРЅРѕРіРѕ СѓС‡Р°СЃС‚РЅРёРєР° РІ СЃРµСЃСЃРёРё");
+            }
+        }
+
         await addKeyToCookies(token);
-        await addUserToCookies("dev-bypass", "Локальный вход");
         setTokenExists(true);
+        await addUserToCookies(localUserId, localFullName, {
+            firstName: bypassProfile?.firstName || "",
+            lastName: bypassProfile?.lastName || "",
+            patronymic: bypassProfile?.patronymic || "",
+            portalUserId: localUserId,
+            sessionId: sessionInfo.sessionId,
+            tableNumber: sessionInfo.tokenType === "session" ? resolvedTableNumber : "",
+            tokenType: sessionInfo.tokenType || "legacy",
+            certificateNumber,
+        });
+        setHasRegisteredUser(true);
+        clearMayakPendingToken();
+        clearMayakPortalAutoActivate();
+        setShouldAutoEnterTrainer(false);
+        setShouldPollPortalAuth(false);
         goTo("trainer");
     };
+
+    const isSessionTokenFlow = (nextSessionInfo = sessionInfo) => (nextSessionInfo?.tokenType || "legacy") === "session";
 
     const handlePortalAuthenticated = async () => {
         const syncedProfile = await syncPortalProfile({
@@ -539,6 +628,12 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
+        if (isSessionTokenFlow()) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+            return;
+        }
+
         setShouldAutoEnterTrainer(true);
         markMayakPortalAutoActivate();
     };
@@ -547,8 +642,14 @@ export default function SettingsPage({ goTo }) {
         sessionStorage.setItem("currentPage", "settings");
         stashMayakPendingToken(token);
         markMayakPortalAuthPending({ provider });
-        markMayakPortalAutoActivate();
-        setShouldAutoEnterTrainer(true);
+
+        if (isSessionTokenFlow()) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+        } else {
+            markMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(true);
+        }
 
         if (provider === "vk") {
             setShouldPollPortalAuth(true);
@@ -569,11 +670,7 @@ export default function SettingsPage({ goTo }) {
             return false;
         }
 
-        if ((sessionInfo.tokenType || "legacy") !== "session") {
-            return true;
-        }
-
-        return Boolean(getResolvedTableNumber(sessionInfo, selectedTableNumber));
+        return !isSessionTokenFlow();
     };
 
     const handleSaveProfileName = async () => {
@@ -659,7 +756,7 @@ export default function SettingsPage({ goTo }) {
         setIsLoading(true);
 
         try {
-            const useResult = await useTokenAPI(token);
+            const useResult = await consumeTokenAPI(token);
             if (!useResult.success) {
                 throw new Error(useResult.error || "Ошибка при использовании токена");
             }
@@ -700,6 +797,9 @@ export default function SettingsPage({ goTo }) {
                 throw new Error("Не удалось сохранить пользователя MAYAK");
             }
 
+            const savePayload = await saveResponse.json().catch(() => ({}));
+            const certificateNumber = savePayload?.certificateNumber || savePayload?.data?.certificateNumber || "";
+
             if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
                 const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
                     method: "POST",
@@ -729,6 +829,7 @@ export default function SettingsPage({ goTo }) {
                 sessionId: sessionInfo.sessionId,
                 tableNumber: sessionInfo.tokenType === "session" ? resolvedTableNumber : "",
                 tokenType: sessionInfo.tokenType,
+                certificateNumber,
             });
 
             setTokenExists(true);
@@ -931,6 +1032,11 @@ export default function SettingsPage({ goTo }) {
                                         onChange={(event) => setSelectedTableNumber(event.target.value)}
                                         className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         required>
+                                        {sessionInfo.tableCount > 1 && (
+                                            <option value="" disabled>
+                                                Р’С‹Р±РµСЂРёС‚Рµ СЃС‚РѕР»
+                                            </option>
+                                        )}
                                         {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
                                             const optionValue = String(index + 1);
                                             return (
@@ -940,10 +1046,16 @@ export default function SettingsPage({ goTo }) {
                                             );
                                         })}
                                     </select>
+                                    <span className="small text-(--color-gray-black)">
+                                        РџРѕСЃР»Рµ РІС‹Р±РѕСЂР° СЃС‚РѕР»Р° РЅР°Р¶РјРёС‚Рµ &quot;Р’РѕР№С‚Рё РІ С‚СЂРµРЅР°Р¶РµСЂ&quot;.
+                                    </span>
                                 </div>
                             )}
 
-                            <Button onClick={() => activatePortalUser()} disabled={isLoading} className="w-full">
+                            <Button
+                                onClick={() => activatePortalUser()}
+                                disabled={isLoading || (sessionInfo.tokenType === "session" && !getResolvedTableNumber(sessionInfo, selectedTableNumber))}
+                                className="w-full">
                                 {isLoading ? "Подключаем MAYAK..." : "Войти в тренажер"}
                             </Button>
                         </div>

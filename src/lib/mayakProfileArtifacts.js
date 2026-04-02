@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { ensureMayakCertificateNumberInStore } from "@/lib/mayakCertificateNumbers";
 
 const RESULTS_FILE = path.join(process.cwd(), "data", "results.json");
 const PROFILE_ARTIFACTS_ROOT = path.join(process.cwd(), "data", "mayak-profile-artifacts");
@@ -158,14 +159,20 @@ export async function saveMayakProfileArtifacts({ tokenKey, userId, bundle }) {
         const currentEntry = toSafeObject(store[safeTokenKey][safeUserId]);
         const currentArtifacts = Array.isArray(currentEntry.mayakArtifacts) ? currentEntry.mayakArtifacts : [];
         const completedAt = normalizeString(artifactBundle.completedAt) || new Date().toISOString();
+        const certificateNumber = ensureMayakCertificateNumberInStore(store, { tokenKey: safeTokenKey, userId: safeUserId });
+        const persistedArtifactBundle = {
+            ...artifactBundle,
+            certificateNumber,
+        };
 
         store[safeTokenKey][safeUserId] = {
             ...currentEntry,
             id: currentEntry.id || safeUserId,
             portalUserId: currentEntry.portalUserId || safeUserId,
+            certificateNumber,
             finishedAt: completedAt,
             isFinished: true,
-            mayakArtifacts: [artifactBundle, ...currentArtifacts],
+            mayakArtifacts: [persistedArtifactBundle, ...currentArtifacts],
         };
 
         await writeResultsStore(store);

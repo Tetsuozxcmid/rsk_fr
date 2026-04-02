@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { getMayakCertificateNumberMap, normalizeMayakCertificateNumber } from "@/lib/mayakCertificateNumbers";
 
 export default async function handler(req, res) {
     try {
@@ -7,6 +8,7 @@ export default async function handler(req, res) {
         const filePath = path.join(process.cwd(), "data", "results.json");
         const fileContents = await fs.readFile(filePath, "utf8");
         const jsonData = JSON.parse(fileContents);
+        const certificateNumberMap = getMayakCertificateNumberMap(jsonData);
 
         if (userId) {
             // Находим пользователя по ID
@@ -14,6 +16,7 @@ export default async function handler(req, res) {
                 if (jsonData[group][userId]) {
                     return res.status(200).json({
                         ...jsonData[group][userId],
+                        certificateNumber: certificateNumberMap.get(`${group}::${userId}`) || normalizeMayakCertificateNumber(jsonData[group][userId]?.certificateNumber),
                         group: group,
                     });
                 }

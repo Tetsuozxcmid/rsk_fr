@@ -47,6 +47,65 @@ function buildSafeMayakFilePart(value) {
     return prepared || "Participant";
 }
 
+function normalizeMayakCertificateNumber(value) {
+    const parsed = Number.parseInt(String(value ?? "").trim(), 10);
+    return Number.isFinite(parsed) && parsed > 0 ? String(parsed) : "";
+}
+
+async function resolveMayakCertificateUserId(userData) {
+    const directUserId = String(userData?.portalUserId || userData?.id || "").trim();
+    if (directUserId && directUserId !== "dev-bypass") {
+        return directUserId;
+    }
+
+    try {
+        const response = await fetch("/api/profile/info", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            return directUserId;
+        }
+
+        return String(payload?.userId || payload?.data?.id || "").trim() || directUserId;
+    } catch (error) {
+        console.error("Не удалось определить пользователя сертификата:", error);
+        return directUserId;
+    }
+}
+
+async function resolveMayakCertificateNumber(userData) {
+    const fromCookie = normalizeMayakCertificateNumber(userData?.certificateNumber);
+    if (fromCookie) {
+        return fromCookie;
+    }
+
+    const userId = await resolveMayakCertificateUserId(userData);
+    if (!userId) {
+        return "";
+    }
+
+    try {
+        const response = await fetch(`/api/mayak/get-results?userId=${encodeURIComponent(userId)}`, {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            return "";
+        }
+
+        return normalizeMayakCertificateNumber(payload?.certificateNumber);
+    } catch (error) {
+        console.error("РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕР»СѓС‡РёС‚СЊ РЅРѕРјРµСЂ СЃРµСЂС‚РёС„РёРєР°С‚Р°:", error);
+        return "";
+    }
+}
+
 export const useMayakCompletionActions = ({
     elapsedTime,
     getStorageKey,
@@ -95,9 +154,10 @@ export const useMayakCompletionActions = ({
             const userData = getUserFromCookies();
             const userName = buildCertificateMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
-            const userId = userData?.id || "";
+            const userId = await resolveMayakCertificateUserId(userData);
             const qrDataUrl = await buildMayakQrDataUrl(userId);
-            const blobCert = await buildMayakCertificateBlob({ userName, dateStr, qrDataUrl });
+            const certificateNumber = await resolveMayakCertificateNumber({ ...userData, portalUserId: userId });
+            const blobCert = await buildMayakCertificateBlob({ userName, dateStr, qrDataUrl, certificateNumber });
             downloadMayakBlob(blobCert, `Certificate_Mayak_${userName.replace(/\s+/g, "_")}.pdf`);
         } catch (error) {
             console.error("Ошибка при генерации сертификата:", error);
@@ -153,12 +213,14 @@ export const useMayakCompletionActions = ({
             const userData = getUserFromCookies();
             const userName = buildFullMayakName(userData);
             const dateStr = new Date().toLocaleDateString("ru-RU");
-            const userId = userData?.id || "";
+            const userId = await resolveMayakCertificateUserId(userData);
             const qrDataUrl = await buildMayakQrDataUrl(userId);
+            const certificateNumber = await resolveMayakCertificateNumber({ ...userData, portalUserId: userId });
             const certBlob = await buildMayakCertificateBlob({
                 userName: buildCertificateMayakName(userData),
                 dateStr,
                 qrDataUrl,
+                certificateNumber,
             });
             const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({
                 getStorageKey,
@@ -228,11 +290,14 @@ export const useMayakCompletionActions = ({
             throw new Error("Не найден активный пользователь MAYAK");
         }
 
-        const qrDataUrl = await buildMayakQrDataUrl(userId);
+        const resolvedUserId = await resolveMayakCertificateUserId(activeUser);
+        const qrDataUrl = await buildMayakQrDataUrl(resolvedUserId || userId);
+        const certificateNumber = await resolveMayakCertificateNumber({ ...activeUser, portalUserId: resolvedUserId || userId });
         const certificateBlob = await buildMayakCertificateBlob({
             userName: certificateUserName,
             dateStr,
             qrDataUrl,
+            certificateNumber,
         });
 
         const { rankingData, enrichedTasks, totalSessionSeconds } = await buildMayakSessionArtifacts({

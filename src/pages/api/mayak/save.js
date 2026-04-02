@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { ensureMayakCertificateNumberInStore } from "@/lib/mayakCertificateNumbers";
 
 let lockPromise = Promise.resolve();
 
@@ -39,8 +40,12 @@ export default async function handler(req, res) {
         if (!allData[key]) allData[key] = {};
 
         // Добавляем метку времени, если её нет в пришедших данных
+        const currentEntry = allData[key]?.[userId] && typeof allData[key][userId] === "object" ? allData[key][userId] : {};
+        const certificateNumber = ensureMayakCertificateNumberInStore(allData, { tokenKey: key, userId });
         const finalData = {
+            ...currentEntry,
             ...data,
+            certificateNumber,
             finishedAt: data.finishedAt || new Date().toISOString(),
             isFinished: true
         };
@@ -49,7 +54,7 @@ export default async function handler(req, res) {
 
         // Сохраняем
         fs.writeFileSync(filePath, JSON.stringify(allData, null, 2));
-        res.status(200).json({ success: true });
+        res.status(200).json({ success: true, certificateNumber, data: finalData });
     } catch (error) {
         console.error("Ошибка сохранения:", error);
         res.status(500).json({ error: "Ошибка сервера" });
