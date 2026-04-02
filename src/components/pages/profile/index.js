@@ -91,6 +91,14 @@ function getSortedMayakFiles(files = []) {
     });
 }
 
+function sortMayakArtifactsNewestFirst(items = []) {
+    return [...items].sort((left, right) => {
+        const leftDate = new Date(left?.completedAt || left?.createdAt || 0).getTime();
+        const rightDate = new Date(right?.completedAt || right?.createdAt || 0).getTime();
+        return rightDate - leftDate;
+    });
+}
+
 function getUserTypeLabel(type) {
     if (type === "teacher") return "Сотрудник";
     if (type === "student") return "Студент";
@@ -134,7 +142,7 @@ export default function ProfileIndexPage({ goTo }) {
                     throw new Error(payload.error || "Не удалось загрузить материалы МАЯК");
                 }
 
-                setMayakArtifacts(Array.isArray(payload.artifacts) ? payload.artifacts : []);
+                setMayakArtifacts(sortMayakArtifactsNewestFirst(Array.isArray(payload.artifacts) ? payload.artifacts : []));
             } catch (error) {
                 console.error("Mayak artifacts fetch error:", error);
                 setArtifactsError(error.message || "Не удалось загрузить материалы МАЯК");
@@ -306,46 +314,36 @@ export default function ProfileIndexPage({ goTo }) {
 
                     {!artifactsLoading && !artifactsError && mayakArtifacts.length > 0 ? (
                         <div className="flex flex-col gap-[0.75rem]">
-                            {mayakArtifacts.map((artifact, index) => (
-                                <details key={artifact.id} className="group rounded-[1rem] border border-(--color-gray-plus) bg-white px-4 py-3">
-                                    <summary className="list-none cursor-pointer">
-                                        <div className="flex items-center justify-between gap-[1rem]">
-                                            <div className="flex flex-col gap-[0.25rem]">
-                                                <span className="big">{`№${index + 1}`}</span>
-                                                <span className="small text-(--color-gray-black)">
-                                                    {`Дата прохождения: ${formatDateTime(artifact.completedAt || artifact.createdAt)}`}
-                                                </span>
-                                            </div>
-                                            <span className="text-(--color-gray-black) text-[1.5rem] leading-none transition-transform duration-300 group-open:rotate-180">
-                                                ˅
-                                            </span>
-                                        </div>
-                                    </summary>
-
-                                    <div className="mt-[1rem] flex flex-col gap-[0.75rem] border-t border-(--color-gray-plus) pt-[1rem]">
+                            {mayakArtifacts.map((artifact) => (
+                                <div key={artifact.id} className="rounded-[1rem] border border-(--color-gray-plus) bg-white px-4 py-4">
+                                    <div className="flex flex-col gap-[0.25rem]">
+                                        <span className="big">{formatDateTime(artifact.completedAt || artifact.createdAt)}</span>
                                         {artifact.role ? <span className="small text-(--color-gray-black)">{`Роль: ${artifact.role}`}</span> : null}
-
-                                        <div className="grid grid-cols-3 gap-[0.5rem] max-[680px]:grid-cols-1">
-                                            {getSortedMayakFiles(artifact.files || []).map((file) => (
-                                                <Button
-                                                    key={file.id}
-                                                    small
-                                                    inverted
-                                                    roundeful
-                                                    className="w-full! border border-(--color-gray-plus) shadow-none! justify-center!"
-                                                    onClick={() => handleArtifactDownload(file.downloadUrl)}
-                                                    title={
-                                                        file.byteSize
-                                                            ? `${MAYAK_FILE_LABELS[file.kind] || file.fileName} · ${formatFileSize(file.byteSize)}`
-                                                            : MAYAK_FILE_LABELS[file.kind] || file.fileName
-                                                    }
-                                                >
-                                                    {MAYAK_FILE_LABELS[file.kind] || file.fileName}
-                                                </Button>
-                                            ))}
-                                        </div>
                                     </div>
-                                </details>
+
+                                    <div className="mt-[1rem] flex flex-col gap-[0.5rem]">
+                                        {getSortedMayakFiles(artifact.files || []).map((file) => (
+                                            <Button
+                                                key={file.id}
+                                                small
+                                                inverted
+                                                roundeful
+                                                className="w-full! border border-(--color-gray-plus) shadow-none!"
+                                                onClick={() => handleArtifactDownload(file.downloadUrl)}
+                                                title={
+                                                    file.byteSize
+                                                        ? `${MAYAK_FILE_LABELS[file.kind] || file.fileName} · ${formatFileSize(file.byteSize)}`
+                                                        : MAYAK_FILE_LABELS[file.kind] || file.fileName
+                                                }
+                                            >
+                                                <span className="flex w-full items-center justify-between gap-[0.75rem]">
+                                                    <span className="truncate">{MAYAK_FILE_LABELS[file.kind] || file.fileName}</span>
+                                                    <span className="small text-(--color-gray-black) whitespace-nowrap">{file.byteSize ? formatFileSize(file.byteSize) : "Открыть"}</span>
+                                                </span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     ) : null}

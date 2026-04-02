@@ -156,6 +156,8 @@ function buildPrompt(logData) {
 
   return `# Р В Р С›Р вЂєР В¬
 
+IMPORTANT: In the entire report, use only the exact names "\u041c\u0410\u042f\u041a" and "\u041c\u0410\u042f\u041a-\u041e\u041a\u041e". Never write "\u041c\u0410\u0419\u041a", "\u041c\u0410\u0419\u041a-\u041e\u041a\u041e", "MAYAK", "Mayak", or any other variants.
+
 Р СћРЎвЂ№ РІР‚вЂќ РЎРЊР С”РЎРѓР С—Р ВµРЎР‚РЎвЂљ-Р В°Р Р…Р В°Р В»Р С‘РЎвЂљР С‘Р С” РЎвЂљРЎР‚Р ВµР Р…Р В°Р В¶РЎвЂРЎР‚Р В° Р’В«Р СљР С’Р Р‡Р С™Р’В» (Р С—РЎР‚Р В°Р С”РЎвЂљР С‘Р С”РЎС“Р С Р С—Р С• Р С—РЎР‚Р С•Р СР С—РЎвЂљ-Р С‘Р Р…Р В¶Р С‘Р Р…Р С‘РЎР‚Р С‘Р Р…Р С–РЎС“).
 Р Р€РЎвЂЎР В°РЎРѓРЎвЂљР Р…Р С‘Р С” РЎС“Р В¶Р Вµ Р С—Р С•Р В»РЎС“РЎвЂЎР С‘Р В» Р С—РЎР‚Р С•РЎвЂљР С•Р С”Р С•Р В» Р С—РЎР‚Р С•РЎвЂ¦Р С•Р В¶Р Т‘Р ВµР Р…Р С‘РЎРЏ (РЎРѓРЎвЂ№РЎР‚РЎвЂ№Р Вµ Р Т‘Р В°Р Р…Р Р…РЎвЂ№Р Вµ). Р СћР Р†Р С•РЎРЏ Р В·Р В°Р Т‘Р В°РЎвЂЎР В° РІР‚вЂќ
 Р Т‘Р В°РЎвЂљРЎРЉ РЎвЂљР С•, РЎвЂЎР ВµР С–Р С• Р Р† Р С—РЎР‚Р С•РЎвЂљР С•Р С”Р С•Р В»Р Вµ Р Р…Р ВµРЎвЂљ: Р С•Р В±РЎР‰Р ВµР С”РЎвЂљР С‘Р Р†Р Р…РЎС“РЎР‹ Р С•РЎвЂ Р ВµР Р…Р С”РЎС“ РЎС“РЎР‚Р С•Р Р†Р Р…РЎРЏ, Р С—Р С•Р Р…РЎРЏРЎвЂљР Р…РЎС“РЎР‹ Р С•Р В±РЎР‚Р В°РЎвЂљР Р…РЎС“РЎР‹
@@ -447,14 +449,15 @@ export async function generateAnalyticsBufferFromLogData(logData) {
   const prompt = buildPrompt(logData);
   console.log(`[Analytics] Р вЂ”Р В°Р С—РЎР‚Р С•РЎРѓ Р С” LLM Р Т‘Р В»РЎРЏ ${logData.userName || 'participant'}...`);
   const analysisText = await callLLM(prompt);
-  console.log(`[Analytics] Р С›РЎвЂљР Р†Р ВµРЎвЂљ Р С—Р С•Р В»РЎС“РЎвЂЎР ВµР Р… (${analysisText.length} РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†)`);
+  const normalizedAnalysisText = analysisText.replace(/МАЙК-ОКО/g, 'МАЯК-ОКО');
+  console.log(`[Analytics] Р С›РЎвЂљР Р†Р ВµРЎвЂљ Р С—Р С•Р В»РЎС“РЎвЂЎР ВµР Р… (${normalizedAnalysisText.length} РЎРѓР С‘Р СР Р†Р С•Р В»Р С•Р Р†)`);
 
   // Р вЂњР ВµР Р…Р ВµРЎР‚Р С‘РЎР‚РЎС“Р ВµР С PDF
   return renderToBuffer(
     React.createElement(AnalyticsPDF, {
       userName: logData.userName,
       date: logData.date,
-      analysisText,
+      analysisText: normalizedAnalysisText,
     })
   );
 }

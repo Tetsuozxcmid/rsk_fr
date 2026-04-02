@@ -789,7 +789,7 @@ export default function SettingsPage({ goTo }) {
                     <div className="flex flex-col gap-[0.75rem] w-full">
                         <div className="flex flex-col gap-[0.5rem]">
                             <span className="big">Данные токена</span>
-                            <p className="small text-(--color-gray-black)">Введите токен доступа к MAYAK. После успешной проверки откроется платформенный вход, а повторная авторизация не понадобится, если сессия уже активна.</p>
+                            <p className="small text-(--color-gray-black)">Введите токен доступа к МАЯК. После успешной проверки откроется платформенный вход, а повторная авторизация не понадобится, если сессия уже активна.</p>
                             {sessionInfo.tokenType === "session" && sessionInfo.sessionName && (
                                 <p className="small text-(--color-gray-black)">
                                     Сессионный вход: <b>{sessionInfo.sessionName}</b>. Для этой сессии перед входом в тренажер нужно выбрать стол.
@@ -853,7 +853,7 @@ export default function SettingsPage({ goTo }) {
                         )}
 
                         {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "unauthenticated" && (
-                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Теперь войдите в платформенный аккаунт, чтобы открыть MAYAK.</span>
+                            <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Теперь войдите в платформенный аккаунт, чтобы открыть МАЯК.</span>
                         )}
 
                         {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "profile_missing" && (
