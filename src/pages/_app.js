@@ -13,13 +13,18 @@ export default function App({ Component, pageProps }) {
     useEffect(() => {
         const syncOAuthSession = async () => {
             const pendingMayakAuth = readMayakPortalAuthPending();
-            if (pendingMayakAuth?.returnPath && router.pathname !== pendingMayakAuth.returnPath) {
+            const isMayakCallbackRoute = router.pathname === "/callback_auth" || router.pathname === "/vk-callback";
+
+            if (pendingMayakAuth?.returnPath && isAuthorized() && !isMayakCallbackRoute && router.pathname !== pendingMayakAuth.returnPath) {
                 clearMayakPortalAuthPending();
                 router.replace(pendingMayakAuth.returnPath);
                 return;
             }
 
             if (isAuthorized()) {
+                if (pendingMayakAuth?.returnPath && router.pathname === pendingMayakAuth.returnPath) {
+                    clearMayakPortalAuthPending();
+                }
                 return;
             }
 
@@ -39,6 +44,19 @@ export default function App({ Component, pageProps }) {
                     email: data?.data?.email,
                     username: data?.data?.NameIRL,
                 });
+
+                if (pendingMayakAuth?.returnPath) {
+                    if (!isMayakCallbackRoute && router.pathname !== pendingMayakAuth.returnPath) {
+                        clearMayakPortalAuthPending();
+                        router.replace(pendingMayakAuth.returnPath);
+                        return;
+                    }
+
+                    if (router.pathname === pendingMayakAuth.returnPath) {
+                        clearMayakPortalAuthPending();
+                        return;
+                    }
+                }
 
                 if (router.pathname === "/auth") {
                     router.push("/profile");

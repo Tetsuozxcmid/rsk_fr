@@ -265,9 +265,6 @@ export default function ProfileIndexPage({ goTo }) {
                             />
                         </div>
                     </Card.Heading>
-                    <Card.Footer>
-                        <a className="big relative z-[1]">Теперь вы с нами!</a>
-                    </Card.Footer>
                 </Card>
 
                 <div className="col-span-4 max-[900px]:col-span-12 h-fit">

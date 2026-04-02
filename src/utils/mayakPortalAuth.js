@@ -1,6 +1,7 @@
 export const MAYAK_PORTAL_AUTH_RETURN_PATH = "/tools/mayak-oko";
 const MAYAK_PORTAL_AUTH_PENDING_KEY = "mayak_portal_auth_pending";
 const MAYAK_PORTAL_PENDING_TOKEN_KEY = "mayak_portal_pending_token";
+const MAYAK_PORTAL_AUTO_ACTIVATE_KEY = "mayak_portal_auto_activate";
 
 function isBrowser() {
     return typeof window !== "undefined";
@@ -34,6 +35,21 @@ export function readMayakPortalAuthPending() {
 export function clearMayakPortalAuthPending() {
     if (!isBrowser()) return;
     window.localStorage.removeItem(MAYAK_PORTAL_AUTH_PENDING_KEY);
+}
+
+export function markMayakPortalAutoActivate() {
+    if (!isBrowser()) return;
+    window.sessionStorage.setItem(MAYAK_PORTAL_AUTO_ACTIVATE_KEY, "1");
+}
+
+export function readMayakPortalAutoActivate() {
+    if (!isBrowser()) return false;
+    return window.sessionStorage.getItem(MAYAK_PORTAL_AUTO_ACTIVATE_KEY) === "1";
+}
+
+export function clearMayakPortalAutoActivate() {
+    if (!isBrowser()) return;
+    window.sessionStorage.removeItem(MAYAK_PORTAL_AUTO_ACTIVATE_KEY);
 }
 
 export function stashMayakPendingToken(token) {

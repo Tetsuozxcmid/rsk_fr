@@ -7,7 +7,15 @@ import Input from "@/components/ui/Input/Input";
 import CloseIcon from "@/assets/general/close.svg";
 
 import { saveUserData } from "@/utils/auth";
-import { clearMayakPendingToken, markMayakPortalAuthPending, readMayakPendingToken, stashMayakPendingToken } from "@/utils/mayakPortalAuth";
+import {
+    clearMayakPendingToken,
+    clearMayakPortalAutoActivate,
+    markMayakPortalAuthPending,
+    markMayakPortalAutoActivate,
+    readMayakPendingToken,
+    readMayakPortalAutoActivate,
+    stashMayakPendingToken,
+} from "@/utils/mayakPortalAuth";
 
 import MayakPlatformAuthFlow from "./MayakPlatformAuthFlow";
 import { addKeyToCookies, addUserToCookies, clearUserCookie, getKeyFromCookies, getUserFromCookies, removeKeyCookie } from "./actions";
@@ -236,6 +244,7 @@ export default function SettingsPage({ goTo }) {
     const [tokenError, setTokenError] = useState("");
     const [isValidating, setIsValidating] = useState(false);
     const [shouldPollPortalAuth, setShouldPollPortalAuth] = useState(false);
+    const [shouldAutoEnterTrainer, setShouldAutoEnterTrainer] = useState(() => readMayakPortalAutoActivate());
     const [profileForm, setProfileForm] = useState(EMPTY_PROFILE_FORM);
     const [profileFormError, setProfileFormError] = useState("");
     const [isSavingProfileName, setIsSavingProfileName] = useState(false);
@@ -357,6 +366,8 @@ export default function SettingsPage({ goTo }) {
             setSessionInfo(EMPTY_SESSION_INFO);
             setHasRegisteredUser(false);
             setSelectedTableNumber("");
+            setShouldAutoEnterTrainer(false);
+            clearMayakPortalAutoActivate();
             clearMayakPendingToken();
             return;
         }
@@ -389,6 +400,8 @@ export default function SettingsPage({ goTo }) {
             setTokenError(result.error || "Токен недействителен");
             setShowNotification(false);
             setHasRegisteredUser(false);
+            setShouldAutoEnterTrainer(false);
+            clearMayakPortalAutoActivate();
             clearMayakPendingToken();
             setIsValidating(false);
             return;
@@ -438,6 +451,8 @@ export default function SettingsPage({ goTo }) {
                 setSessionInfo(EMPTY_SESSION_INFO);
                 setHasRegisteredUser(false);
                 setSelectedTableNumber("");
+                setShouldAutoEnterTrainer(false);
+                clearMayakPortalAutoActivate();
                 return;
             }
 
@@ -480,9 +495,6 @@ export default function SettingsPage({ goTo }) {
             const syncedProfile = await syncPortalProfile({ retries: 1, delayMs: 800, silent: true });
             if (syncedProfile) {
                 setShouldPollPortalAuth(false);
-                if (canAutoActivatePortalUser(syncedProfile)) {
-                    await activatePortalUser(syncedProfile);
-                }
             }
         }, 2000);
 
@@ -521,18 +533,22 @@ export default function SettingsPage({ goTo }) {
         }
 
         if (canAutoActivatePortalUser(syncedProfile)) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
             await activatePortalUser(syncedProfile);
+            return;
         }
+
+        setShouldAutoEnterTrainer(true);
+        markMayakPortalAutoActivate();
     };
 
     const handlePortalOAuthStart = (provider) => {
         sessionStorage.setItem("currentPage", "settings");
         stashMayakPendingToken(token);
-
-        if (provider === "yandex") {
-            markMayakPortalAuthPending({ provider });
-            return;
-        }
+        markMayakPortalAuthPending({ provider });
+        markMayakPortalAutoActivate();
+        setShouldAutoEnterTrainer(true);
 
         if (provider === "vk") {
             setShouldPollPortalAuth(true);
@@ -590,7 +606,9 @@ export default function SettingsPage({ goTo }) {
                 throw new Error("Профиль обновлен, но MAYAK не смог перечитать его сразу. Повторите попытку.");
             }
 
-            if (canAutoActivatePortalUser(syncedProfile)) {
+            if (shouldAutoEnterTrainer && canAutoActivatePortalUser(syncedProfile)) {
+                clearMayakPortalAutoActivate();
+                setShouldAutoEnterTrainer(false);
                 await activatePortalUser(syncedProfile);
             }
 
@@ -718,6 +736,8 @@ export default function SettingsPage({ goTo }) {
             setValue(useResult.remainingAttempts || 0);
             setTokenRemainingAttempts(useResult.remainingAttempts || 0);
             clearMayakPendingToken();
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
             setShouldPollPortalAuth(false);
             goTo("trainer");
         } catch (error) {
@@ -727,6 +747,20 @@ export default function SettingsPage({ goTo }) {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!shouldAutoEnterTrainer || isLoading) {
+            return;
+        }
+
+        if (!canAutoActivatePortalUser(portalState.profile)) {
+            return;
+        }
+
+        clearMayakPortalAutoActivate();
+        setShouldAutoEnterTrainer(false);
+        void activatePortalUser(portalState.profile);
+    }, [shouldAutoEnterTrainer, isLoading, showNotification, isTokenValid, isDevBypass, portalState.profile, sessionInfo.tokenType, sessionInfo.tableCount, selectedTableNumber]);
 
     const getRangeClass = (val) => {
         if (val < 30) return "range-low";

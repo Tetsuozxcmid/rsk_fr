@@ -315,6 +315,15 @@ export default function AdminMayakTokens() {
         await saveSettingsRequest({ qwenBackupToken: "" }, "Резервный токен удалён");
     };
 
+    const handleRemoveFinalFileOpenrouterApiKey = async () => {
+        if (!window.confirm("Удалить OpenRouter API Key для итогового файла?")) return;
+        await saveSettingsRequest(
+            { finalFileOpenrouterApiKey: "" },
+            "Ключ итогового файла удалён",
+            () => setSettingsFinalFileOrKey("")
+        );
+    };
+
     // Добавление админа бота
     const handleAddBotAdmin = async () => {
         if (!newAdminId.trim()) {
@@ -800,6 +809,18 @@ export default function AdminMayakTokens() {
                                                 <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("finalFileOpenrouterApiKey")} disabled={settingsSaving}>
                                                     {settingsSaving ? "..." : "Сохранить"}
                                                 </Button>
+                                                {settingsInfo.finalFileOpenrouterApiKeyIsSet ? (
+                                                    <Button
+                                                        small
+                                                        inverted
+                                                        roundeful
+                                                        red
+                                                        className="!w-fit reject-button"
+                                                        onClick={handleRemoveFinalFileOpenrouterApiKey}
+                                                        disabled={settingsSaving}>
+                                                        Удалить
+                                                    </Button>
+                                                ) : null}
                                             </div>
                                             <div className="flex gap-[.5rem] items-end flex-wrap">
                                                 <div className="flex-1 min-w-[260px]">

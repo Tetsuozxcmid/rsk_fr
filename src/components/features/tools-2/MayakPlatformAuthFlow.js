@@ -23,7 +23,6 @@ export default function MayakPlatformAuthFlow({ onAuthenticated, onOAuthStart })
         <div className="flex flex-col gap-[1rem]">
             <div className="flex flex-col gap-[0.5rem]">
                 <span className="big">Авторизация на платформе</span>
-                <p className="small text-(--color-gray-black)">Войдите через платформенный аккаунт или зарегистрируйтесь. Для MAYAK используется тот же вход, что и для всей платформы.</p>
             </div>
 
             <Switcher

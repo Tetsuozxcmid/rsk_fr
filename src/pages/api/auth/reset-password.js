@@ -9,9 +9,10 @@ export default async function ResetPasswordHandler(req, res) {
         });
 
         const data = await response.json();
+        const errorMessage = data?.error || data?.detail || "Не удалось отправить письмо";
 
         if (!response.ok) {
-            return res.status(response.status).json({ success: false, error: data.error || "Не удалось отправить письмо" });
+            return res.status(response.status).json({ success: false, error: errorMessage });
         }
 
         return res.json({ success: true, data });
