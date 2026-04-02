@@ -43,7 +43,6 @@ yarn-error.log*
 
 # claude code
 .claude/
-CLAUDE.md
 
 # vercel
 .vercel
