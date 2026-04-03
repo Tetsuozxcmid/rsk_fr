@@ -391,14 +391,25 @@ export const useMayakCompletionActions = ({
         return saveResponse.json().catch(() => ({}));
     }, [formatTaskTime, getStorageKey, selectedRole, tokenSectionId]);
 
+    const handleDownloadGuestArtifacts = useCallback(async () => {
+        await handleDownloadCertificate();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await handleDownloadLogs();
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        await handleDownloadAnalytics();
+        return { success: true };
+    }, [handleDownloadAnalytics, handleDownloadCertificate, handleDownloadLogs]);
+
     const handleSaveSessionCompletion = useCallback(async () => {
         setTelegramLoading(true);
 
         try {
+            const activeUser = getUserFromCookies();
+            const isGuestUser = Boolean(activeUser?.guestMode);
             await executeMayakSessionCompletion({
                 elapsedTime,
                 levels,
-                onPersistArtifacts: handleSaveArtifactsToProfile,
+                onPersistArtifacts: isGuestUser ? handleDownloadGuestArtifacts : handleSaveArtifactsToProfile,
                 onSendToTelegram: handleSendToTelegram,
                 onClearState: () =>
                     clearMayakSessionCompletionState({
@@ -409,6 +420,7 @@ export const useMayakCompletionActions = ({
                         setShowSessionCompletionPopup,
                         setShowThirdQuestionnaire,
                     }),
+                redirectTo: isGuestUser ? "/tools/mayak-oko" : "/profile",
             });
         } catch (error) {
             console.error("Ошибка в процессе завершения:", error);
@@ -416,7 +428,7 @@ export const useMayakCompletionActions = ({
         } finally {
             setTelegramLoading(false);
         }
-    }, [elapsedTime, getStorageKey, handleSaveArtifactsToProfile, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
+    }, [elapsedTime, getStorageKey, handleDownloadGuestArtifacts, handleSaveArtifactsToProfile, handleSendToTelegram, levels, removeKeyCookie, resetQwenSessionState, setSelectedRole, setShowSessionCompletionPopup, setShowThirdQuestionnaire, setTelegramLoading]);
 
     return {
         handleDownloadAnalytics,

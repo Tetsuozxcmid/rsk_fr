@@ -42,6 +42,7 @@ export async function executeMayakSessionCompletion({
     onPersistArtifacts,
     onSendToTelegram,
     onClearState,
+    redirectTo = "/profile",
 }) {
     const activeUser =
         document.cookie
@@ -71,5 +72,5 @@ export async function executeMayakSessionCompletion({
 
     await new Promise((resolve) => setTimeout(resolve, 1200));
     onClearState();
-    window.location.href = "/profile";
+    window.location.href = redirectTo;
 }

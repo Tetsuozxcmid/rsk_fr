@@ -39,6 +39,50 @@ const EMPTY_PROFILE_FORM = {
     patronymic: "",
 };
 
+const MAYAK_GUEST_SUFFIX = "aaaaa";
+const EMPTY_GUEST_FORM = {
+    firstName: "",
+    lastName: "",
+    patronymic: "",
+};
+
+function parseMayakGuestToken(tokenValue) {
+    const normalized = String(tokenValue || "").trim();
+    if (!normalized) {
+        return {
+            rawToken: "",
+            baseToken: "",
+            isGuestMode: false,
+        };
+    }
+
+    if (normalized.toLowerCase().endsWith(MAYAK_GUEST_SUFFIX)) {
+        return {
+            rawToken: normalized,
+            baseToken: normalized.slice(0, -MAYAK_GUEST_SUFFIX.length).trim(),
+            isGuestMode: true,
+        };
+    }
+
+    return {
+        rawToken: normalized,
+        baseToken: normalized,
+        isGuestMode: false,
+    };
+}
+
+function buildMayakGuestUserId(sessionInfo = {}) {
+    const sessionPart = String(sessionInfo?.sessionId || sessionInfo?.tokenType || "guest")
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]+/g, "-");
+    const randomPart =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    return `guest-${sessionPart || "guest"}-${randomPart}`;
+}
+
 function isEventLike(value) {
     return Boolean(value && typeof value === "object" && typeof value.preventDefault === "function");
 }
@@ -248,13 +292,42 @@ export default function SettingsPage({ goTo }) {
     const [profileForm, setProfileForm] = useState(EMPTY_PROFILE_FORM);
     const [profileFormError, setProfileFormError] = useState("");
     const [isSavingProfileName, setIsSavingProfileName] = useState(false);
+    const [isGuestMode, setIsGuestMode] = useState(false);
+    const [guestForm, setGuestForm] = useState(EMPTY_GUEST_FORM);
+    const [guestFormError, setGuestFormError] = useState("");
 
     const syncRegisteredUserState = (nextSessionInfo = sessionInfo, nextPortalProfile = portalState.profile, nextTokenExists = tokenExists) => {
         const activeUser = getUserFromCookies();
         const portalUserId = String(nextPortalProfile?.userId || "").trim();
 
+        if (activeUser?.guestMode) {
+            const hasGuestName = hasRequiredMayakName(activeUser);
+            if (!nextTokenExists || !activeUser?.id || !hasGuestName) {
+                setHasRegisteredUser(false);
+                return false;
+            }
+
+            if ((nextSessionInfo?.tokenType || "legacy") === "session") {
+                const sameSession = !!nextSessionInfo?.sessionId && String(activeUser.sessionId || "") === String(nextSessionInfo.sessionId || "");
+                const hasTable = !!String(activeUser.tableNumber || "").trim();
+                const ready = sameSession && hasTable && activeUser.tokenType === "session";
+
+                if (ready) {
+                    setSelectedTableNumber(String(activeUser.tableNumber || ""));
+                }
+
+                setHasRegisteredUser(ready);
+                return ready;
+            }
+
+            const ready = activeUser.tokenType !== "session";
+            setHasRegisteredUser(ready);
+            return ready;
+        }
+
         if (!hasRequiredMayakName(nextPortalProfile) || !nextTokenExists || !activeUser?.id || !portalUserId || String(activeUser.id) !== portalUserId) {
             setHasRegisteredUser(false);
+            setIsGuestMode(false);
             return false;
         }
 
@@ -355,16 +428,21 @@ export default function SettingsPage({ goTo }) {
     };
 
     const validateToken = async (tokenToValidate) => {
-        const nextTokenValue = String(tokenToValidate || "").trim();
-        if (!nextTokenValue) {
+        const tokenMeta = parseMayakGuestToken(tokenToValidate);
+        const nextTokenValue = tokenMeta.rawToken;
+        const validatedTokenValue = tokenMeta.baseToken;
+        const guestModeActive = tokenMeta.isGuestMode;
+        if (!nextTokenValue || !validatedTokenValue) {
             setIsTokenValid(false);
             setShowNotification(false);
             setTokenError("");
             setIsDevBypass(false);
             setBypassPasswordError("");
+            setGuestFormError("");
             setTokenRemainingAttempts(0);
             setSessionInfo(EMPTY_SESSION_INFO);
             setHasRegisteredUser(false);
+            setIsGuestMode(false);
             setSelectedTableNumber("");
             setShouldAutoEnterTrainer(false);
             clearMayakPortalAutoActivate();
@@ -373,7 +451,7 @@ export default function SettingsPage({ goTo }) {
         }
 
         setIsValidating(true);
-        const result = await validateTokenAPI(nextTokenValue);
+        const result = await validateTokenAPI(validatedTokenValue);
         const isAccessible = result.valid || (result.isExhausted && result.isActive);
         const nextSessionInfo = {
             tokenType: result.tokenType || "legacy",
@@ -381,10 +459,12 @@ export default function SettingsPage({ goTo }) {
             sessionName: result.sessionName || "",
             tableCount: Number(result.tableCount) || 0,
         };
+        const nextGuestMode = guestModeActive && !result.isBypass;
 
         setIsTokenValid(isAccessible);
         setTokenRemainingAttempts(result.remainingAttempts);
         setIsDevBypass(Boolean(result.isBypass));
+        setIsGuestMode(nextGuestMode);
         setSessionInfo(nextSessionInfo);
         setValue(result.remainingAttempts || 0);
         if (result.usageLimit > 0) {
@@ -415,7 +495,7 @@ export default function SettingsPage({ goTo }) {
         setTokenError("");
         syncRegisteredUserState(nextSessionInfo, portalState.profile, tokenExists);
 
-        if (result.isBypass) {
+        if (result.isBypass || nextGuestMode) {
             setIsValidating(false);
             return;
         }
@@ -437,6 +517,7 @@ export default function SettingsPage({ goTo }) {
             const keyInCookies = await getKeyFromCookies();
             const pendingToken = readMayakPendingToken();
             const restoredToken = keyInCookies?.text || pendingToken || "";
+            const activeUser = getUserFromCookies();
 
             if (!restoredToken) {
                 setToken("");
@@ -444,6 +525,7 @@ export default function SettingsPage({ goTo }) {
                 setShowNotification(false);
                 setIsTokenValid(false);
                 setIsDevBypass(false);
+                setIsGuestMode(false);
                 setBypassPassword("");
                 setBypassPasswordError("");
                 setTokenRemainingAttempts(0);
@@ -452,12 +534,20 @@ export default function SettingsPage({ goTo }) {
                 setHasRegisteredUser(false);
                 setSelectedTableNumber("");
                 setShouldAutoEnterTrainer(false);
+                setGuestForm(EMPTY_GUEST_FORM);
+                setGuestFormError("");
                 clearMayakPortalAutoActivate();
                 return;
             }
 
             setToken(restoredToken);
             setTokenExists(Boolean(keyInCookies?.text));
+            setIsGuestMode(Boolean(activeUser?.guestMode));
+            setGuestForm({
+                firstName: String(activeUser?.firstName || "").trim(),
+                lastName: String(activeUser?.lastName || "").trim(),
+                patronymic: String(activeUser?.patronymic || "").trim(),
+            });
         }
 
         restoreTokenState();
@@ -665,6 +755,34 @@ export default function SettingsPage({ goTo }) {
         setProfileFormError("");
     };
 
+    const handleGuestFormChange = (event) => {
+        const { name, value: nextValue } = event.target;
+        setGuestForm((prev) => ({
+            ...prev,
+            [name]: nextValue,
+        }));
+        setGuestFormError("");
+    };
+
+    const buildGuestPortalProfile = () => {
+        const firstName = String(guestForm.firstName || "").trim();
+        const lastName = String(guestForm.lastName || "").trim();
+        const patronymic = String(guestForm.patronymic || "").trim();
+
+        return {
+            userId: buildMayakGuestUserId(sessionInfo),
+            firstName,
+            lastName,
+            patronymic,
+            email: "",
+            username: "",
+            organizationName: "",
+            organizationId: null,
+            fullName: buildPortalFullName({ firstName, lastName, patronymic }),
+            guestMode: true,
+        };
+    };
+
     const canAutoActivatePortalUser = (nextProfile = portalState.profile) => {
         if (!hasRequiredMayakName(nextProfile) || !showNotification || !isTokenValid || isDevBypass) {
             return false;
@@ -719,9 +837,137 @@ export default function SettingsPage({ goTo }) {
         }
     };
 
+    const activateGuestUser = async () => {
+        if (!isTokenValid) {
+            alert("Пожалуйста, введите корректный токен для активации тренажера");
+            return;
+        }
+
+        const guestProfile = buildGuestPortalProfile();
+        if (!hasRequiredMayakName(guestProfile)) {
+            setGuestFormError("Для входа заполните фамилию и имя.");
+            return;
+        }
+
+        const resolvedTableNumber = getResolvedTableNumber(sessionInfo, selectedTableNumber);
+        if (sessionInfo.tokenType === "session" && !resolvedTableNumber) {
+            setGuestFormError("Пожалуйста, выберите ваш стол");
+            return;
+        }
+
+        if (resolvedTableNumber && resolvedTableNumber !== selectedTableNumber) {
+            setSelectedTableNumber(resolvedTableNumber);
+        }
+
+        setIsLoading(true);
+        setGuestFormError("");
+
+        try {
+            const baseToken = parseMayakGuestToken(token).baseToken || String(token || "").trim();
+            const useResult = await consumeTokenAPI(baseToken);
+            if (!useResult.success) {
+                throw new Error(useResult.error || "Ошибка при использовании токена");
+            }
+
+            const userId = String(guestProfile.userId);
+            const userRecord = {
+                id: userId,
+                portalUserId: userId,
+                sessionId: sessionInfo.sessionId,
+                tokenType: sessionInfo.tokenType,
+                guestMode: true,
+                userData: {
+                    firstName: guestProfile.firstName,
+                    lastName: guestProfile.lastName,
+                    patronymic: guestProfile.patronymic,
+                    college: "",
+                },
+                portalProfile: {
+                    email: "",
+                    username: "",
+                    organizationId: null,
+                    fullName: guestProfile.fullName,
+                },
+            };
+
+            const saveResponse = await fetch("/api/mayak/save", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    key: baseToken,
+                    userId,
+                    data: userRecord,
+                }),
+            });
+
+            if (!saveResponse.ok) {
+                throw new Error("Не удалось сохранить гостевого пользователя MAYAK");
+            }
+
+            const savePayload = await saveResponse.json().catch(() => ({}));
+            const certificateNumber = savePayload?.certificateNumber || savePayload?.data?.certificateNumber || "";
+
+            if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
+                const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        sessionId: sessionInfo.sessionId,
+                        userId,
+                        name: guestProfile.fullName,
+                        organization: "",
+                        tableNumber: resolvedTableNumber,
+                    }),
+                });
+
+                const participantPayload = await participantResponse.json().catch(() => ({}));
+                if (!participantResponse.ok || !participantPayload.success) {
+                    throw new Error(participantPayload.error || "Не удалось зарегистрировать гостевого участника в сессии");
+                }
+            }
+
+            await addKeyToCookies(baseToken);
+            await addUserToCookies(userId, guestProfile.fullName, {
+                firstName: guestProfile.firstName,
+                lastName: guestProfile.lastName,
+                patronymic: guestProfile.patronymic,
+                portalUserId: userId,
+                sessionId: sessionInfo.sessionId,
+                tableNumber: sessionInfo.tokenType === "session" ? resolvedTableNumber : "",
+                tokenType: sessionInfo.tokenType,
+                certificateNumber,
+                guestMode: true,
+            });
+
+            setTokenExists(true);
+            setHasRegisteredUser(true);
+            setValue(useResult.remainingAttempts || 0);
+            setTokenRemainingAttempts(useResult.remainingAttempts || 0);
+            clearMayakPendingToken();
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+            setShouldPollPortalAuth(false);
+            goTo("trainer");
+        } catch (error) {
+            console.error("Ошибка гостевой активации MAYAK:", error);
+            setGuestFormError(error.message || "Не удалось активировать гостевой вход");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const activatePortalUser = async (profileOverride = null) => {
         if (isDevBypass) {
             await enterWithDevBypass();
+            return;
+        }
+
+        if (isGuestMode) {
+            await activateGuestUser();
             return;
         }
 
@@ -909,7 +1155,9 @@ export default function SettingsPage({ goTo }) {
                                 setShowNotification(false);
                                 setIsTokenValid(false);
                                 setIsDevBypass(false);
+                                setIsGuestMode(parseMayakGuestToken(nextToken).isGuestMode);
                                 setBypassPasswordError("");
+                                setGuestFormError("");
                                 setHasRegisteredUser(false);
                                 setSelectedTableNumber("");
                             }}
@@ -938,7 +1186,7 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && !isDevBypass && hasRegisteredUser && (
+                        {showNotification && !isDevBypass && !isGuestMode && hasRegisteredUser && (
                             <div className="flex flex-col gap-[1rem] items-center">
                                 <span className="big p-3 bg-green-100 text-green-700 rounded-md text-center">Токен активирован, платформенный аккаунт подтвержден.</span>
                                 {portalState.profile?.fullName && <span className="small text-(--color-gray-black)">Вы вошли как: {portalState.profile.fullName}</span>}
@@ -949,15 +1197,15 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "checking" && (
+                        {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "checking" && (
                             <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Проверяем платформенную авторизацию...</span>
                         )}
 
-                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "unauthenticated" && (
+                        {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "unauthenticated" && (
                             <span className="big p-3 bg-green-100 text-green-700 rounded-md block text-center">Токен подходит. Теперь войдите в платформенный аккаунт, чтобы открыть МАЯК.</span>
                         )}
 
-                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "profile_missing" && (
+                        {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "profile_missing" && (
                             <div className="flex flex-col gap-[0.75rem]">
                                 <span className="big p-3 bg-amber-100 text-amber-700 rounded-md block text-center">{portalState.error}</span>
                                 <Button inverted className="w-full" onClick={() => syncPortalProfile({ retries: 4, delayMs: 1000, silent: false })}>
@@ -966,7 +1214,7 @@ export default function SettingsPage({ goTo }) {
                             </div>
                         )}
 
-                        {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "error" && (
+                        {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "error" && (
                             <div className="flex flex-col gap-[0.75rem]">
                                 <span className="big p-3 bg-red-100 text-red-700 rounded-md block text-center">{portalState.error}</span>
                                 <Button inverted className="w-full" onClick={() => syncPortalProfile({ retries: 2, delayMs: 800, silent: false })}>
@@ -985,13 +1233,13 @@ export default function SettingsPage({ goTo }) {
                         )}
                     </div>
 
-                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "unauthenticated" && (
+                    {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "unauthenticated" && (
                         <div className="w-full">
                             <MayakPlatformAuthFlow onAuthenticated={handlePortalAuthenticated} onOAuthStart={handlePortalOAuthStart} />
                         </div>
                     )}
 
-                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "needs_fio" && (
+                    {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "needs_fio" && (
                         <div className="flex flex-col gap-[1rem] w-full">
                             <div className="flex flex-col gap-[0.35rem]">
                                 <span className="big">Заполните ФИО для входа в MAYAK</span>
@@ -1012,22 +1260,30 @@ export default function SettingsPage({ goTo }) {
                         </div>
                     )}
 
-                    {showNotification && !isDevBypass && !hasRegisteredUser && portalState.status === "ready" && (
+                    {false && showNotification && !isDevBypass && isGuestMode && !hasRegisteredUser && (
                         <div className="flex flex-col gap-[1rem] w-full">
                             <div className="flex flex-col gap-[0.5rem] p-4 bg-slate-50 rounded-[1rem] border border-slate-200">
-                                <span className="big">Платформенный профиль</span>
-                                <span className="small text-(--color-gray-black)">ФИО: {portalState.profile.fullName}</span>
-                                {portalState.profile.organizationName && <span className="small text-(--color-gray-black)">Организация: {portalState.profile.organizationName}</span>}
+                                <span className="big">Гостевой вход</span>
+                                <span className="small text-(--color-gray-black)">
+                                    Заполните ФИО для входа в тренажер. После завершения сертификат, лог и аналитика скачаются автоматически.
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-[0.75rem]">
+                                <Input name="lastName" placeholder="Фамилия *" value={guestForm.lastName} onChange={handleGuestFormChange} />
+                                <Input name="firstName" placeholder="Имя *" value={guestForm.firstName} onChange={handleGuestFormChange} />
+                                <Input name="patronymic" placeholder="Отчество" value={guestForm.patronymic} onChange={handleGuestFormChange} />
+                                {guestFormError && <span className="small text-red-600 block text-center">{guestFormError}</span>}
                             </div>
 
                             {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
                                 <div className="flex flex-col gap-[0.5rem]">
-                                    <label htmlFor="tableNumber" className="block text-sm font-medium text-gray-700">
+                                    <label htmlFor="guestTableNumber" className="block text-sm font-medium text-gray-700">
                                         Выберите ваш стол *
                                     </label>
                                     <select
-                                        id="tableNumber"
-                                        name="tableNumber"
+                                        id="guestTableNumber"
+                                        name="guestTableNumber"
                                         value={selectedTableNumber}
                                         onChange={(event) => setSelectedTableNumber(event.target.value)}
                                         className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -1046,8 +1302,108 @@ export default function SettingsPage({ goTo }) {
                                             );
                                         })}
                                     </select>
+                                </div>
+                            )}
+
+                            <Button
+                                onClick={activateGuestUser}
+                                disabled={isLoading || (sessionInfo.tokenType === "session" && !getResolvedTableNumber(sessionInfo, selectedTableNumber))}
+                                className="w-full">
+                                {isLoading ? "Подключаем MAYAK..." : "Войти в тренажер"}
+                            </Button>
+                        </div>
+                    )}
+
+                    {showNotification && !isDevBypass && isGuestMode && !hasRegisteredUser && (
+                        <div className="flex flex-col gap-[1rem] w-full">
+                            <div className="flex flex-col gap-[0.5rem] p-4 bg-slate-50 rounded-[1rem] border border-slate-200">
+                                <span className="big">{"\u0413\u043E\u0441\u0442\u0435\u0432\u043E\u0439 \u0432\u0445\u043E\u0434"}</span>
+                                <span className="small text-(--color-gray-black)">
+                                    {"\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0424\u0418\u041E \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430 \u0432 \u0442\u0440\u0435\u043D\u0430\u0436\u0435\u0440. \u041F\u043E\u0441\u043B\u0435 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u044F \u0441\u0435\u0440\u0442\u0438\u0444\u0438\u043A\u0430\u0442, \u043B\u043E\u0433 \u0438 \u0430\u043D\u0430\u043B\u0438\u0442\u0438\u043A\u0430 \u0441\u043A\u0430\u0447\u0430\u044E\u0442\u0441\u044F \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438."}
+                                </span>
+                            </div>
+
+                            <div className="flex flex-col gap-[0.75rem]">
+                                <Input name="lastName" placeholder={"\u0424\u0430\u043C\u0438\u043B\u0438\u044F *"} value={guestForm.lastName} onChange={handleGuestFormChange} />
+                                <Input name="firstName" placeholder={"\u0418\u043C\u044F *"} value={guestForm.firstName} onChange={handleGuestFormChange} />
+                                <Input name="patronymic" placeholder={"\u041E\u0442\u0447\u0435\u0441\u0442\u0432\u043E"} value={guestForm.patronymic} onChange={handleGuestFormChange} />
+                                {guestFormError && <span className="small text-red-600 block text-center">{guestFormError}</span>}
+                            </div>
+
+                            {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
+                                <div className="flex flex-col gap-[0.5rem]">
+                                    <label htmlFor="guestTableNumber" className="block text-sm font-medium text-gray-700">
+                                        {"\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0430\u0448 \u0441\u0442\u043E\u043B *"}
+                                    </label>
+                                    <select
+                                        id="guestTableNumber"
+                                        name="guestTableNumber"
+                                        value={selectedTableNumber}
+                                        onChange={(event) => setSelectedTableNumber(event.target.value)}
+                                        className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required>
+                                        {sessionInfo.tableCount > 1 && (
+                                            <option value="" disabled>
+                                                {"\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u043E\u043B"}
+                                            </option>
+                                        )}
+                                        {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
+                                            const optionValue = String(index + 1);
+                                            return (
+                                                <option key={optionValue} value={optionValue}>
+                                                    {"\u0421\u0442\u043E\u043B "}{optionValue}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                            )}
+
+                            <Button
+                                onClick={activateGuestUser}
+                                disabled={isLoading || (sessionInfo.tokenType === "session" && !getResolvedTableNumber(sessionInfo, selectedTableNumber))}
+                                className="w-full">
+                                {isLoading ? "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0430\u0435\u043C MAYAK..." : "\u0412\u043E\u0439\u0442\u0438 \u0432 \u0442\u0440\u0435\u043D\u0430\u0436\u0435\u0440"}
+                            </Button>
+                        </div>
+                    )}
+
+                    {showNotification && !isDevBypass && !isGuestMode && !hasRegisteredUser && portalState.status === "ready" && (
+                        <div className="flex flex-col gap-[1rem] w-full">
+                            <div className="flex flex-col gap-[0.5rem] p-4 bg-slate-50 rounded-[1rem] border border-slate-200">
+                                <span className="big">Платформенный профиль</span>
+                                <span className="small text-(--color-gray-black)">ФИО: {portalState.profile.fullName}</span>
+                                {portalState.profile.organizationName && <span className="small text-(--color-gray-black)">Организация: {portalState.profile.organizationName}</span>}
+                            </div>
+
+                            {sessionInfo.tokenType === "session" && sessionInfo.tableCount > 0 && (
+                                <div className="flex flex-col gap-[0.5rem]">
+                                    <label htmlFor="tableNumber" className="block text-sm font-medium text-gray-700">
+                                        {"\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0432\u0430\u0448 \u0441\u0442\u043E\u043B *"}
+                                    </label>
+                                    <select
+                                        id="tableNumber"
+                                        name="tableNumber"
+                                        value={selectedTableNumber}
+                                        onChange={(event) => setSelectedTableNumber(event.target.value)}
+                                        className="input-wrapper w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        required>
+                                        {sessionInfo.tableCount > 1 && (
+                                            <option value="" disabled>
+                                                {"\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0442\u043E\u043B"}
+                                            </option>
+                                        )}
+                                        {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
+                                            const optionValue = String(index + 1);
+                                            return (
+                                                <option key={optionValue} value={optionValue}>
+                                                    {"\u0421\u0442\u043E\u043B "}{optionValue}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
                                     <span className="small text-(--color-gray-black)">
-                                        После выбора стола нажмите &quot;Войти в тренажер&quot;.
+                                        {"\u041F\u043E\u0441\u043B\u0435 \u0432\u044B\u0431\u043E\u0440\u0430 \u0441\u0442\u043E\u043B\u0430 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \"\u0412\u043E\u0439\u0442\u0438 \u0432 \u0442\u0440\u0435\u043D\u0430\u0436\u0435\u0440\"."}
                                     </span>
                                 </div>
                             )}
