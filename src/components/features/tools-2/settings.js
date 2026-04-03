@@ -517,7 +517,7 @@ export default function SettingsPage({ goTo }) {
 
         const resolvedTableNumber = getResolvedTableNumber(sessionInfo, selectedTableNumber);
         if (sessionInfo.tokenType === "session" && !resolvedTableNumber) {
-            setBypassPasswordError("РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РІС‹Р±РµСЂРёС‚Рµ РІР°С€ СЃС‚РѕР»");
+            setBypassPasswordError("Пожалуйста, выберите ваш стол");
             return;
         }
 
@@ -528,7 +528,7 @@ export default function SettingsPage({ goTo }) {
         })) || null;
 
         const localUserId = String(bypassProfile?.userId || "local-mayak-user").trim();
-        const localFullName = String(bypassProfile?.fullName || "Р›РѕРєР°Р»СЊРЅС‹Р№ РІС…РѕРґ").trim() || "Р›РѕРєР°Р»СЊРЅС‹Р№ РІС…РѕРґ";
+        const localFullName = String(bypassProfile?.fullName || "Локальный вход").trim() || "Локальный вход";
         const userRecord = {
             id: localUserId,
             portalUserId: localUserId,
@@ -561,7 +561,7 @@ export default function SettingsPage({ goTo }) {
         });
 
         if (!saveResponse.ok) {
-            throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ Р»РѕРєР°Р»СЊРЅРѕРіРѕ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ MAYAK");
+            throw new Error("Не удалось сохранить локального пользователя MAYAK");
         }
 
         const savePayload = await saveResponse.json().catch(() => ({}));
@@ -584,7 +584,7 @@ export default function SettingsPage({ goTo }) {
 
             const participantPayload = await participantResponse.json().catch(() => ({}));
             if (!participantResponse.ok || !participantPayload.success) {
-                throw new Error(participantPayload.error || "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°С‚СЊ Р»РѕРєР°Р»СЊРЅРѕРіРѕ СѓС‡Р°СЃС‚РЅРёРєР° РІ СЃРµСЃСЃРёРё");
+                throw new Error(participantPayload.error || "Не удалось зарегистрировать локального участника в сессии");
             }
         }
 
@@ -1034,7 +1034,7 @@ export default function SettingsPage({ goTo }) {
                                         required>
                                         {sessionInfo.tableCount > 1 && (
                                             <option value="" disabled>
-                                                Р’С‹Р±РµСЂРёС‚Рµ СЃС‚РѕР»
+                                                Выберите стол
                                             </option>
                                         )}
                                         {Array.from({ length: sessionInfo.tableCount }, (_, index) => {
@@ -1047,7 +1047,7 @@ export default function SettingsPage({ goTo }) {
                                         })}
                                     </select>
                                     <span className="small text-(--color-gray-black)">
-                                        РџРѕСЃР»Рµ РІС‹Р±РѕСЂР° СЃС‚РѕР»Р° РЅР°Р¶РјРёС‚Рµ &quot;Р’РѕР№С‚Рё РІ С‚СЂРµРЅР°Р¶РµСЂ&quot;.
+                                        После выбора стола нажмите &quot;Войти в тренажер&quot;.
                                     </span>
                                 </div>
                             )}
