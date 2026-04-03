@@ -327,7 +327,6 @@ export default function SettingsPage({ goTo }) {
 
         if (!hasRequiredMayakName(nextPortalProfile) || !nextTokenExists || !activeUser?.id || !portalUserId || String(activeUser.id) !== portalUserId) {
             setHasRegisteredUser(false);
-            setIsGuestMode(false);
             return false;
         }
 
@@ -540,9 +539,11 @@ export default function SettingsPage({ goTo }) {
                 return;
             }
 
+            const restoredTokenMeta = parseMayakGuestToken(restoredToken);
+
             setToken(restoredToken);
             setTokenExists(Boolean(keyInCookies?.text));
-            setIsGuestMode(Boolean(activeUser?.guestMode));
+            setIsGuestMode(Boolean(activeUser?.guestMode) || restoredTokenMeta.isGuestMode);
             setGuestForm({
                 firstName: String(activeUser?.firstName || "").trim(),
                 lastName: String(activeUser?.lastName || "").trim(),
