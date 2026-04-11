@@ -8,6 +8,7 @@ import DropdownInput from "@/components/ui/Input/DropdownInput";
 import Switcher from "@/components/ui/Switcher";
 import { getPortalOrganizationId } from "@/lib/portalProfile";
 import { primePortalProfileCache } from "@/lib/portalProfileClient";
+import { removeCookie, setCookie } from "@/utils/cookies";
 
 function getProfileData(profilePayload) {
     if (profilePayload && typeof profilePayload === "object" && profilePayload.data && typeof profilePayload.data === "object") {
@@ -133,8 +134,14 @@ export default function PortalProfileEditor({
         if (String(formData.Region || "") !== String(initialState.Region || "")) {
             changes.Region = formData.Region;
         }
-        if (String(formData.Organization || "") !== String(initialState.Organization || "")) {
-            changes.organization_id = formData.Organization;
+        if (String(formData.Organization ?? "") !== String(initialState.Organization ?? "")) {
+            const orgIdRaw = String(formData.Organization ?? "").trim();
+            const orgIdNum = Number.parseInt(orgIdRaw, 10);
+            if (!Number.isFinite(orgIdNum) || orgIdNum < 1) {
+                alert("Укажите организацию из списка или числовой ID существующей организации.");
+                return;
+            }
+            changes.Organization_id = orgIdNum;
         }
         if (showRole && String(role || "") !== String(initialState.role || "")) {
             changes.role = role;
@@ -145,6 +152,33 @@ export default function PortalProfileEditor({
                 onSaved(profilePayload);
             }
             return;
+        }
+
+        const orgChanged = String(formData.Organization ?? "") !== String(initialState.Organization ?? "");
+        const orgIdRaw = String(formData.Organization ?? "").trim();
+        const orgIdNum = Number.parseInt(orgIdRaw, 10);
+        let selectedOrganization =
+            orgChanged && Number.isFinite(orgIdNum) && orgIdNum >= 1
+                ? resolveSelectedOrganization(orgList, orgIdNum)
+                : null;
+        if (
+            orgChanged &&
+            selectedOrganization == null &&
+            Number.isFinite(orgIdNum) &&
+            orgIdNum >= 1
+        ) {
+            try {
+                const verifyRes = await fetch(`/api/org/${orgIdNum}`, { credentials: "include" });
+                const verifyPayload = await verifyRes.json().catch(() => ({}));
+                if (!verifyRes.ok || !verifyPayload.success) {
+                    alert("Организации с таким ID нет. Проверьте номер или выберите организацию из списка.");
+                    return;
+                }
+                selectedOrganization = verifyPayload.data;
+            } catch {
+                alert("Не удалось проверить организацию. Попробуйте ещё раз.");
+                return;
+            }
         }
 
         setIsSaving(true);
@@ -162,7 +196,10 @@ export default function PortalProfileEditor({
                 return;
             }
 
-            const selectedOrganization = resolveSelectedOrganization(orgList, formData.Organization);
+            if (orgChanged && selectedOrganization == null && Number.isFinite(orgIdNum) && orgIdNum >= 1) {
+                selectedOrganization = resolveSelectedOrganization(orgList, orgIdNum);
+            }
+
             const nextData = {
                 ...profileData,
                 Surname: formData.Surname,
@@ -172,19 +209,33 @@ export default function PortalProfileEditor({
                 Region: formData.Region,
                 role,
                 Type: role,
-                organization_id: formData.Organization,
-                Organization_id: formData.Organization,
-                Organization: formData.Organization
+                ...(orgChanged && Number.isFinite(orgIdNum) && orgIdNum >= 1
                     ? {
-                          ...(profileData.Organization || {}),
-                          ...(selectedOrganization || {}),
-                          id: selectedOrganization?.id ?? selectedOrganization?.organization_id ?? formData.Organization,
-                          short_name: selectedOrganization?.short_name || selectedOrganization?.name || profileData?.Organization?.short_name || "",
+                          organization_id: orgIdNum,
+                          Organization_id: orgIdNum,
+                          Organization: {
+                              ...(profileData.Organization || {}),
+                              ...(selectedOrganization || {}),
+                              id: selectedOrganization?.id ?? selectedOrganization?.organization_id ?? orgIdNum,
+                              short_name:
+                                  selectedOrganization?.short_name ||
+                                  selectedOrganization?.name ||
+                                  profileData?.Organization?.short_name ||
+                                  "",
+                          },
                       }
-                    : null,
+                    : {}),
             };
 
             primePortalProfileCache({ success: true, data: nextData });
+
+            const orgCookieId = getPortalOrganizationId(nextData);
+            if (orgCookieId) {
+                setCookie("organization", orgCookieId);
+            } else {
+                removeCookie("organization");
+            }
+
             if (typeof onSaved === "function") {
                 onSaved({ success: true, data: nextData });
             }

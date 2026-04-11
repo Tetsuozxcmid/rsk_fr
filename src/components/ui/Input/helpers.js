@@ -1,4 +1,3 @@
-// helpers.js
 import { useState, useEffect } from "react";
 
 export function useDropdownFilter(controlledValue, onChange, src, name, options) {
@@ -7,7 +6,7 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
     const [filtered, setFiltered] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
 
-    // 1. Загрузка и нормализация списка (API или текстовый файл)
+    
     useEffect(() => {
         if (options && Array.isArray(options)) {
             const mapped = options.map((opt) => ({
@@ -28,7 +27,7 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         }
     }, [options, src]);
 
-    // 2. Синхронизация: установка текстового значения в инпут при получении ID извне
+    
     useEffect(() => {
         if (controlledValue && items.length > 0) {
             const match = items.find((i) => String(i.value) === String(controlledValue));
@@ -40,7 +39,7 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         }
     }, [controlledValue, items]);
 
-    // 3. Обработка ручного ввода и фильтрация
+    
     const handleInput = (val) => {
         setInputValue(val);
         if (!val) {
@@ -54,7 +53,29 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         setShowDropdown(true);
     };
 
-    // 4. Выбор элемента из списка
+    const handleBlur = () => {
+        const trimmed = String(inputValue || "").trim();
+        if (!trimmed) {
+            onChange?.({ target: { name, value: "" } });
+            setShowDropdown(false);
+            return;
+        }
+        const byLabel = items.find((i) => String(i.label).toLowerCase() === trimmed.toLowerCase());
+        if (byLabel) {
+            onChange?.({ target: { name, value: byLabel.value } });
+            setInputValue(byLabel.label);
+            setShowDropdown(false);
+            return;
+        }
+        if (/^\d+$/.test(trimmed)) {
+            onChange?.({ target: { name, value: Number(trimmed) } });
+            setShowDropdown(false);
+            return;
+        }
+        setShowDropdown(false);
+    };
+
+    
     const handleSelect = (item) => {
         setInputValue(item.label);
         setShowDropdown(false);
@@ -85,5 +106,6 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         handleInput,
         handleSelect,
         handleEnter,
+        handleBlur,
     };
 }

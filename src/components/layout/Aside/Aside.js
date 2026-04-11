@@ -32,7 +32,7 @@ export default function Aside({ isMobileOpen, closeMobile }) {
             else setScreenType("desktop");
         };
 
-        handleResize(); // Определяем размер сразу
+        handleResize(); 
         setIsMounted(true);
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
@@ -48,7 +48,7 @@ export default function Aside({ isMobileOpen, closeMobile }) {
 
     const springTransition = { type: "spring", stiffness: 200, damping: 30 };
 
-    // Теперь у нас 5 вариантов состояния для идеальной плавности
+    
     const asideVariants = {
         expanded: { width: Math.max(160, window.innerWidth * 0.16), x: 0 },
         collapsed: { width: 104, x: 0 }, // 6.5rem = 104px
@@ -57,7 +57,7 @@ export default function Aside({ isMobileOpen, closeMobile }) {
         mobileClosed: { x: "-100%", width: 280 },
     };
 
-    // Функция для определения активного варианта
+    
     const getVariant = () => {
         if (!isMounted || screenType === null) return "mobileClosed";
 
@@ -72,7 +72,7 @@ export default function Aside({ isMobileOpen, closeMobile }) {
         return "expanded";
     };
 
-    // Early return для предотвращения гидратационных лагов
+    
     if (!isMounted || screenType === null) {
         return (
             <aside
@@ -117,10 +117,10 @@ export default function Aside({ isMobileOpen, closeMobile }) {
                                 <NavItem
                                     key={item.label}
                                     {...item}
-                                    screenType={screenType} // Передаем тип экрана
+                                    screenType={screenType} 
                                     isCollapsed={screenType === "mobile" ? false : isCollapsed}
                                     onHover={setHovered}
-                                    isHovered={hovered === item.label} // Исправлено с hovered на isHovered
+                                    isHovered={hovered === item.label} 
                                 />
                             ))}
                         </nav>
