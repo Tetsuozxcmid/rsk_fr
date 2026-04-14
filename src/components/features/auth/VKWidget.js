@@ -1,40 +1,78 @@
-import { useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import VK from "@/assets/general/vk.svg";
 
-export default function VKWidget() {
+export default function VKWidget({ onBeforeLogin }) {
   const initialized = useRef(false);
+  const [sdkState, setSdkState] = useState("loading");
 
   useEffect(() => {
     if (initialized.current) return;
-
-    const loadScript = () => {
-      const script = document.createElement("script");
-      script.src = "https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js";
-      script.async = true;
-      script.onload = initVK;
-      document.body.appendChild(script);
-    };
+    initialized.current = true;
 
     const initVK = () => {
-      if (!window.VKIDSDK) return;
+      if (!window.VKIDSDK) {
+        setSdkState("error");
+        return;
+      }
 
-      window.VKIDSDK.Config.init({
-        app: 54409000,
-        redirectUrl: "https://api.rosdk.ru/auth/users_interaction/auth/vk/callback",
-        responseMode: window.VKIDSDK.ConfigResponseMode.Redirect,
-        source: window.VKIDSDK.ConfigSource.LOWCODE,
-        scope: "email",
-        mode: window.VKIDSDK.ConfigAuthMode.InNewWindow,
-      });
+      try {
+        window.VKIDSDK.Config.init({
+          app: 54409000,
+          redirectUrl: "https://api.rosdk.ru/auth/users_interaction/auth/vk/callback",
+          responseMode: window.VKIDSDK.ConfigResponseMode.Redirect,
+          source: window.VKIDSDK.ConfigSource.LOWCODE,
+          scope: "email",
+          mode: window.VKIDSDK.ConfigAuthMode.InNewWindow,
+        });
+        setSdkState("ready");
+      } catch (error) {
+        console.error("VK SDK init failed:", error);
+        setSdkState("error");
+      }
     };
 
-    loadScript();
-    initialized.current = true;
+    if (window.VKIDSDK?.Auth?.login) {
+      initVK();
+      return;
+    }
+
+    const existingScript = document.querySelector('script[data-vkid-sdk="true"]');
+    const handleLoad = () => initVK();
+    const handleError = () => setSdkState("error");
+
+    if (existingScript) {
+      existingScript.addEventListener("load", handleLoad);
+      existingScript.addEventListener("error", handleError);
+      return () => {
+        existingScript.removeEventListener("load", handleLoad);
+        existingScript.removeEventListener("error", handleError);
+      };
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js";
+    script.async = true;
+    script.dataset.vkidSdk = "true";
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+    document.body.appendChild(script);
+
+    return () => {
+      script.removeEventListener("load", handleLoad);
+      script.removeEventListener("error", handleError);
+    };
   }, []);
 
   const handleVKLogin = () => {
-    if (!window.VKIDSDK?.Auth?.login) return;
+    if (!window.VKIDSDK?.Auth?.login) {
+      alert("VK ID is still loading. Wait a moment and try again.");
+      return;
+    }
+
+    if (typeof onBeforeLogin === "function") {
+      onBeforeLogin();
+    }
 
     const originalOpen = window.open;
 
@@ -59,7 +97,7 @@ export default function VKWidget() {
       className="w-full h-full !p-0 gap-[6px] justify-center"
       onClick={handleVKLogin}
     >
-      VK ID <VK />
+      {sdkState === "ready" ? "VK ID" : sdkState === "error" ? "VK ID unavailable" : "VK ID loading..."} <VK />
     </Button>
   );
 }

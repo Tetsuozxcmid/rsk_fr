@@ -13,7 +13,6 @@ import Index from "@/assets/general/index.svg";
 import Notify from "@/assets/general/notify.svg";
 
 export default function Projects({ organization }) {
-    // Получаем организацию из cookies
     const { loading, categories: projects, error, fetchProjects } = useProjects();
     const [processedCategories, setProcessedCategories] = useState([]);
 
@@ -40,7 +39,7 @@ export default function Projects({ organization }) {
         }
     }, [loading, error, projects]);
 
-    // Если организации нет в cookies
+    
     if (!organization) {
         return (
             <Layout>

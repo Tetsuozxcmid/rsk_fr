@@ -62,6 +62,8 @@ data/prep-sessions/
 data/botAdmins.json
 data/tokenRequests.json
 data/mayak-settings.json
+data/mayak-onboarding-survey-responses.json
+data/mayak-onboarding-files/submissions/
 public/prep-uploads/
 public/tasks-2/v2/
 

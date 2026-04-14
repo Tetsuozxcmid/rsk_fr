@@ -1,18 +1,19 @@
-export function buildMayakSessionCompletionPayload({ activeUser, elapsedTime, levels }) {
-    const decodedUser = decodeURIComponent(activeUser || "anonymous");
+import { getUserFromCookies } from "../actions";
+
+export function buildMayakSessionCompletionPayload({ activeUserId, elapsedTime, levels }) {
     const timestamp = new Date().toISOString();
 
     return {
-        [decodedUser]: {
+        [String(activeUserId || "anonymous")]: {
             [timestamp]: {
                 taskNumber: "session-completion",
                 elapsedTime,
                 levels: {
-                    level1: parseInt(levels.level1) || 0,
-                    level2: parseInt(levels.level2) || 0,
-                    level3: parseInt(levels.level3) || 0,
-                    level4: parseInt(levels.level4) || 0,
-                    level5: parseInt(levels.level5) || 0,
+                    level1: parseInt(levels.level1, 10) || 0,
+                    level2: parseInt(levels.level2, 10) || 0,
+                    level3: parseInt(levels.level3, 10) || 0,
+                    level4: parseInt(levels.level4, 10) || 0,
+                    level5: parseInt(levels.level5, 10) || 0,
                 },
             },
         },
@@ -36,45 +37,17 @@ export function clearMayakSessionCompletionState({ getStorageKey, removeKeyCooki
     localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
 }
 
-
-export async function executeMayakSessionCompletion({
-    elapsedTime,
-    levels,
-    onDownloadAnalytics,
-    onDownloadCertificate,
-    onDownloadLogs,
-    onSendToTelegram,
-    onClearState,
-}) {
-    const activeUser =
-        document.cookie
-            .split("; ")
-            .find((row) => row.startsWith("active_user="))
-            ?.split("=")[1] || "anonymous";
-
+export async function saveMayakCompletionDelta({ elapsedTime, levels }) {
+    const activeUser = getUserFromCookies();
     const payload = buildMayakSessionCompletionPayload({
-        activeUser,
+        activeUserId: activeUser?.id,
         elapsedTime,
         levels,
     });
 
-    fetch("/api/mayak/saveDeltaTest", {
+    return fetch("/api/mayak/saveDeltaTest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-    }).catch((e) => console.error("Ошибка сохранения (не критично):", e));
-
-    await onDownloadCertificate();
-    await onDownloadLogs();
-    await onDownloadAnalytics();
-
-    try {
-        await onSendToTelegram();
-    } catch (e) {
-        console.error("Telegram отправка не удалась (не критично):", e);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    onClearState();
-    window.location.href = "/";
+    });
 }

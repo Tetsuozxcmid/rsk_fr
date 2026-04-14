@@ -1,21 +1,19 @@
+import { getUserFromCookies } from "../actions";
+
 export async function saveMayakRankingTest({ results, setRankingDelta5 }) {
     try {
         if (results?.level5?.delta !== undefined) {
             setRankingDelta5(results.level5.delta);
         }
 
-        const activeUser =
-            document.cookie
-                .split("; ")
-                .find((row) => row.startsWith("active_user="))
-                ?.split("=")[1] || "anonymous";
-
+        const activeUser = getUserFromCookies();
         const payload = {
             date: new Date().toISOString(),
-            user: activeUser,
+            user: activeUser?.id || "anonymous",
+            userName: activeUser?.name || "Участник",
             type: "ranking_test",
             results,
-            totalDelta: Object.values(results).reduce((sum, r) => sum + r.delta, 0),
+            totalDelta: Object.values(results).reduce((sum, result) => sum + result.delta, 0),
         };
 
         await fetch("/api/mayak/saveDeltaTest", {
@@ -23,7 +21,7 @@ export async function saveMayakRankingTest({ results, setRankingDelta5 }) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
-    } catch (err) {
-        console.error("?????? ?????????? ??????????? ????????????:", err);
+    } catch (error) {
+        console.error("Ошибка сохранения результатов ранжирования:", error);
     }
 }

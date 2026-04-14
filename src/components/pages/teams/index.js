@@ -20,6 +20,9 @@ export default function TeamIndexPage({ goTo, teamData }) {
     const team = teamData;
     const router = useRouter();
 
+    const completedTasks = team?.team_info?.tasks_completed ?? 0;
+    const teamPoints = team?.team_info?.points ?? 0;
+
     useEffect(() => {
         if (!team?.team_info) return;
 
@@ -209,7 +212,13 @@ export default function TeamIndexPage({ goTo, teamData }) {
                         </div>
                     </div>
 
-                    <Folder projects="0" cases="0" coins="0" onClick={() => goTo("workfolder")} />
+                    <Folder
+                        team
+                        projects={String(completedTasks)}
+                        cases="0"
+                        coins={String(teamPoints)}
+                        onClick={() => goTo("workfolder")}
+                    />
                 </div>
 
                 <div className="block-wrapper gap-[1.25rem] col-span-12 h-fit">

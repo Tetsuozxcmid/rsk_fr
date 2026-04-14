@@ -1,13 +1,11 @@
-﻿export async function saveMayakTaskAttempt({ taskName, minutes, currentTaskIndex, type, userType, who, taskElapsedTime, sectionId }) {
-    try {
-        const activeUser =
-            document.cookie
-                .split("; ")
-                .find((row) => row.startsWith("active_user="))
-                ?.split("=")[1] || "anonymous";
+import { getUserFromCookies } from "../actions";
 
+export async function saveMayakTaskAttempt({ taskName, minutes, currentTaskIndex, type, userType, who, taskElapsedTime, sectionId }) {
+    try {
+        const activeUser = getUserFromCookies();
         const payload = {
-            user: decodeURIComponent(activeUser),
+            user: activeUser?.id || "anonymous",
+            userName: activeUser?.name || "Участник",
             taskName,
             taskIndex: currentTaskIndex,
             timestamp: new Date().toISOString(),

@@ -439,7 +439,6 @@ export default function AdminMayakOnboardingPage() {
 
         if (!form.title.trim()) nextErrors.title = "Укажите название сессии.";
         if (!form.startDate) nextErrors.startDate = "Укажите дату начала.";
-        if (!form.endDate) nextErrors.endDate = "Укажите дату окончания.";
         if (form.startDate && form.endDate && form.endDate < form.startDate) nextErrors.endDate = "Дата окончания не может быть раньше даты начала.";
         if (form.chatLink.trim() && !/^https?:\/\//i.test(form.chatLink.trim())) nextErrors.chatLink = "Ссылка на чат должна начинаться с http:// или https://.";
 
@@ -554,7 +553,7 @@ export default function AdminMayakOnboardingPage() {
         }
 
         try {
-            const response = await createOnboardingLink({ title: form.title, chatLink: form.chatLink, startDate: form.startDate, endDate: form.endDate });
+            const response = await createOnboardingLink({ title: form.title, chatLink: form.chatLink, startDate: form.startDate, endDate: form.endDate || "" });
             setLinks(response.links || []);
             setForm({ title: "", chatLink: "", startDate: "", endDate: "" });
             setCreateAttempted(false);
@@ -721,7 +720,10 @@ export default function AdminMayakOnboardingPage() {
                                 <EditorField label="Дата начала" required invalid={createAttempted && Boolean(createLinkErrors.startDate)} hint={createAttempted ? createLinkErrors.startDate : ""}>
                                     <input type="date" value={form.startDate} onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))} className={inputClassName} />
                                 </EditorField>
-                                <EditorField label="Дата окончания" required invalid={createAttempted && Boolean(createLinkErrors.endDate)} hint={createAttempted ? createLinkErrors.endDate : ""}>
+                                <EditorField
+                                    label="Дата окончания"
+                                    invalid={createAttempted && Boolean(createLinkErrors.endDate)}
+                                    hint={createAttempted ? createLinkErrors.endDate || "Необязательно. Оставьте пустым для однодневной ссылки." : "Необязательно. Оставьте пустым для однодневной ссылки."}>
                                     <input type="date" value={form.endDate} onChange={(event) => setForm((current) => ({ ...current, endDate: event.target.value }))} className={inputClassName} />
                                 </EditorField>
                             </div>

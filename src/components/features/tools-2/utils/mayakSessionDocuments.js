@@ -1,15 +1,24 @@
 import { pdf } from "@react-pdf/renderer";
 import QRCode from "qrcode";
-import Certificate from "../Certificate";
+
+import Certificate, { buildCertificateDateText } from "../Certificate";
 import SessionLogs from "../SessionLogs";
 
-export async function buildMayakQrDataUrl(userId) {
-    const qrUrl = `${window.location.origin}/results?id=${encodeURIComponent(userId || "")}`;
+export async function buildMayakQrDataUrl(userId, baseUrl) {
+    const origin = baseUrl || (typeof window !== "undefined" ? window.location.origin : "");
+    const qrUrl = `${origin}/results?id=${encodeURIComponent(userId || "")}`;
     return QRCode.toDataURL(qrUrl, { width: 200, margin: 1 });
 }
 
-export async function buildMayakCertificateBlob({ userName, dateStr, qrDataUrl }) {
-    return pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} />).toBlob();
+export async function buildMayakCertificateBlob({ userName, qrDataUrl, dateText, backgroundImageSrc }) {
+    return pdf(
+        <Certificate
+            userName={userName}
+            qrDataUrl={qrDataUrl}
+            dateText={dateText || buildCertificateDateText()}
+            backgroundImageSrc={backgroundImageSrc || (typeof window !== "undefined" ? `${window.location.origin}/certificat.png` : "")}
+        />
+    ).toBlob();
 }
 
 export async function buildMayakSessionLogBlob({ userName, userRole, dateStr, totalTime, rankingData, tasks }) {

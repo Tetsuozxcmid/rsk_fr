@@ -13,6 +13,48 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
+### 2026-03-26 - MAYAK portal OAuth return flags must be one-shot and profile proxies must forward only portal auth
+
+- Problem: MAYAK could surface a generic `Failed to fetch profile from backend` runtime error long after a portal auth attempt, and the same error kept repeating on later page opens.
+- Root cause: `_app.js` retried portal-profile bootstrap while `mayak_portal_return_path` stayed in `localStorage`, and `/api/profile/info` masked the upstream response while forwarding extra non-portal auth/cookies into the portal profile endpoint.
+- Fix: consume or clear the MAYAK portal return flag after a failed bootstrap, route `/api/profile/info` through the shared portal profile helper, and forward only the real `users_access_token` cookie plus the upstream error detail/status.
+- Prevention: when MAYAK stores auth-return state in browser storage, treat it as single-use state and do not proxy unrelated cookies or fallback tokens into portal profile requests.
+
+### 2026-03-26 - Local MAYAK runtime data under `data/` should trigger a `.gitignore` check before commit
+
+- Problem: generated MAYAK onboarding runtime files and uploads can appear in `git status` as accidental untracked changes and then get bundled into unrelated commits.
+- Root cause: server-managed JSON/files under `data/` are easy to create during local testing, but not every runtime path was covered by `.gitignore`.
+- Fix: add narrow ignore rules for confirmed local/runtime-only paths, and when a new `data/` artifact appears unexpectedly, pause and ask whether it should be added to `.gitignore` instead of assuming it belongs in git.
+- Prevention: when `git status` shows new MAYAK runtime data or uploaded files that do not look like source assets, do not stage them by default; ask whether to ignore that path permanently.
+
+### 2026-03-26 - Portal `Profile not found` must be treated as profile-completion state, not an auth crash
+
+- Problem: MAYAK could throw a runtime error after successful portal auth because `/api/profile/info` returned `Profile not found`.
+- Root cause: the client treated all non-`401/403` profile responses as fatal even though `404 Profile not found` means the portal session exists but the user has no saved profile record yet.
+- Fix: tag this backend case explicitly (`PROFILE_NOT_FOUND`), synthesize a client-side missing-profile payload, and route MAYAK settings into `PortalProfileEditor` so the user can complete the profile instead of crashing.
+- Prevention: in MAYAK portal-auth flows, distinguish missing profile data from missing auth; a profile-creation/completion step is a recoverable state, not a runtime exception.
+
+### 2026-03-26 - Shared dropdown hooks must return every callback their input component invokes
+
+- Problem: MAYAK profile completion could crash with `handleEnter is not a function` when the user pressed Enter inside a dropdown field.
+- Root cause: `DropdownInput` called `handleEnter()`, but `useDropdownFilter()` did not return that callback.
+- Fix: implement `handleEnter()` inside the hook, return it together with the other handlers, and keep the component-side call optional (`handleEnter?.()`).
+- Prevention: when a UI component destructures handlers from a shared hook, verify the hook exports the full callback contract before wiring keyboard events.
+
+### 2026-03-26 - Portal auth pages must not redirect missing-profile sessions into legacy profile screens
+
+- Problem: the main portal `Авторизация` / `Регистрация` entry could look broken because the app jumped from `/auth` to a blank `/profile` screen.
+- Root cause: the new client helper correctly treated `Profile not found` as a recoverable session, but legacy portal profile pages still expected only `200` or `401/403` responses and rendered `null` on that synthetic payload.
+- Fix: when portal auth resolves into a missing-profile payload, route directly to profile settings/editor, and update legacy profile pages to load profile state through `fetchPortalProfileClient()` instead of raw `/api/profile/info` fetches.
+- Prevention: after introducing shared auth/profile helpers, audit older portal pages that still parse profile responses manually so new synthetic auth states do not collapse into blank screens.
+
+### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
+
+- Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.
+- Root cause: `reactStrictMode` remounted client pages and reran bootstrap `useEffect` hooks, so auth/session gates briefly reset and repeated the same profile fetch.
+- Fix: move portal profile bootstrap behind a module-scoped client cache plus in-flight promise dedupe, and reuse that helper across `/auth`, MAYAK settings, and portal auth completion flows. If local debugging still suffers from false double-mount noise, disable `reactStrictMode` in this repo.
+- Prevention: when MAYAK or portal UI depends on one initial session/profile fetch, do not call the raw fetch from every mount; use a shared client bootstrap helper that survives remounts and verify whether StrictMode is amplifying the issue before chasing phantom rerenders.
+
 ### 2026-03-24 - MAYAK admin file uploads must clear hidden input values after async handlers
 
 - Problem: onboarding constructor image uploads could appear broken when an admin retried the same photo-instruction file for a tech-specialist block.
@@ -26,6 +68,20 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Root cause: onboarding image uploads were sent as `data:` URLs inside JSON, which inflated payload size and hit unstable request/body handling on the Next.js upload routes.
 - Fix: send onboarding images as `multipart/form-data`, parse them server-side as files in both admin and public tech-specialist flows, and keep the old JSON path only as a backward-compatible fallback.
 - Prevention: for MAYAK onboarding image uploads, do not serialize real files into base64 JSON unless there is no binary upload option; prefer multipart transport from the start.
+
+### 2026-03-25 - MAYAK delta-test storage must accept both nested per-user payloads and flat event payloads
+
+- Problem: different MAYAK runtime paths sent delta/ranking data in two incompatible shapes, which risked broken writes or malformed keys in `DeltaTest.json`.
+- Root cause: `saveDeltaTest` assumed only the nested `{ [userId]: { [timestamp]: value } }` format, while some callers already posted flat event objects with `user` and `date`.
+- Fix: normalize both payload shapes server-side inside `/api/mayak/saveDeltaTest` before writing, so legacy and new runtime calls land in the same store.
+- Prevention: when MAYAK uses JSON-backed append APIs, normalize payload variants at the route boundary instead of assuming every client path already shares one exact envelope.
+
+### 2026-03-24 - MAYAK onboarding links must allow single-day sessions without a second required date
+
+- Problem: admin could not create an onboarding link for a one-day event because the constructor required both start and end dates.
+- Root cause: the form and `createMayakOnboardingLink()` treated `endDate` as mandatory instead of an optional multi-day window.
+- Fix: keep `eventDate/startDate` required, make `endDate` optional in both UI and server validation, and display only one date when `endDate` is empty.
+- Prevention: for MAYAK scheduling fields, model the single-day case explicitly instead of forcing operators to duplicate one date into two required inputs.
 
 ### 2026-03-24 - Participant laptop checks can disappear when onboarding config leaves `participantSections.laptop.items` empty
 

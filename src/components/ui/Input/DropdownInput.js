@@ -1,9 +1,8 @@
-// DropdownInput.jsx
 import { useEffect, useRef } from "react";
 import { useDropdownFilter } from "./helpers";
 
 export default function DropdownInput({
-    value: controlledValue, // ожидаем ID (число) или строку
+    value: controlledValue, 
     onChange,
     name,
     src,
@@ -11,12 +10,12 @@ export default function DropdownInput({
     ...props
 }) {
     const dropdownRef = useRef(null);
-    const { inputValue, filtered, showDropdown, handleInput, handleSelect, setShowDropdown, handleEnter } = useDropdownFilter(controlledValue, onChange, src, name, options);
+    const { inputValue, filtered, showDropdown, handleInput, handleSelect, setShowDropdown, handleEnter, handleBlur } = useDropdownFilter(controlledValue, onChange, src, name, options);
 
     const handleKeyDown = (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            handleEnter();
+            handleEnter?.();
         }
     };
 
@@ -32,8 +31,9 @@ export default function DropdownInput({
         <div className={`input-wrapper relative w-full ${showDropdown ? " input-wrapper--dropdown-open" : ""}`} ref={dropdownRef}>
             <input
                 type="text"
-                value={inputValue} // ← теперь отображается название
+                value={inputValue} 
                 onChange={(e) => handleInput(e.target.value)}
+                onBlur={handleBlur}
                 onFocus={() => inputValue && setShowDropdown(true)}
                 onKeyDown={handleKeyDown}
                 autoComplete="off"

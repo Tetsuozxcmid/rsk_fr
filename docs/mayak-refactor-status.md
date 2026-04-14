@@ -11,6 +11,7 @@
 ## Current Goal
 
 Stabilize MAYAK architecture around:
+
 - server-side content storage and API access,
 - safer admin auth,
 - cleaner trainer orchestration,
@@ -31,9 +32,9 @@ Stabilize MAYAK architecture around:
 
 - Added shared MAYAK content storage layer in `src/lib/mayakContentStorage.js`.
 - Added runtime content APIs:
-  - `/api/mayak/content-bundle`
-  - `/api/mayak/content-file`
-  - `/api/mayak/settings`
+    - `/api/mayak/content-bundle`
+    - `/api/mayak/content-file`
+    - `/api/mayak/settings`
 - Switched MAYAK admin preview/file access to `content-file` API.
 - Switched MAYAK v2 runtime loading in `useMayakTaskManager` from direct `/tasks-2/v2/*.json` fetches to `content-bundle` and `content-file` APIs.
 - Added a dedicated MAYAK `maps` attachment channel in storage/admin/runtime with split-view PDF preview in the trainer.
@@ -50,7 +51,7 @@ Stabilize MAYAK architecture around:
 - Added dedicated MAYAK onboarding admin surface at `/admin/mayak-onboarding`.
 - Added separate onboarding file storage under `data/mayak-onboarding-files/` plus API-backed file serving/upload.
 - Onboarding constructor/runtime now support configurable minimum required photo count per checklist section (`minPhotos`) with runtime validation on section completion.
-
+- Onboarding link creation now allows a single required date; `endDate` stays optional and the UI shows one date for single-day events.
 
 ### Storage hardening
 
@@ -58,11 +59,12 @@ Stabilize MAYAK architecture around:
 - Kept explicit `MAYAK_CONTENT_DIR` as the authoritative server override when set.
 - Added atomic JSON writes in `mayakContentStorage.js`.
 - Switched MAYAK admin task saves to `writeSectionJson()` so `index.json`, `TaskText.json`, and merged `meta.json` writes use the atomic storage path.
+
 ### Content admin hardening
 
 - Repaired legacy-broken range data in storage:
-  - `301-400-2/index.json`
-  - `9001-9100/index.json`
+    - `301-400-2/index.json`
+    - `9001-9100/index.json`
 - Restored missing task numbers and standard task shape for those sections.
 - Added missing `9001-9100/meta.json`.
 
@@ -75,42 +77,42 @@ Stabilize MAYAK architecture around:
 
 - Reduced `src/components/features/tools-2/trainer.js` substantially from the original monolith.
 - Extracted multiple hooks/utilities/components, including:
-  - `useMayakQwenEvaluation`
-  - `useMayakTaskManager`
-  - `useMayakAccessGate`
-  - `useMayakRuntimeData`
-  - `useMayakPromptActions`
-  - `useMayakCompletionActions`
-  - `useMayakTaskExecutionActions`
-  - `useMayakPopupState`
-  - `useMayakTypeUiState`
-  - `useMayakQuestionnaireActions`
-  - `useMayakConfirmationActions`
-  - `useMayakPopupActions`
-  - `useMayakSessionActions`
-  - `useMayakBufferActions`
-  - `useMayakTrainerControlActions`
-  - `useMayakPageActions`
-  - `useMayakModalActions`
-  - `TrainerUiSections`
-  - `MayakServicesPanel`
-  - `InstructionImageModal`
-  - `TrainerPopups`
-  - prompt/history/buffer/copy/session document helpers
+    - `useMayakQwenEvaluation`
+    - `useMayakTaskManager`
+    - `useMayakAccessGate`
+    - `useMayakRuntimeData`
+    - `useMayakPromptActions`
+    - `useMayakCompletionActions`
+    - `useMayakTaskExecutionActions`
+    - `useMayakPopupState`
+    - `useMayakTypeUiState`
+    - `useMayakQuestionnaireActions`
+    - `useMayakConfirmationActions`
+    - `useMayakPopupActions`
+    - `useMayakSessionActions`
+    - `useMayakBufferActions`
+    - `useMayakTrainerControlActions`
+    - `useMayakPageActions`
+    - `useMayakModalActions`
+    - `TrainerUiSections`
+    - `MayakServicesPanel`
+    - `InstructionImageModal`
+    - `TrainerPopups`
+    - prompt/history/buffer/copy/session document helpers
 - Fixed a long chain of runtime regressions caused by the extraction process:
-  - missing imports,
-  - missing state,
-  - missing helpers like `isIntroTask` and `formatTaskTime`,
-  - lost wiring between trainer and new hooks.
+    - missing imports,
+    - missing state,
+    - missing helpers like `isIntroTask` and `formatTaskTime`,
+    - lost wiring between trainer and new hooks.
 - Restored `trainer.js` to a syntactically valid state after each unstable refactor segment.
 
 ### Qwen and scoring
 
 - Kept new score model:
-  - score = green field count / 7
-  - 1-2 red
-  - 3-5 yellow
-  - 6-7 green
+    - score = green field count / 7
+    - 1-2 red
+    - 3-5 yellow
+    - 6-7 green
 - Moved Qwen evaluation logic into dedicated hook layer.
 
 ## Current State
@@ -123,13 +125,18 @@ Stabilize MAYAK architecture around:
 - Session tokens are now accepted by `/api/mayak/validate-token`, and session-mode registration in `settings` requires a table selection derived from the active session.
 - Session-mode registration now also creates a session participant record bound to `sessionId`, `userId`, and `tableNumber`.
 - Session trainer flow now supports:
-  - one server-enforced inspector per table,
-  - one additional server-enforced administrator reviewer per table,
-  - participant upload on task completion,
-  - blocking next-task navigation while a task is pending review or rejected,
-  - inspector review queue with accept/reject and session-configured review/rework timers,
-  - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
-- Trainer session completion now downloads certificate, session log, and analytics PDF directly in the browser; the older Telegram-delivery handoff remains in code but is temporarily disabled and is no longer the active completion path.
+    - one server-enforced inspector per table,
+    - one additional server-enforced administrator reviewer per table,
+    - participant upload on task completion,
+    - blocking next-task navigation while a task is pending review or rejected,
+    - inspector review queue with accept/reject and session-configured review/rework timers,
+    - inline preview of PDF, images, audio, video, and converted `doc/docx/ppt/pptx` materials.
+- MAYAK trainer access now uses portal identity: after token validation, settings reuses the current portal session or shows the embedded portal auth flow, then blocks trainer entry until required profile fields are filled.
+- Required portal profile gate for MAYAK is now `NameIRL + Surname + Organization`.
+- If portal auth succeeds but the backend responds with `Profile not found`, MAYAK now routes that user into profile completion instead of crashing during the bootstrap fetch.
+- `active_user.id` is now the portal user id, and session participant registration reuses that id for idempotent session membership.
+- Trainer completion is now finalized server-side through `/api/mayak/completions/finalize`, which stores canonical certificate/log/analytics files in MAYAK storage.
+- Personal-cabinet MAYAK history now reads from `/api/mayak/my-history` and downloads canonical artifacts through `/api/mayak/my-history/[runId]/file`.
 - Inspector review UI now uses a compact top-right queue with per-task countdown bars and an `РћС‚РєСЂС‹С‚СЊ` action that expands into a split review modal; participants see a matching `Р—Р°РґР°РЅРёРµ РЅР° РїСЂРѕРІРµСЂРєРµ` timer banner while navigation stays blocked.
 - Session upload allowlist now also accepts `ppt/pptx`; unsupported preview types fall back to download-only inside the inspector panel.
 - `doc/docx` conversion now supports an explicit `MAYAK_LIBREOFFICE_PATH` override before default `soffice/libreoffice` lookup, so server deploys can bind LibreOffice without changing code.
@@ -146,14 +153,14 @@ Stabilize MAYAK architecture around:
 ### High priority
 
 1. Smoke-check the main MAYAK trainer flows after the latest refactor:
-   - token entry,
-   - task navigation,
-   - prompt creation/copy,
-   - buffer,
-   - instructions/materials,
-   - Qwen evaluation,
-   - completion popups,
-   - session participant upload / inspector review flow.
+    - token entry,
+    - task navigation,
+    - prompt creation/copy,
+    - buffer,
+    - instructions/materials,
+    - Qwen evaluation,
+    - completion popups,
+    - session participant upload / inspector review flow.
 2. Content storage selection and JSON save path were hardened: valid storage detection plus atomic JSON writes are now in place.
 
 ### Medium priority
@@ -174,10 +181,12 @@ Stabilize MAYAK architecture around:
 ## Stopping Rule For This Refactor Stage
 
 Stop this stage when:
+
 - there are no runtime `ReferenceError` issues,
 - main MAYAK user flows pass smoke-check,
 - `trainer.js` is primarily orchestration,
 - the next refactor step would mostly move state around without clear architectural gain.
+
 ### Follow-up checks on 2026-03-11
 
 - Confirmed `ADMIN-BYPASS-TOKEN` is no longer present in runtime MAYAK code; current localhost-only bypass is `fffff` via `/api/mayak/validate-token` with `isBypass` flag.
@@ -188,9 +197,6 @@ Stop this stage when:
 - Added automatic cleanup of legacy `ADMIN-BYPASS-TOKEN` from `activated_key` cookie on MAYAK settings load.
 - Tightened `useMayakAccessGate` so bypass token access requires an authenticated MAYAK admin cookie before opening the trainer.
 
-
 - 2026-03-18: Office preview conversion on local Windows was diagnosed to fail because LibreOffice could not use the ambient TEMP/user path reliably; the runtime now uses an isolated ASCII temp workspace plus explicit `TEMP/TMP` overrides and logs conversion steps.
 
 - 2026-03-18: doc/docx session review uploads were moved from synchronous LibreOffice conversion to the same background-preview flow as ppt/pptx, so upload no longer blocks on office conversion.
-
-

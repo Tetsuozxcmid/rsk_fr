@@ -1,4 +1,3 @@
-// Полный обновленный Nav.js
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,8 +14,8 @@ const BASE_NAV_LINKS = [
         label: "Команды",
         disable: false,
         login: true,
-        learn: true,
-        href: "#",
+        learn: false,
+        href: "/teams",
         icon: dynamic(() => import("@/assets/nav/team.svg")),
         submenu: [
             { label: "Список команд", href: "/teams" },
@@ -112,7 +111,11 @@ export function useNavLinks() {
 
 export function NavItem({ label, href, icon: Icon, submenu, isCollapsed, isHovered, onHover, disable, login, learn, screenType }) {
     const router = useRouter();
-    const isSubmenuActive = submenu?.some((item) => router.pathname === item.href);
+    const isSubmenuActive = submenu?.some(
+        (item) => router.pathname === item.href || router.asPath?.split("?")[0] === item.href
+    );
+    const isMainActive =
+        router.pathname === href || (href !== "#" && href !== "/" && router.pathname?.startsWith(href + "/"));
     const userData = getCookie("userData");
     const userLearn = getCookie("learn") === "true";
 
@@ -122,13 +125,13 @@ export function NavItem({ label, href, icon: Icon, submenu, isCollapsed, isHover
 
     const currentSubmenu = isInactive ? null : submenu;
 
-    // Новая логика: показывать подменю если есть наведение,
-    // если оно активно ИЛИ если мы на мобилке/планшете
     const shouldShowSubmenu = (isHovered || isSubmenuActive || (screenType && screenType !== "desktop")) && !isCollapsed;
 
     return (
         <div className={`group flex flex-col gap-[0.75rem] cursor-pointer`} onMouseEnter={() => onHover(label)} onMouseLeave={() => onHover(null)}>
-            <Link className={`${router.pathname === href ? "active" : ""} items-center ${isInactive ? "inactive pointer-events-none" : isSubmenuActive ? "opacity-100" : "opacity-30 group-hover:opacity-100"}`} href={isInactive ? "#" : href}>
+            <Link
+                className={`${isMainActive || isSubmenuActive ? "active" : ""} items-center ${isInactive ? "inactive pointer-events-none" : isSubmenuActive ? "opacity-100" : "opacity-30 group-hover:opacity-100"}`}
+                href={isInactive ? "#" : href}>
                 <Icon className="w-[1.375rem] h-[1.375rem] max-[900px]:w-[1.25rem] max-[900px]:h-[1.25rem]" />
                 <AnimatePresence>
                     {!isCollapsed && (
