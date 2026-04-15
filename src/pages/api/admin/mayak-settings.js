@@ -1,5 +1,13 @@
 import { requireMayakAdmin } from "../../../lib/mayakAdminAuth.js";
-import { getMayakQuestionnaireSettings, readMayakSettings, writeMayakSettings } from "../../../lib/mayakSettings.js";
+import {
+    getMayakPromptEvaluationSettings,
+    getMayakQuestionnaireSettings,
+    normalizePromptEvaluationOllamaBaseUrl,
+    normalizePromptEvaluationOllamaModel,
+    normalizePromptEvaluationProvider,
+    readMayakSettings,
+    writeMayakSettings,
+} from "../../../lib/mayakSettings.js";
 import { maskSecret, normalizeQwenTokenEntries } from "../../../lib/mayakQwen.js";
 
 export default async function handler(req, res) {
@@ -21,6 +29,7 @@ export default async function handler(req, res) {
         const qwenBackupEntry = normalizeQwenTokenEntries(settings.qwenBackupToken)[0] || null;
         const qwenBackupToken = qwenBackupEntry?.token || "";
         const questionnaires = getMayakQuestionnaireSettings(settings);
+        const promptEvaluation = getMayakPromptEvaluationSettings(settings);
 
         return res.status(200).json({
             success: true,
@@ -42,6 +51,9 @@ export default async function handler(req, res) {
                 introQuestionnaireUrlIsSet: !!questionnaires.introQuestionnaireUrl,
                 completionSurveyUrl: questionnaires.completionSurveyUrl,
                 completionSurveyUrlIsSet: !!questionnaires.completionSurveyUrl,
+                promptEvaluationProvider: promptEvaluation.provider,
+                promptEvaluationOllamaBaseUrl: promptEvaluation.ollamaBaseUrl,
+                promptEvaluationOllamaModel: promptEvaluation.ollamaModel,
                 qwenTokens: qwenTokens.map((entry, index) => ({
                     index,
                     name: entry.name || `Токен ${index + 1}`,
@@ -69,6 +81,9 @@ export default async function handler(req, res) {
             baseUrl,
             introQuestionnaireUrl,
             completionSurveyUrl,
+            promptEvaluationProvider,
+            promptEvaluationOllamaBaseUrl,
+            promptEvaluationOllamaModel,
             qwenTokens,
             qwenTokenAdd,
             qwenTokenRemoveIndex,
@@ -119,6 +134,21 @@ export default async function handler(req, res) {
 
         if (completionSurveyUrl !== undefined) {
             settings.completionSurveyUrl = typeof completionSurveyUrl === "string" ? completionSurveyUrl.trim() : "";
+        }
+
+        if (promptEvaluationProvider !== undefined) {
+            settings.promptEvaluationProvider = normalizePromptEvaluationProvider(promptEvaluationProvider);
+            process.env.MAYAK_PROMPT_EVALUATION_PROVIDER = settings.promptEvaluationProvider;
+        }
+
+        if (promptEvaluationOllamaBaseUrl !== undefined) {
+            settings.promptEvaluationOllamaBaseUrl = normalizePromptEvaluationOllamaBaseUrl(promptEvaluationOllamaBaseUrl);
+            process.env.MAYAK_PROMPT_EVALUATION_OLLAMA_BASE_URL = settings.promptEvaluationOllamaBaseUrl;
+        }
+
+        if (promptEvaluationOllamaModel !== undefined) {
+            settings.promptEvaluationOllamaModel = normalizePromptEvaluationOllamaModel(promptEvaluationOllamaModel);
+            process.env.MAYAK_PROMPT_EVALUATION_OLLAMA_MODEL = settings.promptEvaluationOllamaModel;
         }
 
         if (qwenTokens !== undefined) {

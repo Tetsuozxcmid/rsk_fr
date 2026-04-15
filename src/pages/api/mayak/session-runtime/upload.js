@@ -3,6 +3,8 @@ import { IncomingForm } from "formidable";
 
 import { createMayakSessionReview, saveMayakSessionUploadFile, startMayakSessionBackgroundPreviewConversion } from "@/lib/mayakSessionRuntime";
 
+const MAX_SESSION_UPLOAD_FILE_SIZE = 30 * 1024 * 1024;
+
 export const config = {
     api: {
         bodyParser: false,
@@ -13,7 +15,7 @@ function parseForm(req) {
     return new Promise((resolve, reject) => {
         const form = new IncomingForm({
             keepExtensions: true,
-            maxFileSize: 15 * 1024 * 1024,
+            maxFileSize: MAX_SESSION_UPLOAD_FILE_SIZE,
             multiples: false,
         });
 

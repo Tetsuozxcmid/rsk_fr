@@ -68,6 +68,9 @@ export default function AdminMayakTokens() {
     const [settingsBotUsername, setSettingsBotUsername] = useState("");
     const [settingsWebhookUrl, setSettingsWebhookUrl] = useState("");
     const [settingsBaseUrl, setSettingsBaseUrl] = useState("");
+    const [settingsPromptEvaluationProvider, setSettingsPromptEvaluationProvider] = useState("qwen");
+    const [settingsPromptEvaluationOllamaBaseUrl, setSettingsPromptEvaluationOllamaBaseUrl] = useState("");
+    const [settingsPromptEvaluationOllamaModel, setSettingsPromptEvaluationOllamaModel] = useState("");
     const [settingsInfo, setSettingsInfo] = useState({
         telegramBotToken: null,
         telegramBotTokenIsSet: false,
@@ -82,6 +85,9 @@ export default function AdminMayakTokens() {
         telegramWebhookUrlIsSet: false,
         baseUrl: "",
         baseUrlIsSet: false,
+        promptEvaluationProvider: "qwen",
+        promptEvaluationOllamaBaseUrl: "http://127.0.0.1:11434",
+        promptEvaluationOllamaModel: "gemma4:e2b",
         qwenTokens: [],
         qwenTokensCount: 0,
         qwenTokensIsSet: false,
@@ -206,6 +212,9 @@ export default function AdminMayakTokens() {
             const data = JSON.parse(text);
             if (data.success) {
                 setSettingsInfo(data.data);
+                setSettingsPromptEvaluationProvider(data.data.promptEvaluationProvider || "qwen");
+                setSettingsPromptEvaluationOllamaBaseUrl(data.data.promptEvaluationOllamaBaseUrl || "");
+                setSettingsPromptEvaluationOllamaModel(data.data.promptEvaluationOllamaModel || "");
             }
         } catch (err) {
             console.error("Ошибка загрузки настроек:", err);
@@ -250,6 +259,9 @@ export default function AdminMayakTokens() {
             telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: (d) => (d.botRestarted ? "Webhook URL сохранён, бот перезапущен" : "Webhook URL сохранён") },
             baseUrl: { value: settingsBaseUrl, clear: () => setSettingsBaseUrl(""), emptyMsg: null, successMsg: () => "Base URL сохранён" },
             qwenBackupToken: { value: settingsQwenBackupToken, clear: () => setSettingsQwenBackupToken(""), emptyMsg: null, successMsg: () => "Резервный токен сохранён" },
+            promptEvaluationProvider: { value: settingsPromptEvaluationProvider, clear: null, emptyMsg: null, successMsg: () => "Провайдер оценки промптов сохранён" },
+            promptEvaluationOllamaBaseUrl: { value: settingsPromptEvaluationOllamaBaseUrl, clear: null, emptyMsg: null, successMsg: () => "URL Ollama сохранён" },
+            promptEvaluationOllamaModel: { value: settingsPromptEvaluationOllamaModel, clear: null, emptyMsg: null, successMsg: () => "Модель Ollama сохранена" },
         };
         const f = fieldMap[field];
         if (!f) return;
@@ -780,6 +792,82 @@ export default function AdminMayakTokens() {
                                         <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("openrouterApiKey")} disabled={settingsSaving}>
                                             {settingsSaving ? "..." : "Сохранить"}
                                         </Button>
+                                    </div>
+                                    <div className="rounded-[.75rem] border border-(--color-gray-plus-50) bg-white p-[.75rem]">
+                                        <div className="flex flex-col gap-[.25rem] mb-[.75rem]">
+                                            <span className="link small text-(--color-gray-black)">Оценка промптов</span>
+                                            <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                Выберите, чем проверять поля MAYAK-ОКО: текущим Qwen-пулом или локальным Ollama для тестов.
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-[.75rem]">
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[220px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Провайдер оценки
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationProvider === "ollama" ? "Ollama" : "Qwen"})
+                                                        </span>
+                                                    </label>
+                                                    <select
+                                                        value={settingsPromptEvaluationProvider}
+                                                        onChange={(e) => setSettingsPromptEvaluationProvider(e.target.value)}
+                                                        style={{
+                                                            padding: "10px 12px",
+                                                            borderRadius: 12,
+                                                            border: "1.5px solid var(--color-gray-plus-50)",
+                                                            fontSize: 13,
+                                                            background: "#fff",
+                                                            minWidth: 220,
+                                                            width: "100%",
+                                                        }}>
+                                                        <option value="qwen">Qwen</option>
+                                                        <option value="ollama">Ollama</option>
+                                                    </select>
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationProvider")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[240px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        URL Ollama
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationOllamaBaseUrl || "http://127.0.0.1:11434"})
+                                                        </span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.promptEvaluationOllamaBaseUrl || "http://127.0.0.1:11434"}
+                                                        value={settingsPromptEvaluationOllamaBaseUrl}
+                                                        onChange={(e) => setSettingsPromptEvaluationOllamaBaseUrl(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationOllamaBaseUrl")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[240px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Модель Ollama
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationOllamaModel || "gemma4:e2b"})
+                                                        </span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.promptEvaluationOllamaModel || "gemma4:e2b"}
+                                                        value={settingsPromptEvaluationOllamaModel}
+                                                        onChange={(e) => setSettingsPromptEvaluationOllamaModel(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationOllamaModel")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="rounded-[.75rem] border border-(--color-gray-plus-50) bg-white p-[.75rem]">
                                         <div className="flex flex-col gap-[.25rem] mb-[.75rem]">

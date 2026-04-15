@@ -6,4 +6,6 @@ services:
     container_name: nextjs_app
     ports:
       - "8001:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     restart: unless-stopped
