@@ -1,3 +1,39 @@
+/**
+ * Coerce organization id from client payloads: ignore null/""/noise, only forward a positive int.
+ * Avoids Pydantic 422 on Organization_id: "" and duplicate organization_id + Organization_id.
+ */
+function sanitizeProfileFieldsForUpstream(fields) {
+    const out = { ...fields };
+    const rawPascal = out.Organization_id;
+    const rawSnake = out.organization_id;
+    delete out.Organization_id;
+    delete out.organization_id;
+
+    const coerceOrgId = (v) => {
+        if (v === null || v === undefined) {
+            return undefined;
+        }
+        if (typeof v === "number" && Number.isFinite(v) && Number.isInteger(v) && v >= 1) {
+            return v;
+        }
+        if (typeof v === "string") {
+            const t = v.trim();
+            if (t === "") {
+                return undefined;
+            }
+            const n = Number.parseInt(t, 10);
+            return Number.isFinite(n) && n >= 1 ? n : undefined;
+        }
+        return undefined;
+    };
+
+    const orgId = coerceOrgId(rawPascal) ?? coerceOrgId(rawSnake);
+    if (orgId !== undefined) {
+        out.Organization_id = orgId;
+    }
+    return out;
+}
+
 export default async function ProfileUpdateHandler(req, res) {
     try {
         const token = req.cookies.users_access_token;
@@ -12,6 +48,7 @@ export default async function ProfileUpdateHandler(req, res) {
         const bodyData = req.body;
         delete bodyData.token;
         const { role, ...profileFields } = bodyData;
+        const sanitizedFields = sanitizeProfileFieldsForUpstream(profileFields);
 
         const response = await fetch("https://api.rosdk.ru/users/profile_interaction/update_my_profile/", {
             method: "PATCH",
@@ -19,7 +56,7 @@ export default async function ProfileUpdateHandler(req, res) {
                 "Content-Type": "application/json",
                 Cookie: req.headers.cookie || "",
             },
-            body: JSON.stringify(profileFields),
+            body: JSON.stringify(sanitizedFields),
             cache: "no-store",
         });
 
