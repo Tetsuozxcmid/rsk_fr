@@ -9,6 +9,7 @@ import Card from "@/components/ui/Card";
 import MayakHistoryPanel from "@/components/pages/profile/MayakHistoryPanel";
 import Setts from "@/assets/general/setts.svg";
 import LinkIcon from "@/assets/general/link.svg";
+import { getPortalOrganizationId, getPortalOrganizationLabel } from "@/lib/portalProfile";
 import { fetchPortalProfileClient, isMissingPortalProfilePayload } from "@/lib/portalProfileClient";
 
 const PROFILE_EMPTY_LABEL = "\u041D\u0435\u0437\u0430\u043F\u043E\u043B\u043D\u0435\u043D\u043E";
@@ -109,6 +110,8 @@ export default function ProfileIndexPage({ goTo }) {
             ? `${userData.data.NameIRL} ${userData.data.Surname} ${userData.data.Patronymic}`
             : FULL_NAME_EMPTY_LABEL;
     const roleLabel = ROLE_LABELS[userData.data.Type] || "\u041E\u0448\u0438\u0431\u043A\u0430 \u0434\u0430\u043D\u043D\u044B\u0445";
+    const organizationLinkId = getPortalOrganizationId(userData);
+    const organizationDisplayName = getPortalOrganizationLabel(userData);
 
     return (
         <>
@@ -148,12 +151,18 @@ export default function ProfileIndexPage({ goTo }) {
                     <div className="block-wrapper col-span-4 max-[900px]:col-span-12">
                         <h6>{"\u041E\u0440\u0433\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0438 \u043A\u043E\u043C\u0430\u043D\u0434\u0430"}</h6>
                         <div className="flex flex-col gap-[0.75rem]">
-                            <Link href={`/organizations/${userData.data.Organization ? userData.data.Organization.id : ""}`}>
-                                <div className="group cursor-pointer flex items-center justify-between w-full">
-                                    <p className="flex-1 link">{userData.data.Organization ? userData.data.Organization.short_name : ORGANIZATION_EMPTY_LABEL}</p>
-                                    <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
+                            {organizationLinkId ? (
+                                <Link href={`/organizations/${organizationLinkId}`}>
+                                    <div className="group cursor-pointer flex items-center justify-between w-full">
+                                        <p className="flex-1 link">{organizationDisplayName || ORGANIZATION_EMPTY_LABEL}</p>
+                                        <LinkIcon className="stroke-(--color-gray-white) group-hover:stroke-black" style={{ transition: "stroke .3s ease-in-out" }} />
+                                    </div>
+                                </Link>
+                            ) : (
+                                <div className="flex items-center justify-between w-full">
+                                    <p className="flex-1 text-(--color-gray-black)">{organizationDisplayName || ORGANIZATION_EMPTY_LABEL}</p>
                                 </div>
-                            </Link>
+                            )}
 
                             <hr className="w-full border-solid border-[1.5px] border-(--color-gray-plus)" />
                             <Link href={"/teams/" + userData.data.team_id}>
