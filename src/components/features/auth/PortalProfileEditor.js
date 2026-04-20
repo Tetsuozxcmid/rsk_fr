@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import Button from "@/components/ui/Button";
@@ -52,15 +52,19 @@ export default function PortalProfileEditor({
     const [role, setRole] = useState(initialState.role);
     const [orgList, setOrgList] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [orgFieldTyped, setOrgFieldTyped] = useState(false);
+    const orgDropdownRef = useRef(null);
 
     useEffect(() => {
         setFormData(initialState);
         setRegion(initialState.Region);
         setRole(initialState.role);
+        setOrgFieldTyped(false);
     }, [initialState]);
 
     const isDirty = useMemo(() => {
         return (
+            orgFieldTyped ||
             String(formData.Organization || "") !== String(initialState.Organization || "") ||
             String(formData.Region || "") !== String(initialState.Region || "") ||
             String(formData.Surname || "") !== String(initialState.Surname || "") ||
@@ -69,7 +73,7 @@ export default function PortalProfileEditor({
             String(formData.Description || "") !== String(initialState.Description || "") ||
             String(role || "") !== String(initialState.role || "")
         );
-    }, [formData, initialState, role]);
+    }, [formData, initialState, orgFieldTyped, role]);
 
     useEffect(() => {
         if (!region) {
@@ -109,7 +113,16 @@ export default function PortalProfileEditor({
     };
 
     const handleSubmit = async () => {
-        if (!formData.Surname || !formData.NameIRL || !formData.Organization) {
+        let organizationField = formData.Organization;
+        if (orgDropdownRef.current && typeof orgDropdownRef.current.commitPendingValue === "function") {
+            const committed = orgDropdownRef.current.commitPendingValue();
+            if (committed !== undefined && committed !== null) {
+                organizationField = committed;
+            }
+        }
+
+        const orgStrRequired = String(organizationField ?? "").trim();
+        if (!formData.Surname?.trim() || !formData.NameIRL?.trim() || !orgStrRequired) {
             alert("Для входа в MAYAK заполните фамилию, имя и организацию.");
             return;
         }
@@ -134,8 +147,8 @@ export default function PortalProfileEditor({
         if (String(formData.Region || "") !== String(initialState.Region || "")) {
             changes.Region = formData.Region;
         }
-        if (String(formData.Organization ?? "") !== String(initialState.Organization ?? "")) {
-            const orgIdRaw = String(formData.Organization ?? "").trim();
+        if (String(organizationField ?? "") !== String(initialState.Organization ?? "")) {
+            const orgIdRaw = String(organizationField ?? "").trim();
             const orgIdNum = Number.parseInt(orgIdRaw, 10);
             if (!Number.isFinite(orgIdNum) || orgIdNum < 1) {
                 alert("Укажите организацию из списка или числовой ID существующей организации.");
@@ -154,8 +167,8 @@ export default function PortalProfileEditor({
             return;
         }
 
-        const orgChanged = String(formData.Organization ?? "") !== String(initialState.Organization ?? "");
-        const orgIdRaw = String(formData.Organization ?? "").trim();
+        const orgChanged = String(organizationField ?? "") !== String(initialState.Organization ?? "");
+        const orgIdRaw = String(organizationField ?? "").trim();
         const orgIdNum = Number.parseInt(orgIdRaw, 10);
         let selectedOrganization =
             orgChanged && Number.isFinite(orgIdNum) && orgIdNum >= 1
@@ -236,6 +249,8 @@ export default function PortalProfileEditor({
                 removeCookie("organization");
             }
 
+            setOrgFieldTyped(false);
+
             if (typeof onSaved === "function") {
                 onSaved({ success: true, data: nextData });
             }
@@ -263,12 +278,14 @@ export default function PortalProfileEditor({
                 {showDescription ? <Textarea inverted name="Description" placeholder="Расскажите о себе кратко" value={formData.Description} onChange={(event) => updateField("Description", event.target.value)} /> : null}
 
                 <DropdownInput
+                    ref={orgDropdownRef}
                     id="Organization"
                     name="Organization"
                     placeholder="Организация"
                     value={formData.Organization}
                     options={orgList}
                     onChange={(event) => updateField("Organization", event.target.value)}
+                    onQueryChange={() => setOrgFieldTyped(true)}
                     disabled={!region}
                 />
                 <DropdownInput

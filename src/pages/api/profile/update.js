@@ -1,7 +1,4 @@
-/**
- * Coerce organization id from client payloads: ignore null/""/noise, only forward a positive int.
- * Avoids Pydantic 422 on Organization_id: "" and duplicate organization_id + Organization_id.
- */
+
 function sanitizeProfileFieldsForUpstream(fields) {
     const out = { ...fields };
     const rawPascal = out.Organization_id;

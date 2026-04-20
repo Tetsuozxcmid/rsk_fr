@@ -1,16 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, forwardRef, useImperativeHandle } from "react";
 import { useDropdownFilter } from "./helpers";
 
-export default function DropdownInput({
-    value: controlledValue, 
-    onChange,
-    name,
-    src,
-    options,
-    ...props
-}) {
+const DropdownInput = forwardRef(function DropdownInput(
+    { value: controlledValue, onChange, name, src, options, onQueryChange, ...props },
+    ref
+) {
     const dropdownRef = useRef(null);
-    const { inputValue, filtered, showDropdown, handleInput, handleSelect, setShowDropdown, handleEnter, handleBlur } = useDropdownFilter(controlledValue, onChange, src, name, options);
+    const { inputValue, filtered, showDropdown, handleInput, handleSelect, setShowDropdown, handleEnter, handleBlur, commitPendingValue } =
+        useDropdownFilter(controlledValue, onChange, src, name, options, onQueryChange);
+
+    useImperativeHandle(ref, () => ({ commitPendingValue }), [commitPendingValue]);
 
     const handleKeyDown = (e) => {
         if (e.key === "Enter") {
@@ -31,7 +30,7 @@ export default function DropdownInput({
         <div className={`input-wrapper relative w-full ${showDropdown ? " input-wrapper--dropdown-open" : ""}`} ref={dropdownRef}>
             <input
                 type="text"
-                value={inputValue} 
+                value={inputValue}
                 onChange={(e) => handleInput(e.target.value)}
                 onBlur={handleBlur}
                 onFocus={() => inputValue && setShowDropdown(true)}
@@ -53,4 +52,8 @@ export default function DropdownInput({
             )}
         </div>
     );
-}
+});
+
+DropdownInput.displayName = "DropdownInput";
+
+export default DropdownInput;

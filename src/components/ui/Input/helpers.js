@@ -1,12 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
-export function useDropdownFilter(controlledValue, onChange, src, name, options) {
+export function useDropdownFilter(controlledValue, onChange, src, name, options, onQueryChange) {
     const [inputValue, setInputValue] = useState("");
     const [items, setItems] = useState([]);
     const [filtered, setFiltered] = useState([]);
     const [showDropdown, setShowDropdown] = useState(false);
 
-    
     useEffect(() => {
         if (options && Array.isArray(options)) {
             const mapped = options.map((opt) => ({
@@ -27,7 +26,6 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         }
     }, [options, src]);
 
-    
     useEffect(() => {
         if (controlledValue && items.length > 0) {
             const match = items.find((i) => String(i.value) === String(controlledValue));
@@ -39,9 +37,9 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         }
     }, [controlledValue, items]);
 
-    
     const handleInput = (val) => {
         setInputValue(val);
+        onQueryChange?.(val);
         if (!val) {
             onChange?.({ target: { name, value: "" } });
             setFiltered([]);
@@ -75,7 +73,30 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         setShowDropdown(false);
     };
 
-    
+    const commitPendingValue = useCallback(() => {
+        const trimmed = String(inputValue || "").trim();
+        if (!trimmed) {
+            onChange?.({ target: { name, value: "" } });
+            setShowDropdown(false);
+            return "";
+        }
+        const byLabel = items.find((i) => String(i.label).toLowerCase() === trimmed.toLowerCase());
+        if (byLabel) {
+            onChange?.({ target: { name, value: byLabel.value } });
+            setInputValue(byLabel.label);
+            setShowDropdown(false);
+            return byLabel.value;
+        }
+        if (/^\d+$/.test(trimmed)) {
+            const n = Number(trimmed);
+            onChange?.({ target: { name, value: n } });
+            setShowDropdown(false);
+            return n;
+        }
+        setShowDropdown(false);
+        return controlledValue ?? "";
+    }, [controlledValue, inputValue, items, name, onChange]);
+
     const handleSelect = (item) => {
         setInputValue(item.label);
         setShowDropdown(false);
@@ -107,5 +128,6 @@ export function useDropdownFilter(controlledValue, onChange, src, name, options)
         handleSelect,
         handleEnter,
         handleBlur,
+        commitPendingValue,
     };
 }
