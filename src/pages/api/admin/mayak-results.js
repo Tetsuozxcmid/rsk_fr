@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getMayakCertificateNumberMap, normalizeMayakCertificateNumber } from "@/lib/mayakCertificateNumbers";
 
 export default async function handler(req, res) {
     // В этом проекте используется простая проверка пароля через заголовки или параметры для админки
@@ -17,6 +18,7 @@ export default async function handler(req, res) {
 
         const allData = JSON.parse(fs.readFileSync(filePath, "utf-8"));
         const flatResults = [];
+        const certificateNumberMap = getMayakCertificateNumberMap(allData);
 
         // allData имеет структуру { [tokenKey]: { [userId]: { ...data } } }
         Object.keys(allData).forEach(tokenKey => {
@@ -31,8 +33,10 @@ export default async function handler(req, res) {
                     flatResults.push({
                         id: userId,
                         tokenKey: tokenKey,
+                        certificateNumber: certificateNumberMap.get(`${tokenKey}::${userId}`) || normalizeMayakCertificateNumber(result.certificateNumber),
                         firstName: result.userData.firstName || "",
                         lastName: result.userData.lastName || "",
+                        patronymic: result.userData.patronymic || "",
                         college: result.userData.college || "",
                         // Используем дату завершения или дату создания
                         timestamp: result.finishedAt || result.timestamp || result.createdAt || null,
@@ -48,9 +52,13 @@ export default async function handler(req, res) {
         // Сортировка по времени: старые сверху, новые внизу (хронологический порядок)
         // Записи без даты — в начало списка
         flatResults.sort((a, b) => {
+            const leftNumber = normalizeMayakCertificateNumber(a.certificateNumber);
+            const rightNumber = normalizeMayakCertificateNumber(b.certificateNumber);
+
+            if (leftNumber !== rightNumber) return leftNumber - rightNumber;
             if (!a.timestamp && !b.timestamp) return 0;
             if (!a.timestamp) return -1;
-            if (!b.timestamp) return -1;
+            if (!b.timestamp) return 1;
             return new Date(a.timestamp) - new Date(b.timestamp);
         });
 

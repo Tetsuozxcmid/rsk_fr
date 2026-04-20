@@ -2,22 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/router";
 import OrganizerHelp from "@/components/mayak-onboarding/OrganizerHelp";
 import { ActionButton, HeroProgress, OnboardingModal, OnboardingShell, SectionBadge } from "@/components/mayak-onboarding/MayakOnboardingLayout";
-import { formatOnboardingDate, getChecklistConfig, getOnboardingLink, getOnboardingSubmission, getStructuredChecklistItems, getSubmissionStorageKey, startOnboarding, updateOnboardingSubmission } from "@/lib/mayakOnboardingClient";
-
-function normalizeProgress(item) {
-    return {
-        done: Boolean(item?.done),
-        photos: Array.isArray(item?.photos) ? item.photos : item?.photoUrl ? [{ url: item.photoUrl, name: item.photoName || "photo" }] : [],
-    };
-}
-
-function getChecklistState(submission) {
-    const items = getStructuredChecklistItems(submission?.checklist || {});
-    return {
-        items: Object.fromEntries(Object.entries(items).map(([id, value]) => [id, normalizeProgress(value)])),
-        meta: submission?.checklist && typeof submission.checklist === "object" && "items" in submission.checklist ? submission.checklist.meta : undefined,
-    };
-}
+import { formatOnboardingDate, getChecklistConfig, getOnboardingLink, getOnboardingSubmission, getSubmissionStorageKey, startOnboarding, updateOnboardingSubmission } from "@/lib/mayakOnboardingClient";
+import { getParticipantProgressState, normalizeChecklistItemState } from "@/lib/mayakOnboardingProgress";
 
 function getFieldClassName(invalid = false) {
     return `!block !w-full !appearance-none !rounded-[1rem] !border-2 !px-4 !py-3 !text-base !text-stone-950 !shadow-[inset_0_1px_2px_rgba(28,25,23,0.08)] outline-none transition placeholder:!text-stone-400 ${
@@ -135,79 +121,54 @@ export default function MayakOnboardingParticipantPage() {
         setCompletionDialogOpen(Boolean(submission?.completed));
     }, [submission?.completed]);
 
-    const structuredChecklist = useMemo(() => getChecklistState(submission), [submission]);
-    const checklistItems = structuredChecklist.items;
+    const participantProgress = useMemo(() => getParticipantProgressState(config || {}, submission || {}), [config, submission]);
+    const checklistItems = participantProgress.checklistItems;
     const services = config?.services || [];
-    const participantLaptopType = structuredChecklist.meta?.participantLaptopType === "work" ? "corporate" : structuredChecklist.meta?.participantLaptopType || "";
+    const participantLaptopType = participantProgress.participantLaptopType;
     const laptopSection = (config?.participantSections || []).find((section) => section.id === "laptop") || null;
     const servicesSection = (config?.participantSections || []).find((section) => section.id === "services") || null;
-    const personalLaptopItems = laptopSection?.items || [];
+    const laptopItems = participantProgress.laptopItems;
     const activeInstruction = services.find((service) => service.id === instructionServiceId) || null;
-    const dateLabel = link?.endDate ? `${formatOnboardingDate(link.eventDate)} - ${formatOnboardingDate(link.endDate)}` : formatOnboardingDate(link?.eventDate);
+    const dateLabel = link?.endDate && link.endDate !== link.eventDate ? `${formatOnboardingDate(link.eventDate)} - ${formatOnboardingDate(link.endDate)}` : formatOnboardingDate(link?.eventDate);
     const meta = [link?.title, dateLabel].filter(Boolean).join(" • ");
+    const completion = participantProgress.progressPercent;
+    const allSectionsReady = participantProgress.completed;
 
-    const isLaptopSectionReady = useCallback(
-        (items = checklistItems, currentLaptopType = participantLaptopType) => {
-            if (!currentLaptopType) return false;
-            if (currentLaptopType === "corporate") return true;
-            return personalLaptopItems.every((item) => items[item.id]?.done);
-        },
-        [checklistItems, participantLaptopType, personalLaptopItems]
+    const buildProgressForDraft = useCallback(
+        (items = checklistItems, currentLaptopType = participantLaptopType) =>
+            getParticipantProgressState(config || {}, {
+                checklist: {
+                    items,
+                    meta: {
+                        ...(submission?.checklist?.meta || {}),
+                        participantLaptopType: currentLaptopType,
+                    },
+                },
+            }),
+        [checklistItems, config, participantLaptopType, submission?.checklist?.meta]
     );
-
-    const isServicesSectionReady = useCallback(
-        (items = checklistItems, currentLaptopType = participantLaptopType) => currentLaptopType !== "personal" || services.every((service) => items[`participant-service:${service.id}`]?.done),
-        [checklistItems, participantLaptopType, services]
-    );
-
-    const getCompletedSectionIds = useCallback(
-        (items = checklistItems, currentLaptopType = participantLaptopType) => {
-            const completed = [];
-            if (isLaptopSectionReady(items, currentLaptopType)) completed.push("laptop");
-            if (currentLaptopType === "personal" && isServicesSectionReady(items, currentLaptopType)) completed.push("services");
-            return completed;
-        },
-        [checklistItems, isLaptopSectionReady, isServicesSectionReady, participantLaptopType]
-    );
-
-    const completion = useMemo(() => {
-        const totalParts = 1 + (participantLaptopType === "personal" ? personalLaptopItems.length + services.length : 0);
-        if (totalParts === 0) return 0;
-
-        const completedParts = [
-            Boolean(participantLaptopType),
-            ...(participantLaptopType === "personal" ? personalLaptopItems.map((item) => Boolean(checklistItems[item.id]?.done)) : []),
-            ...(participantLaptopType === "personal" ? services.map((service) => Boolean(checklistItems[`participant-service:${service.id}`]?.done)) : []),
-        ].filter(Boolean).length;
-
-        return Math.round((completedParts / totalParts) * 100);
-    }, [checklistItems, participantLaptopType, personalLaptopItems, services]);
-
-    const allSectionsReady = isLaptopSectionReady() && isServicesSectionReady();
 
     const saveChecklist = useCallback(
         async ({ items = checklistItems, laptopType = participantLaptopType } = {}) => {
             if (!submission) return null;
 
-            const completedSections = getCompletedSectionIds(items, laptopType);
-            const completed = isLaptopSectionReady(items, laptopType) && isServicesSectionReady(items, laptopType);
-
+            const nextProgress = buildProgressForDraft(items, laptopType);
             const response = await updateOnboardingSubmission(submission.id, {
                 checklist: {
                     items,
                     meta: {
-                        ...structuredChecklist.meta,
+                        ...(submission?.checklist?.meta || {}),
                         participantLaptopType: laptopType,
-                        completedSections,
+                        completedSections: nextProgress.completedSectionIds,
                     },
                 },
-                completed,
+                completed: nextProgress.completed,
             });
 
             setSubmission(response.submission);
             return response.submission;
         },
-        [checklistItems, getCompletedSectionIds, isLaptopSectionReady, isServicesSectionReady, participantLaptopType, structuredChecklist.meta, submission]
+        [buildProgressForDraft, checklistItems, participantLaptopType, submission]
     );
 
     const handleStart = async () => {
@@ -232,18 +193,16 @@ export default function MayakOnboardingParticipantPage() {
     const handleToggleLaptopItem = async (itemId, checked) => {
         const nextItems = {
             ...checklistItems,
-            [itemId]: { ...normalizeProgress(checklistItems[itemId]), done: checked },
+            [itemId]: { ...normalizeChecklistItemState(checklistItems[itemId]), done: checked },
         };
-
         await saveChecklist({ items: nextItems });
     };
 
     const handleToggleService = async (serviceId, checked) => {
         const nextItems = {
             ...checklistItems,
-            [`participant-service:${serviceId}`]: { ...normalizeProgress(checklistItems[`participant-service:${serviceId}`]), done: checked },
+            [`participant-service:${serviceId}`]: { ...normalizeChecklistItemState(checklistItems[`participant-service:${serviceId}`]), done: checked },
         };
-
         await saveChecklist({ items: nextItems });
     };
 
@@ -299,20 +258,19 @@ export default function MayakOnboardingParticipantPage() {
                                 active={participantLaptopType === "personal"}
                                 onClick={() => handleLaptopType("personal")}
                                 title="Личный ноутбук"
-                                text="Нужно подтвердить характеристики ноутбука, проверить его и пройти регистрацию в сервисах."
+                                text="Отметьте этот вариант, если участник приходит со своим ноутбуком. Ниже всё равно нужно подтвердить характеристики и сервисы."
                             />
-                            <OptionCard active={participantLaptopType === "corporate"} onClick={() => handleLaptopType("corporate")} title="Ноутбук предоставит организация" text="Сервисы и доступы подготовит организация." />
+                            <OptionCard
+                                active={participantLaptopType === "corporate"}
+                                onClick={() => handleLaptopType("corporate")}
+                                title="Ноутбук предоставит организация"
+                                text="Отметьте этот вариант, если ноутбук выдаёт организация. Ниже всё равно нужно подтвердить характеристики и сервисы."
+                            />
                         </div>
 
-                        {participantLaptopType === "personal" ? (
-                            <div className="mt-5 rounded-[1.35rem] border border-amber-200 bg-amber-50/80 px-4 py-4 text-sm leading-7 text-stone-700">
-                                Для личного ноутбука сначала подтвердите характеристики и базовую готовность, затем пройдите шаги ниже.
-                            </div>
-                        ) : null}
-
-                        {participantLaptopType === "personal" && personalLaptopItems.length > 0 ? (
+                        {participantLaptopType && laptopItems.length > 0 ? (
                             <div className="mt-6 space-y-3">
-                                {personalLaptopItems.map((item) => (
+                                {laptopItems.map((item) => (
                                     <ChecklistRow key={item.id} checked={Boolean(checklistItems[item.id]?.done)} onChange={(checked) => handleToggleLaptopItem(item.id, checked)}>
                                         {item.title}
                                     </ChecklistRow>
@@ -320,14 +278,14 @@ export default function MayakOnboardingParticipantPage() {
                             </div>
                         ) : null}
 
-                        {participantLaptopType === "personal" ? (
+                        {participantLaptopType ? (
                             <div className="mt-8 border-t border-stone-200 pt-8">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <div className="text-[1.7rem] font-black leading-tight text-stone-950">{servicesSection?.title || "Регистрация в сервисах"}</div>
                                         {servicesSection?.description ? <p className="mt-3 text-sm leading-7 text-stone-500">{servicesSection.description}</p> : null}
                                     </div>
-                                    <SectionBadge done={isServicesSectionReady()} />
+                                    <SectionBadge done={participantProgress.isServicesSectionReady} />
                                 </div>
 
                                 <div className="mt-5 space-y-3">

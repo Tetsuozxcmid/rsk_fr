@@ -13,6 +13,16 @@ import { getTokenById } from '../utils/mayakTokens.js';
 const SESSIONS_DIR = path.join(process.cwd(), 'data', 'telegram-sessions');
 const SESSIONS_FILE = path.join(SESSIONS_DIR, 'sessions.json');
 const BOT_ADMINS_FILE = path.join(process.cwd(), 'data', 'botAdmins.json');
+const MAYAK_SETTINGS_FILE = path.join(process.cwd(), 'data', 'mayak-settings.json');
+
+function getStoredMayakSettings() {
+  try {
+    if (!fs.existsSync(MAYAK_SETTINGS_FILE)) return {};
+    return JSON.parse(fs.readFileSync(MAYAK_SETTINGS_FILE, 'utf-8'));
+  } catch {
+    return {};
+  }
+}
 
 function getBotAdminIds() {
   try {
@@ -110,7 +120,8 @@ function formatPrepStatus(session) {
 const processingLocks = new Set();
 
 function getApiBase() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const settings = getStoredMayakSettings();
+  const token = process.env.TELEGRAM_BOT_TOKEN || settings.telegramBotToken;
   if (!token) return null;
   return `https://api.telegram.org/bot${token}`;
 }
@@ -470,7 +481,17 @@ async function pollOnce(apiBase) {
     });
     const data = await res.json();
 
-    if (!data.ok || !data.result || data.result.length === 0) return;
+    if (!data.ok) {
+      const description = data.description || `HTTP ${res.status}`;
+      if (res.status === 409 || /terminated by other getUpdates request/i.test(description)) {
+        console.warn(`[TG Bot] Polling конфликт: ${description}`);
+      } else {
+        console.error(`[TG Bot] Ошибка polling API: ${description}`);
+      }
+      return;
+    }
+
+    if (!data.result || data.result.length === 0) return;
 
     for (const update of data.result) {
       globalThis.__tgBotLastUpdateId = update.update_id;
@@ -478,7 +499,8 @@ async function pollOnce(apiBase) {
     }
   } catch (error) {
     if (error.name !== 'AbortError') {
-      console.error('[TG Bot] Ошибка polling:', error.message);
+      const causeCode = error?.cause?.code ? ` (${error.cause.code})` : '';
+      console.error(`[TG Bot] Ошибка polling: ${error.message}${causeCode}`);
     }
   }
 }
@@ -593,7 +615,8 @@ export function startBot() {
   // Регистрируем команды в меню Telegram
   registerCommands(apiBase);
 
-  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL;
+  const settings = getStoredMayakSettings();
+  const webhookUrl = process.env.TELEGRAM_WEBHOOK_URL || settings.telegramWebhookUrl;
 
   if (webhookUrl) {
     // Продакшен: регистрируем webhook, Telegram сам шлёт на /api/mayak/telegram-webhook

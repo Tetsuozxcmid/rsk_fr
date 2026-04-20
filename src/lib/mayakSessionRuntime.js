@@ -1,4 +1,4 @@
-import { promises as fs } from "fs";
+﻿import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
 import { execFile } from "child_process";
@@ -15,6 +15,7 @@ const LIBREOFFICE_LOG_FILE = path.join(process.cwd(), "data", "mayak-libreoffice
 const DEFAULT_REVIEW_TIMEOUT_SECONDS = 130;
 const DEFAULT_REWORK_TIMEOUT_SECONDS = 180;
 const PREVIEW_PROCESSING_TIMEOUT_MS = 90 * 1000;
+const MAX_SESSION_UPLOAD_FILE_SIZE = 30 * 1024 * 1024;
 export const INSPECTOR_ROLE = "\u0418\u041d\u0421\u041f\u0415\u041a\u0422\u041e\u0420";
 export const ADMINISTRATOR_ROLE = "\u0410\u0414\u041c\u0418\u041d\u0418\u0421\u0422\u0420\u0410\u0422\u041e\u0420";
 const REVIEWER_ROLES = new Set([INSPECTOR_ROLE, ADMINISTRATOR_ROLE]);
@@ -53,10 +54,10 @@ function getFileExtension(filename = "") {
 function ensureAllowedFile(filename = "", size = 0) {
     const ext = getFileExtension(filename);
     if (!ext || EXECUTABLE_EXTENSIONS.has(ext) || !ALLOWED_EXTENSIONS.has(ext)) {
-        throw new Error("Этот тип файла нельзя загружать в сессионную проверку");
+        throw new Error("Р­С‚РѕС‚ С‚РёРї С„Р°Р№Р»Р° РЅРµР»СЊР·СЏ Р·Р°РіСЂСѓР¶Р°С‚СЊ РІ СЃРµСЃСЃРёРѕРЅРЅСѓСЋ РїСЂРѕРІРµСЂРєСѓ");
     }
-    if (size > 15 * 1024 * 1024) {
-        throw new Error("Размер файла не должен превышать 15 МБ");
+    if (size > MAX_SESSION_UPLOAD_FILE_SIZE) {
+        throw new Error("Р Р°Р·РјРµСЂ С„Р°Р№Р»Р° РЅРµ РґРѕР»Р¶РµРЅ РїСЂРµРІС‹С€Р°С‚СЊ 30 РњР‘");
     }
     return ext;
 }
@@ -437,12 +438,12 @@ async function convertWordToPdf(sourcePath, targetDir) {
 export async function registerMayakSessionParticipant({ sessionId, userId, name, organization, tableNumber }) {
     const session = await getSessionById(sessionId);
     if (!session || session.status !== "active") {
-        throw new Error("Сессия недоступна или уже завершена");
+        throw new Error("РЎРµСЃСЃРёСЏ РЅРµРґРѕСЃС‚СѓРїРЅР° РёР»Рё СѓР¶Рµ Р·Р°РІРµСЂС€РµРЅР°");
     }
 
     const normalizedTableNumber = normalizeTableNumber(tableNumber);
     if (normalizedTableNumber < 1 || normalizedTableNumber > normalizeTableNumber(session.tableCount)) {
-        throw new Error("Выбранный стол не входит в диапазон активной сессии");
+        throw new Error("Р’С‹Р±СЂР°РЅРЅС‹Р№ СЃС‚РѕР» РЅРµ РІС…РѕРґРёС‚ РІ РґРёР°РїР°Р·РѕРЅ Р°РєС‚РёРІРЅРѕР№ СЃРµСЃСЃРёРё");
     }
 
     const store = await readStore();
@@ -450,7 +451,7 @@ export async function registerMayakSessionParticipant({ sessionId, userId, name,
     const existing = bucket.participants[userId] || {};
     bucket.participants[userId] = {
         userId,
-        name: normalizeString(name) || existing.name || "Участник",
+        name: normalizeString(name) || existing.name || "РЈС‡Р°СЃС‚РЅРёРє",
         organization: normalizeString(organization) || existing.organization || "",
         tableNumber: normalizedTableNumber,
         role: existing.role || "",
@@ -466,25 +467,25 @@ export async function registerMayakSessionParticipant({ sessionId, userId, name,
 export async function assignMayakSessionRole({ sessionId, userId, role }) {
     const session = await getSessionById(sessionId);
     if (!session || session.status !== "active") {
-        throw new Error("Сессия недоступна или уже завершена");
+        throw new Error("РЎРµСЃСЃРёСЏ РЅРµРґРѕСЃС‚СѓРїРЅР° РёР»Рё СѓР¶Рµ Р·Р°РІРµСЂС€РµРЅР°");
     }
 
     const normalizedRole = normalizeString(role);
     if (!normalizedRole) {
-        throw new Error("Не выбрана роль");
+        throw new Error("РќРµ РІС‹Р±СЂР°РЅР° СЂРѕР»СЊ");
     }
 
     const store = await readStore();
     const bucket = ensureSessionBucket(store, sessionId);
     const participant = bucket.participants[userId];
     if (!participant) {
-        throw new Error("Участник не зарегистрирован в этой сессии");
+        throw new Error("РЈС‡Р°СЃС‚РЅРёРє РЅРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ РІ СЌС‚РѕР№ СЃРµСЃСЃРёРё");
     }
 
     if (isReviewerRole(normalizedRole)) {
         const takenByAnother = Object.values(bucket.participants).find((candidate) => candidate.userId !== userId && candidate.tableNumber === participant.tableNumber && candidate.role === normalizedRole);
         if (takenByAnother) {
-            throw new Error(`Для стола ${participant.tableNumber} инспектор уже выбран`);
+            throw new Error(`Р”Р»СЏ СЃС‚РѕР»Р° ${participant.tableNumber} РёРЅСЃРїРµРєС‚РѕСЂ СѓР¶Рµ РІС‹Р±СЂР°РЅ`);
         }
         participant.inspectorTargetTable = getInspectorTargetTable(participant.tableNumber, normalizeTableNumber(session.tableCount));
     } else {
@@ -594,7 +595,7 @@ export async function createMayakSessionReview({
 }) {
     const session = await getSessionById(sessionId);
     if (!session || session.status !== "active") {
-        throw new Error("Сессия недоступна или уже завершена");
+        throw new Error("РЎРµСЃСЃРёСЏ РЅРµРґРѕСЃС‚СѓРїРЅР° РёР»Рё СѓР¶Рµ Р·Р°РІРµСЂС€РµРЅР°");
     }
 
     const store = await readStore();
@@ -603,17 +604,17 @@ export async function createMayakSessionReview({
 
     const participant = bucket.participants[userId];
     if (!participant) {
-        throw new Error("Участник не зарегистрирован в этой сессии");
+        throw new Error("РЈС‡Р°СЃС‚РЅРёРє РЅРµ Р·Р°СЂРµРіРёСЃС‚СЂРёСЂРѕРІР°РЅ РІ СЌС‚РѕР№ СЃРµСЃСЃРёРё");
     }
 
     const taskKey = buildTaskKey(taskNumber);
     if (!taskKey) {
-        throw new Error("Не удалось определить номер задания для проверки");
+        throw new Error("РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РЅРѕРјРµСЂ Р·Р°РґР°РЅРёСЏ РґР»СЏ РїСЂРѕРІРµСЂРєРё");
     }
 
     const existingTaskState = participant.tasks?.[taskKey];
     if (existingTaskState?.status === "pending_review" && existingTaskState?.isBlocking) {
-        throw new Error("Это задание уже отправлено инспектору и ждёт проверки");
+        throw new Error("Р­С‚Рѕ Р·Р°РґР°РЅРёРµ СѓР¶Рµ РѕС‚РїСЂР°РІР»РµРЅРѕ РёРЅСЃРїРµРєС‚РѕСЂСѓ Рё Р¶РґС‘С‚ РїСЂРѕРІРµСЂРєРё");
     }
 
     const createdAt = new Date().toISOString();
@@ -630,7 +631,7 @@ export async function createMayakSessionReview({
         taskKey,
         taskNumber: normalizeString(taskNumber),
         taskIndex: Number.isFinite(taskIndex) ? taskIndex : 0,
-        taskName: normalizeString(taskName) || `Задание ${taskNumber}`,
+        taskName: normalizeString(taskName) || `Р—Р°РґР°РЅРёРµ ${taskNumber}`,
         taskTitle: normalizeString(taskTitle),
         contentType: normalizeString(contentType),
         description: normalizeString(description),
@@ -674,29 +675,29 @@ export async function resolveMayakSessionReview({ sessionId, reviewId, inspector
 
     const review = bucket.reviews?.[reviewId];
     if (!review) {
-        throw new Error("Заявка на проверку не найдена");
+        throw new Error("Р—Р°СЏРІРєР° РЅР° РїСЂРѕРІРµСЂРєСѓ РЅРµ РЅР°Р№РґРµРЅР°");
     }
     if (review.status !== "pending") {
-        throw new Error("Эта заявка уже обработана");
+        throw new Error("Р­С‚Р° Р·Р°СЏРІРєР° СѓР¶Рµ РѕР±СЂР°Р±РѕС‚Р°РЅР°");
     }
 
     const inspector = bucket.participants?.[inspectorUserId];
     if (!inspector || !isReviewerRole(inspector.role)) {
-        throw new Error("Проверку может выполнить только инспектор");
+        throw new Error("РџСЂРѕРІРµСЂРєСѓ РјРѕР¶РµС‚ РІС‹РїРѕР»РЅРёС‚СЊ С‚РѕР»СЊРєРѕ РёРЅСЃРїРµРєС‚РѕСЂ");
     }
     if (inspector.inspectorTargetTable !== review.participantTableNumber) {
-        throw new Error("Этот инспектор не закреплён за выбранным столом");
+        throw new Error("Р­С‚РѕС‚ РёРЅСЃРїРµРєС‚РѕСЂ РЅРµ Р·Р°РєСЂРµРїР»С‘РЅ Р·Р° РІС‹Р±СЂР°РЅРЅС‹Рј СЃС‚РѕР»РѕРј");
     }
 
     const participant = bucket.participants?.[review.participantUserId];
     if (!participant) {
-        throw new Error("Участник проверки не найден");
+        throw new Error("РЈС‡Р°СЃС‚РЅРёРє РїСЂРѕРІРµСЂРєРё РЅРµ РЅР°Р№РґРµРЅ");
     }
 
     const normalizedAction = normalizeString(action);
     const normalizedComment = normalizeString(comment);
     if (normalizedAction === "reject" && !normalizedComment) {
-        throw new Error("При отклонении нужно указать причину");
+        throw new Error("РџСЂРё РѕС‚РєР»РѕРЅРµРЅРёРё РЅСѓР¶РЅРѕ СѓРєР°Р·Р°С‚СЊ РїСЂРёС‡РёРЅСѓ");
     }
 
     const resolvedAt = new Date().toISOString();
@@ -847,12 +848,12 @@ export async function getMayakSessionReviewFile({ sessionId, reviewId, type, fil
     const bucket = ensureSessionBucket(store, sessionId);
     const review = bucket.reviews?.[reviewId];
     if (!review?.file) {
-        throw new Error("Файл проверки не найден");
+        throw new Error("Р¤Р°Р№Р» РїСЂРѕРІРµСЂРєРё РЅРµ РЅР°Р№РґРµРЅ");
     }
 
     const selectedName = type === "converted" ? review.file.previewStoredName : review.file.storedName;
     if (!selectedName || selectedName !== filename) {
-        throw new Error("Файл проверки не найден");
+        throw new Error("Р¤Р°Р№Р» РїСЂРѕРІРµСЂРєРё РЅРµ РЅР°Р№РґРµРЅ");
     }
 
     const fullPath = path.join(SESSION_FILES_ROOT, sessionId, review.participantUserId, selectedName);

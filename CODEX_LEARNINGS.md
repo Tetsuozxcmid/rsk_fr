@@ -13,47 +13,68 @@ Add only verified, reusable lessons. Skip one-off noise.
 
 ## Learnings
 
-### 2026-03-26 - MAYAK portal OAuth return flags must be one-shot and profile proxies must forward only portal auth
+### 2026-03-27 - MAYAK portal auth must gate on profile name completeness, not on auth alone
 
-- Problem: MAYAK could surface a generic `Failed to fetch profile from backend` runtime error long after a portal auth attempt, and the same error kept repeating on later page opens.
-- Root cause: `_app.js` retried portal-profile bootstrap while `mayak_portal_return_path` stayed in `localStorage`, and `/api/profile/info` masked the upstream response while forwarding extra non-portal auth/cookies into the portal profile endpoint.
-- Fix: consume or clear the MAYAK portal return flag after a failed bootstrap, route `/api/profile/info` through the shared portal profile helper, and forward only the real `users_access_token` cookie plus the upstream error detail/status.
-- Prevention: when MAYAK stores auth-return state in browser storage, treat it as single-use state and do not proxy unrelated cookies or fallback tokens into portal profile requests.
+- Problem: an already authorized platform user could still enter MAYAK with an empty profile name, which left certificate/history data without the required FIO.
+- Root cause: the first linked MAYAK auth step treated a valid portal session and readable profile as sufficient, but certificate/runtime identity actually depends on `NameIRL + Surname`.
+- Fix: keep the embedded portal auth flow, but after profile fetch explicitly require `Surname` and `NameIRL`; if either is missing, show an in-MAYAK mandatory FIO form and save it through `/api/profile/update` before trainer entry.
+- Prevention: when MAYAK reuses platform identity for completion artifacts, validate the exact profile fields needed for those artifacts instead of assuming that “authorized user” automatically means “certificate-ready user”.
 
-### 2026-03-26 - Local MAYAK runtime data under `data/` should trigger a `.gitignore` check before commit
+### 2026-03-27 - Embedded MAYAK OAuth needs an explicit return hook outside component state
 
-- Problem: generated MAYAK onboarding runtime files and uploads can appear in `git status` as accidental untracked changes and then get bundled into unrelated commits.
-- Root cause: server-managed JSON/files under `data/` are easy to create during local testing, but not every runtime path was covered by `.gitignore`.
-- Fix: add narrow ignore rules for confirmed local/runtime-only paths, and when a new `data/` artifact appears unexpectedly, pause and ask whether it should be added to `.gitignore` instead of assuming it belongs in git.
-- Prevention: when `git status` shows new MAYAK runtime data or uploaded files that do not look like source assets, do not stage them by default; ask whether to ignore that path permanently.
+- Problem: when platform OAuth was opened from MAYAK settings, Yandex could return the browser to the generic frontend entry instead of resuming the MAYAK token flow, and popup-based VK auth could finish without the original MAYAK tab noticing.
+- Root cause: the backend OAuth callbacks redirect to the shared frontend URL, so an embedded MAYAK auth panel cannot rely on local React state alone to remember where to return or when auth finished.
+- Fix: persist the MAYAK return target and pending token in web storage before external auth, redirect back to `/tools/mayak-oko` from `_app.js`, restore the pending token in MAYAK settings, and poll `/api/profile/info` for popup-based VK completion.
+- Prevention: when embedding platform OAuth inside MAYAK instead of a dedicated auth page, always preserve return routing and token context outside the component tree before leaving the page.
 
-### 2026-03-26 - Portal `Profile not found` must be treated as profile-completion state, not an auth crash
+### 2026-03-27 - MAYAK Telegram bot must read saved webhook settings before choosing polling
 
-- Problem: MAYAK could throw a runtime error after successful portal auth because `/api/profile/info` returned `Profile not found`.
-- Root cause: the client treated all non-`401/403` profile responses as fatal even though `404 Profile not found` means the portal session exists but the user has no saved profile record yet.
-- Fix: tag this backend case explicitly (`PROFILE_NOT_FOUND`), synthesize a client-side missing-profile payload, and route MAYAK settings into `PortalProfileEditor` so the user can complete the profile instead of crashing.
-- Prevention: in MAYAK portal-auth flows, distinguish missing profile data from missing auth; a profile-creation/completion step is a recoverable state, not a runtime exception.
+- Problem: the MAYAK Telegram bot could keep falling back to polling and spamming noisy polling errors even after the operator saved a webhook URL in admin settings.
+- Root cause: bot startup read `TELEGRAM_WEBHOOK_URL` only from runtime env, while admin saved mutable bot settings in `data/mayak-settings.json`; webhook-only saves also did not trigger a bot restart.
+- Fix: make bot startup resolve token/webhook from saved MAYAK settings with env fallback, and restart the bot after token or webhook changes only after both env values are updated.
+- Prevention: when MAYAK admin can mutate bot runtime settings, make the bot read the same persisted source and restart once after all related fields are applied instead of relying on env-only state.
 
-### 2026-03-26 - Shared dropdown hooks must return every callback their input component invokes
+### 2026-03-26 - MAYAK onboarding runtime data should not live in source control by default
 
-- Problem: MAYAK profile completion could crash with `handleEnter is not a function` when the user pressed Enter inside a dropdown field.
-- Root cause: `DropdownInput` called `handleEnter()`, but `useDropdownFilter()` did not return that callback.
-- Fix: implement `handleEnter()` inside the hook, return it together with the other handlers, and keep the component-side call optional (`handleEnter?.()`).
-- Prevention: when a UI component destructures handlers from a shared hook, verify the hook exports the full callback contract before wiring keyboard events.
+- Problem: onboarding link records, submissions, and uploaded participant photos accumulated in tracked `data/` files and started polluting release commits with manual test/runtime data.
+- Root cause: MAYAK onboarding stores both editable config assets and live runtime state under nearby paths, so it is easy to treat everything under `data/mayak-onboarding-*` as commitable project content.
+- Fix: keep runtime onboarding state out of Git by ignoring `data/mayak-onboarding-links.json`, `data/mayak-onboarding-submissions.json`, and `data/mayak-onboarding-files/submissions/`, while leaving intentionally tracked config/media assets under `data/mayak-onboarding-config.json` and `data/mayak-onboarding-files/links/config/`.
+- Prevention: before committing MAYAK onboarding changes, separate config/schema/media updates from live link/submission/upload data and only stage the config side unless the task explicitly requires a fixture migration.
 
-### 2026-03-26 - Portal auth pages must not redirect missing-profile sessions into legacy profile screens
+### 2026-03-26 - Bulk Windows rewrites can mojibake UTF-8 MAYAK admin files
 
-- Problem: the main portal `Авторизация` / `Регистрация` entry could look broken because the app jumped from `/auth` to a blank `/profile` screen.
-- Root cause: the new client helper correctly treated `Profile not found` as a recoverable session, but legacy portal profile pages still expected only `200` or `401/403` responses and rendered `null` on that synthetic payload.
-- Fix: when portal auth resolves into a missing-profile payload, route directly to profile settings/editor, and update legacy profile pages to load profile state through `fetchPortalProfileClient()` instead of raw `/api/profile/info` fetches.
-- Prevention: after introducing shared auth/profile helpers, audit older portal pages that still parse profile responses manually so new synthetic auth states do not collapse into blank screens.
+- Problem: after scripted cleanup of MAYAK admin pages, Russian UI strings in `mayak-sessions.js` and `mayak-onboarding.js` turned into mojibake even though the code still built.
+- Root cause: a bulk PowerShell rewrite on Windows re-saved UTF-8 JavaScript source through the wrong text path, which preserved code structure but corrupted Cyrillic string literals.
+- Fix: after bulk cleanup, re-read the affected file with explicit UTF-8, reverse the mojibake where needed (`cp1251 bytes -> utf8`), and re-save with explicit UTF-8 without BOM.
+- Prevention: when using scripted bulk edits on MAYAK files with Cyrillic UI text, always verify several Russian string literals and `git diff` immediately after the write instead of trusting a green build alone.
 
-### 2026-03-25 - Portal profile bootstrap must be deduplicated on the client under Next dev StrictMode
+### 2026-03-26 - Hidden JSX still needs its component imports
 
-- Problem: portal auth and MAYAK entry screens could visibly flicker in local development, while `/api/profile/info` fired duplicate bootstrap requests.
-- Root cause: `reactStrictMode` remounted client pages and reran bootstrap `useEffect` hooks, so auth/session gates briefly reset and repeated the same profile fetch.
-- Fix: move portal profile bootstrap behind a module-scoped client cache plus in-flight promise dedupe, and reuse that helper across `/auth`, MAYAK settings, and portal auth completion flows. If local debugging still suffers from false double-mount noise, disable `reactStrictMode` in this repo.
-- Prevention: when MAYAK or portal UI depends on one initial session/profile fetch, do not call the raw fetch from every mount; use a shared client bootstrap helper that survives remounts and verify whether StrictMode is amplifying the issue before chasing phantom rerenders.
+- Problem: a MAYAK admin page crashed with `ReferenceError: Link is not defined` even though the old nav block was visually hidden with `display: none`.
+- Root cause: React still evaluates JSX inside hidden blocks, so removing the `Link` import without deleting that hidden markup left a live runtime reference.
+- Fix: restore the missing import immediately, then clean dead hidden JSX separately if needed.
+- Prevention: when removing MAYAK navigation code, search for hidden JSX remnants before deleting component imports; hidden markup is still real runtime code.
+
+### 2026-03-26 - MAYAK admin frontend must not require sessionStorage on top of the auth cookie
+
+- Problem: direct opening of a MAYAK admin page could still show a login screen even when the valid MAYAK admin cookie already existed, and each admin page duplicated its own login UI.
+- Root cause: frontend MAYAK admin pages were gating access by two conditions at once: the real server-side auth cookie and an extra page-local `sessionStorage` flag.
+- Fix: keep `/api/admin/mayak-auth` + httpOnly cookie as the only auth source, move the login entry to `/admin`, and redirect unauthenticated MAYAK admin pages to `/admin?next=...`.
+- Prevention: when extending MAYAK admin UX, do not introduce a second required client-side auth flag if the server cookie already represents the canonical admin session.
+
+### 2026-03-25 - MAYAK participant laptop ownership must not gate required onboarding sections
+
+- Problem: in onboarding, choosing that the organization provides the laptop could hide the participant's hardware checklist and service-registration confirmations, which made the flow look complete even though required preparation was skipped.
+- Root cause: `participantLaptopType` was treated as a branching rule for which sections exist, instead of as metadata about who owns the laptop.
+- Fix: keep the laptop-type choice only as informational metadata and always derive participant readiness from the full laptop checklist plus service confirmations once a laptop type is selected.
+- Prevention: when MAYAK onboarding uses a choice only to classify context, do not let that flag remove required sections from progress calculation or UI rendering unless the product contract explicitly says the requirements differ.
+
+### 2026-03-25 - This Next 16 repo must build with explicit `--webpack` until Turbopack config is added
+
+- Problem: `npx next build` failed before useful validation with `This build is using Turbopack, with a webpack config and no turbopack config`.
+- Root cause: after the Next 16 upgrade, Turbopack is the default builder, but this repository still relies on a custom `webpack` configuration and does not yet define a matching `turbopack` config.
+- Fix: run production validation as `npx next build --webpack`, which compiled the project successfully.
+- Prevention: until the repo is migrated to Turbopack or adds an explicit `turbopack` section in `next.config.js`, always use `--webpack` for reliable build verification in this workspace.
 
 ### 2026-03-24 - MAYAK admin file uploads must clear hidden input values after async handlers
 
@@ -307,7 +328,7 @@ Add only verified, reusable lessons. Skip one-off noise.
 - Fix: remove `ADMIN_BYPASS_TOKEN` handling from the MAYAK token validation API and let both token checks and token usage go only through `validateToken()` and `useToken()` from the shared token store.
 - Prevention: when cleaning MAYAK auth or token flows, audit both client and API layers; removing a bypass only on the frontend is incomplete.
 
-- 2026-03-11: PowerShell write flows can corrupt Cyrillic in MAYAK JS files into mojibake/question marks. Root cause: `Set-Content`, `Out-File`, or here-string -> node replacements can pass through the wrong encoding/BOM path on Windows. Fix: prefer `apply_patch`; if a script fallback is unavoidable, force UTF-8 without BOM and verify the saved bytes with Node or Git diff, not PowerShell display alone. Prevention: do not use generic PowerShell file writes for MAYAK source files that contain Cyrillic UI or business strings.
+- 2026-03-11: PowerShell write flows can corrupt Cyrillic in MAYAK source/config files into mojibake/question marks. Root cause: `Set-Content`, `Out-File`, or here-string -> node replacements can pass through the wrong encoding/BOM path on Windows. Fix: prefer `apply_patch`; if a script fallback is unavoidable, force UTF-8 without BOM and verify the saved bytes with Node or Git diff, not PowerShell display alone. Prevention: do not use generic PowerShell file writes for MAYAK files that contain Cyrillic UI, config text, or business strings.
 
 ### 2026-03-11 - MAYAK refactor progress should be tracked in a dedicated status file before context compression
 

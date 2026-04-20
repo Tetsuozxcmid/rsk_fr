@@ -1,0 +1,23 @@
+{
+  "userId": "local-mayak-user",
+  "data": {
+    "id": "local-mayak-user",
+    "email": "local-mayak@example.test",
+    "username": "local-mayak",
+    "NameIRL": "Тест",
+    "Surname": "Пользователь",
+    "Patronymic": "",
+    "Type": "student",
+    "Region": "Локальная среда",
+    "Description": "Локальный тестовый профиль для проверки MAYAK.",
+    "Organization_id": "local-org",
+    "Organization": {
+      "id": "local-org",
+      "short_name": "Локальная организация",
+      "name": "Локальная организация",
+      "full_name": "Локальная организация"
+    },
+    "team": "Локальная команда",
+    "team_id": "local-team"
+  }
+}

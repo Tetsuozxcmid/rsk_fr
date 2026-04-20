@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { motion } from "framer-motion";
 import Layout from "@/components/layout/Layout";
 import { saveUserData } from "@/utils/auth";
+import { clearMayakPortalAuthPending, readMayakPortalAuthPending } from "@/utils/mayakPortalAuth";
 
 export default function CallbackAuth() {
     const router = useRouter();
@@ -22,6 +23,8 @@ export default function CallbackAuth() {
             // Определяем провайдера (Yandex/VK)
             const oauthProvider = providerParam || state || "yandex";
             setProvider(oauthProvider);
+            const pendingMayakAuth = readMayakPortalAuthPending();
+            const mayakReturnPath = pendingMayakAuth?.returnPath || "";
 
             try {
                 // Отправляем код на наш API
@@ -61,13 +64,27 @@ export default function CallbackAuth() {
                     }
 
                     // Редирект на профиль
+                    if (mayakReturnPath) {
+                        clearMayakPortalAuthPending();
+                        router.replace(mayakReturnPath);
+                        return;
+                    }
+
                     router.push("/profile");
                 } else if (data.type === "register") {
                     // Новый пользователь - редирект на завершение регистрации
+                    if (mayakReturnPath) {
+                        clearMayakPortalAuthPending();
+                    }
+
                     router.push("/auth?stage=reg-complete");
                 }
             } catch (err) {
                 console.error("OAuth callback error:", err);
+                if (mayakReturnPath) {
+                    clearMayakPortalAuthPending();
+                }
+
                 setError(err.message);
                 // Редирект на страницу авторизации с ошибкой через 3 секунды
                 setTimeout(() => {

@@ -1,5 +1,13 @@
 import { requireMayakAdmin } from "../../../lib/mayakAdminAuth.js";
-import { getMayakQuestionnaireSettings, readMayakSettings, writeMayakSettings } from "../../../lib/mayakSettings.js";
+import {
+    getMayakPromptEvaluationSettings,
+    getMayakQuestionnaireSettings,
+    normalizePromptEvaluationOllamaBaseUrl,
+    normalizePromptEvaluationOllamaModel,
+    normalizePromptEvaluationProvider,
+    readMayakSettings,
+    writeMayakSettings,
+} from "../../../lib/mayakSettings.js";
 import { maskSecret, normalizeQwenTokenEntries } from "../../../lib/mayakQwen.js";
 
 export default async function handler(req, res) {
@@ -11,6 +19,9 @@ export default async function handler(req, res) {
         const settings = await readMayakSettings();
         const telegramBotToken = settings.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || "";
         const openrouterApiKey = settings.openrouterApiKey || process.env.OPENROUTER_API_KEY || "";
+        const finalFileOpenrouterApiKey =
+            settings.finalFileOpenrouterApiKey || process.env.MAYAK_FINAL_FILE_OPENROUTER_API_KEY || openrouterApiKey || "";
+        const finalFileModel = settings.finalFileModel || process.env.MAYAK_FINAL_FILE_MODEL || "google/gemini-3-flash-preview";
         const telegramBotUsername = settings.telegramBotUsername || process.env.TELEGRAM_BOT_USERNAME || "";
         const telegramWebhookUrl = settings.telegramWebhookUrl || process.env.TELEGRAM_WEBHOOK_URL || "";
         const baseUrl = settings.baseUrl || process.env.BASE_URL || "";
@@ -18,6 +29,7 @@ export default async function handler(req, res) {
         const qwenBackupEntry = normalizeQwenTokenEntries(settings.qwenBackupToken)[0] || null;
         const qwenBackupToken = qwenBackupEntry?.token || "";
         const questionnaires = getMayakQuestionnaireSettings(settings);
+        const promptEvaluation = getMayakPromptEvaluationSettings(settings);
 
         return res.status(200).json({
             success: true,
@@ -26,6 +38,9 @@ export default async function handler(req, res) {
                 telegramBotTokenIsSet: !!telegramBotToken,
                 openrouterApiKey: maskSecret(openrouterApiKey),
                 openrouterApiKeyIsSet: !!openrouterApiKey,
+                finalFileOpenrouterApiKey: maskSecret(finalFileOpenrouterApiKey),
+                finalFileOpenrouterApiKeyIsSet: !!finalFileOpenrouterApiKey,
+                finalFileModel,
                 telegramBotUsername,
                 telegramBotUsernameIsSet: !!telegramBotUsername,
                 telegramWebhookUrl,
@@ -36,6 +51,9 @@ export default async function handler(req, res) {
                 introQuestionnaireUrlIsSet: !!questionnaires.introQuestionnaireUrl,
                 completionSurveyUrl: questionnaires.completionSurveyUrl,
                 completionSurveyUrlIsSet: !!questionnaires.completionSurveyUrl,
+                promptEvaluationProvider: promptEvaluation.provider,
+                promptEvaluationOllamaBaseUrl: promptEvaluation.ollamaBaseUrl,
+                promptEvaluationOllamaModel: promptEvaluation.ollamaModel,
                 qwenTokens: qwenTokens.map((entry, index) => ({
                     index,
                     name: entry.name || `Токен ${index + 1}`,
@@ -56,11 +74,16 @@ export default async function handler(req, res) {
         const {
             telegramBotToken,
             openrouterApiKey,
+            finalFileOpenrouterApiKey,
+            finalFileModel,
             telegramBotUsername,
             telegramWebhookUrl,
             baseUrl,
             introQuestionnaireUrl,
             completionSurveyUrl,
+            promptEvaluationProvider,
+            promptEvaluationOllamaBaseUrl,
+            promptEvaluationOllamaModel,
             qwenTokens,
             qwenTokenAdd,
             qwenTokenRemoveIndex,
@@ -69,23 +92,26 @@ export default async function handler(req, res) {
 
         const settings = await readMayakSettings();
         let botRestarted = false;
+        const shouldRestartBot = telegramBotToken !== undefined || telegramWebhookUrl !== undefined;
 
         if (telegramBotToken !== undefined) {
             settings.telegramBotToken = telegramBotToken;
             process.env.TELEGRAM_BOT_TOKEN = telegramBotToken;
-
-            try {
-                const { restartBot } = await import("../../../lib/telegramBot.js");
-                await restartBot();
-                botRestarted = true;
-            } catch (err) {
-                console.error("[Settings] Ошибка перезапуска бота:", err.message);
-            }
         }
 
         if (openrouterApiKey !== undefined) {
             settings.openrouterApiKey = openrouterApiKey;
             process.env.OPENROUTER_API_KEY = openrouterApiKey;
+        }
+
+        if (finalFileOpenrouterApiKey !== undefined) {
+            settings.finalFileOpenrouterApiKey = typeof finalFileOpenrouterApiKey === "string" ? finalFileOpenrouterApiKey.trim() : "";
+            process.env.MAYAK_FINAL_FILE_OPENROUTER_API_KEY = settings.finalFileOpenrouterApiKey;
+        }
+
+        if (finalFileModel !== undefined) {
+            settings.finalFileModel = typeof finalFileModel === "string" ? finalFileModel.trim() : "";
+            process.env.MAYAK_FINAL_FILE_MODEL = settings.finalFileModel;
         }
 
         if (telegramBotUsername !== undefined) {
@@ -108,6 +134,21 @@ export default async function handler(req, res) {
 
         if (completionSurveyUrl !== undefined) {
             settings.completionSurveyUrl = typeof completionSurveyUrl === "string" ? completionSurveyUrl.trim() : "";
+        }
+
+        if (promptEvaluationProvider !== undefined) {
+            settings.promptEvaluationProvider = normalizePromptEvaluationProvider(promptEvaluationProvider);
+            process.env.MAYAK_PROMPT_EVALUATION_PROVIDER = settings.promptEvaluationProvider;
+        }
+
+        if (promptEvaluationOllamaBaseUrl !== undefined) {
+            settings.promptEvaluationOllamaBaseUrl = normalizePromptEvaluationOllamaBaseUrl(promptEvaluationOllamaBaseUrl);
+            process.env.MAYAK_PROMPT_EVALUATION_OLLAMA_BASE_URL = settings.promptEvaluationOllamaBaseUrl;
+        }
+
+        if (promptEvaluationOllamaModel !== undefined) {
+            settings.promptEvaluationOllamaModel = normalizePromptEvaluationOllamaModel(promptEvaluationOllamaModel);
+            process.env.MAYAK_PROMPT_EVALUATION_OLLAMA_MODEL = settings.promptEvaluationOllamaModel;
         }
 
         if (qwenTokens !== undefined) {
@@ -141,6 +182,16 @@ export default async function handler(req, res) {
         }
 
         await writeMayakSettings(settings);
+
+        if (shouldRestartBot) {
+            try {
+                const { restartBot } = await import("../../../lib/telegramBot.js");
+                await restartBot();
+                botRestarted = true;
+            } catch (err) {
+                console.error("[Settings] Ошибка перезапуска бота:", err.message);
+            }
+        }
 
         return res.status(200).json({
             success: true,

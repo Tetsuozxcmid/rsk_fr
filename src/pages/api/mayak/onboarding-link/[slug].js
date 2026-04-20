@@ -1,4 +1,4 @@
-import { getMayakOnboardingLinkBySlug } from "../../../../lib/mayakOnboarding.js";
+import { getMayakOnboardingLinkBySlug, getMayakOnboardingLinkSummary } from "../../../../lib/mayakOnboarding.js";
 
 export default async function handler(req, res) {
     if (req.method !== "GET") {
@@ -10,5 +10,6 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: { message: "Ссылка онбординга не найдена" } });
     }
 
-    return res.status(200).json({ link });
+    const summary = await getMayakOnboardingLinkSummary(link.id);
+    return res.status(200).json({ link, summary });
 }

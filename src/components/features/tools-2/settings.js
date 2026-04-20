@@ -73,7 +73,7 @@ async function validateTokenAPI(tokenValue) {
     }
 }
 
-async function useTokenAPI(tokenValue) {
+async function consumeTokenAPI(tokenValue) {
     try {
         const response = await fetch("/api/mayak/validate-token", {
             method: "POST",
@@ -109,6 +109,8 @@ async function loginMayakAdmin(password) {
         console.error("Ошибка авторизации администратора:", error);
         return { success: false, error: "Ошибка сервера" };
     }
+
+    return payload;
 }
 
 export default function SettingsPage({ goTo }) {
@@ -375,6 +377,7 @@ export default function SettingsPage({ goTo }) {
         setBypassPasswordError("");
         if (!bypassPassword) {
             setBypassPasswordError("Введите пароль администратора");
+            setBypassPasswordError("Введите пароль администратора");
             return;
         }
 
@@ -382,6 +385,79 @@ export default function SettingsPage({ goTo }) {
         if (!authResult.success) {
             setBypassPasswordError(authResult.error || "Не удалось подтвердить локальный вход");
             return;
+        }
+
+        const resolvedTableNumber = getResolvedTableNumber(sessionInfo, selectedTableNumber);
+        if (sessionInfo.tokenType === "session" && !resolvedTableNumber) {
+            setBypassPasswordError("Пожалуйста, выберите ваш стол");
+            return;
+        }
+
+        const bypassProfile = portalState.profile || (await syncPortalProfile({
+            retries: 1,
+            delayMs: 400,
+            silent: true,
+        })) || null;
+
+        const localUserId = String(bypassProfile?.userId || "local-mayak-user").trim();
+        const localFullName = String(bypassProfile?.fullName || "Локальный вход").trim() || "Локальный вход";
+        const userRecord = {
+            id: localUserId,
+            portalUserId: localUserId,
+            sessionId: sessionInfo.sessionId,
+            tokenType: sessionInfo.tokenType || "legacy",
+            userData: {
+                firstName: bypassProfile?.firstName || "",
+                lastName: bypassProfile?.lastName || "",
+                patronymic: bypassProfile?.patronymic || "",
+                college: bypassProfile?.organizationName || "",
+            },
+            portalProfile: {
+                email: bypassProfile?.email || "",
+                username: bypassProfile?.username || "",
+                organizationId: bypassProfile?.organizationId || null,
+                fullName: localFullName,
+            },
+        };
+
+        const saveResponse = await fetch("/api/mayak/save", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                key: token,
+                userId: localUserId,
+                data: userRecord,
+            }),
+        });
+
+        if (!saveResponse.ok) {
+            throw new Error("Не удалось сохранить локального пользователя MAYAK");
+        }
+
+        const savePayload = await saveResponse.json().catch(() => ({}));
+        const certificateNumber = savePayload?.certificateNumber || savePayload?.data?.certificateNumber || "";
+
+        if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
+            const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    sessionId: sessionInfo.sessionId,
+                    userId: localUserId,
+                    name: localFullName,
+                    organization: bypassProfile?.organizationName || "",
+                    tableNumber: resolvedTableNumber,
+                }),
+            });
+
+            const participantPayload = await participantResponse.json().catch(() => ({}));
+            if (!participantResponse.ok || !participantPayload.success) {
+                throw new Error(participantPayload.error || "Не удалось зарегистрировать локального участника в сессии");
+            }
         }
 
         await addKeyToCookies(token);
@@ -398,6 +474,133 @@ export default function SettingsPage({ goTo }) {
             return;
         }
 
+        if (canAutoActivatePortalUser(syncedProfile)) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+            await activatePortalUser(syncedProfile);
+            return;
+        }
+
+        if (isSessionTokenFlow()) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+            return;
+        }
+
+        setShouldAutoEnterTrainer(true);
+        markMayakPortalAutoActivate();
+    };
+
+    const handlePortalOAuthStart = (provider) => {
+        sessionStorage.setItem("currentPage", "settings");
+        stashMayakPendingToken(token);
+        markMayakPortalAuthPending({ provider });
+
+        if (isSessionTokenFlow()) {
+            clearMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(false);
+        } else {
+            markMayakPortalAutoActivate();
+            setShouldAutoEnterTrainer(true);
+        }
+
+        if (provider === "vk") {
+            setShouldPollPortalAuth(true);
+        }
+    };
+
+    const handleProfileFormChange = (event) => {
+        const { name, value: nextValue } = event.target;
+        setProfileForm((prev) => ({
+            ...prev,
+            [name]: nextValue,
+        }));
+        setProfileFormError("");
+    };
+
+    const handleGuestFormChange = (event) => {
+        const { name, value: nextValue } = event.target;
+        setGuestForm((prev) => ({
+            ...prev,
+            [name]: nextValue,
+        }));
+        setGuestFormError("");
+    };
+
+    const buildGuestPortalProfile = () => {
+        const firstName = String(guestForm.firstName || "").trim();
+        const lastName = String(guestForm.lastName || "").trim();
+        const patronymic = String(guestForm.patronymic || "").trim();
+
+        return {
+            userId: buildMayakGuestUserId(sessionInfo),
+            firstName,
+            lastName,
+            patronymic,
+            email: "",
+            username: "",
+            organizationName: "",
+            organizationId: null,
+            fullName: buildPortalFullName({ firstName, lastName, patronymic }),
+            guestMode: true,
+        };
+    };
+
+    const canAutoActivatePortalUser = (nextProfile = portalState.profile) => {
+        if (!hasRequiredMayakName(nextProfile) || !showNotification || !isTokenValid || isDevBypass) {
+            return false;
+        }
+
+        return !isSessionTokenFlow();
+    };
+
+    const handleSaveProfileName = async () => {
+        const nextFirstName = String(profileForm.firstName || "").trim();
+        const nextLastName = String(profileForm.lastName || "").trim();
+        const nextPatronymic = String(profileForm.patronymic || "").trim();
+
+        if (!nextLastName || !nextFirstName) {
+            setProfileFormError("Для входа в MAYAK заполните фамилию и имя.");
+            return false;
+        }
+
+        setIsSavingProfileName(true);
+        setProfileFormError("");
+
+        try {
+            await updatePortalProfileNames({
+                firstName: nextFirstName,
+                lastName: nextLastName,
+                patronymic: nextPatronymic,
+            });
+
+            const syncedProfile = await syncPortalProfile({
+                retries: 2,
+                delayMs: 800,
+                silent: false,
+            });
+
+            if (!syncedProfile) {
+                throw new Error("Профиль обновлен, но MAYAK не смог перечитать его сразу. Повторите попытку.");
+            }
+
+            if (shouldAutoEnterTrainer && canAutoActivatePortalUser(syncedProfile)) {
+                clearMayakPortalAutoActivate();
+                setShouldAutoEnterTrainer(false);
+                await activatePortalUser(syncedProfile);
+            }
+
+            return true;
+        } catch (error) {
+            console.error("Ошибка сохранения ФИО профиля:", error);
+            setProfileFormError(error.message || "Не удалось сохранить ФИО в профиль.");
+            return false;
+        } finally {
+            setIsSavingProfileName(false);
+        }
+    };
+
+    const activateGuestUser = async () => {
         if (!isTokenValid) {
             alert("Сначала введите корректный токен доступа.");
             return;
@@ -416,6 +619,10 @@ export default function SettingsPage({ goTo }) {
         if (sessionInfo.tokenType === "session" && !String(tableNumber || "").trim()) {
             alert("Выберите стол для входа в сессию.");
             return;
+        }
+
+        if (resolvedTableNumber && resolvedTableNumber !== selectedTableNumber) {
+            setSelectedTableNumber(resolvedTableNumber);
         }
 
         setIsLoading(true);
@@ -465,6 +672,9 @@ export default function SettingsPage({ goTo }) {
             if (!saveResponse.ok) {
                 throw new Error("Не удалось сохранить контекст входа MAYAK");
             }
+
+            const savePayload = await saveResponse.json().catch(() => ({}));
+            const certificateNumber = savePayload?.certificateNumber || savePayload?.data?.certificateNumber || "";
 
             if (sessionInfo.tokenType === "session" && sessionInfo.sessionId) {
                 const participantResponse = await fetch("/api/mayak/session-runtime/participant", {
@@ -634,9 +844,12 @@ export default function SettingsPage({ goTo }) {
                     <CloseIcon />
                 </Button>
             </Header>
+
             <div className="hero" style={{ placeItems: "center" }}>
                 <div className="flex flex-col gap-[1.6rem] items-center h-full col-span-4 col-start-5 col-end-9">
                     <h3>Настройки</h3>
+
+                    <div className="flex flex-col gap-[0.75rem] w-full">
 
                     <div className="flex flex-col gap-[0.75rem] w-full">
                         <div className="flex flex-col gap-[0.5rem]">
@@ -651,12 +864,16 @@ export default function SettingsPage({ goTo }) {
                             ) : null}
                         </div>
 
+
                         <Input
                             placeholder="Введите ваш токен"
                             value={token}
                             onChange={(event) => {
                                 const nextToken = event.target.value;
+                            onChange={(event) => {
+                                const nextToken = event.target.value;
                                 setToken(nextToken);
+                                setTokenExists(false);
                                 setTokenError("");
                                 setShowNotification(false);
                                 setIsTokenValid(false);
@@ -677,7 +894,10 @@ export default function SettingsPage({ goTo }) {
                                 <Input
                                     type="password"
                                     placeholder="Пароль администратора"
+                                    placeholder="Пароль администратора"
                                     value={bypassPassword}
+                                    onChange={(event) => {
+                                        setBypassPassword(event.target.value);
                                     onChange={(event) => {
                                         setBypassPassword(event.target.value);
                                         setBypassPasswordError("");
@@ -685,6 +905,7 @@ export default function SettingsPage({ goTo }) {
                                 />
                                 {bypassPasswordError ? <span className="small text-red-600 block text-center">{bypassPasswordError}</span> : null}
                                 <Button onClick={enterWithDevBypass} className="w-full">
+                                    Войти в тренажер
                                     Войти в тренажер
                                 </Button>
                             </div>

@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import Header from "@/components/layout/Header";
-
-const AUTH_KEY = "mayak_content_admin_auth";
+import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
+import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
 
 function fileToBase64(file) {
     return new Promise((resolve, reject) => {
@@ -13,45 +14,6 @@ function fileToBase64(file) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
-}
-
-// ============ Авторизация ============
-function LoginForm({ onLogin }) {
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-        try {
-            const res = await fetch("/api/admin/mayak-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                setError(json.error || "Неверный пароль");
-                setPassword("");
-                return;
-            }
-            sessionStorage.setItem(AUTH_KEY, "true");
-            onLogin();
-        } catch (error) {
-            setError("Ошибка входа");
-        }
-    };
-
-    return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
-            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12, width: 320, padding: 32, border: "1px solid #ddd", borderRadius: 12 }}>
-                <h2 style={{ margin: 0, textAlign: "center" }}>Админ-панель МАЯК</h2>
-                <input type="password" placeholder="Пароль" value={password} onChange={(e) => setPassword(e.target.value)} style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid #ccc", fontSize: 15 }} />
-                {error && <div style={{ color: "#e53e3e", fontSize: 13 }}>{error}</div>}
-                <button type="submit" style={btnStyle}>Войти</button>
-            </form>
-        </div>
-    );
 }
 
 // Колонки таблицы (порядок как в Google Sheets)
@@ -1257,6 +1219,7 @@ const cellStyle = { padding: 0, verticalAlign: "middle", fontSize: 12, overflow:
 
 // ============ Главная страница ============
 export default function AdminMayakContent() {
+    const router = useRouter();
     const [isAuth, setIsAuth] = useState(false);
     const [ranges, setRanges] = useState([]);
     const [selectedRange, setSelectedRange] = useState(() => {
@@ -1275,21 +1238,35 @@ export default function AdminMayakContent() {
     const [questionnaireMessage, setQuestionnaireMessage] = useState("");
 
     useEffect(() => {
-        const saved = sessionStorage.getItem(AUTH_KEY);
+        if (!router.isReady) return;
+        let cancelled = false;
+
         async function checkAuth() {
             try {
-                const res = await fetch("/api/admin/mayak-auth");
-                const json = await res.json();
-                if (saved === "true" && json.authenticated) {
+                const { authenticated } = await getMayakAdminAuthStatus();
+                if (cancelled) return;
+
+                if (authenticated) {
                     setIsAuth(true);
                 } else {
-                    sessionStorage.removeItem(AUTH_KEY);
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-content"));
                 }
-            } catch {}
-            setLoading(false);
+            } catch {
+                if (!cancelled) {
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-content"));
+                }
+            }
+
+            if (!cancelled) {
+                setLoading(false);
+            }
         }
+
         checkAuth();
-    }, []);
+        return () => {
+            cancelled = true;
+        };
+    }, [router]);
 
     const fetchRanges = useCallback(async () => {
         try {
@@ -1376,7 +1353,7 @@ export default function AdminMayakContent() {
         setCreating(false);
     };
 
-    if (!isAuth) return (<><Header /><LoginForm onLogin={() => setIsAuth(true)} /></>);
+    if (!isAuth) return (<><Header /><div style={{ padding: 32, textAlign: "center" }}>Проверка доступа...</div></>);
     if (loading) return (<><Header /><div style={{ padding: 32, textAlign: "center" }}>Загрузка...</div></>);
 
     return (
@@ -1385,17 +1362,7 @@ export default function AdminMayakContent() {
             <div style={{ margin: "0 auto", padding: "16px 20px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
                     <h1 style={{ fontSize: 20, margin: 0, color: "#1e293b" }}>Управление контентом МАЯК</h1>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <Link href="/admin/tokens" style={{ padding: "8px 16px", borderRadius: 6, background: "#8b5cf6", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                            Токены доступа
-                        </Link>
-                        <Link href="/admin/sessions" style={{ padding: "8px 16px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                            Сессии
-                        </Link>
-                        <Link href="/admin/mayak-onboarding" style={{ padding: "8px 16px", borderRadius: 6, background: "#0ea5e9", color: "#fff", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-                            Онбординг
-                        </Link>
-                    </div>
+                    <MayakAdminBackLink />
                 </div>
 
                 {!selectedRange ? (

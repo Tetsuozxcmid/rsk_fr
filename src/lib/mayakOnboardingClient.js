@@ -32,6 +32,14 @@ export function getSubmissionStorageKey(slug, kind) {
     return `mayak_onboarding_submission:${slug}:${kind}`;
 }
 
+export function getQuestionnaireCompletionStorageKey(slug) {
+    return `mayak_onboarding_questionnaire:${slug}`;
+}
+
+export function getLegacySurveyResponseStorageKey(slug) {
+    return `mayak_onboarding_survey:${slug}`;
+}
+
 export function getStructuredChecklistItems(checklist) {
     if (checklist && typeof checklist === "object" && checklist.items && typeof checklist.items === "object") {
         return checklist.items;

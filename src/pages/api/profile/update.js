@@ -33,16 +33,11 @@ function sanitizeProfileFieldsForUpstream(fields) {
 
 export default async function ProfileUpdateHandler(req, res) {
     try {
-        const token = req.cookies.users_access_token;
-        if (!token) {
-            return res.status(401).json({ success: false, error: "No token provided" });
-        }
-
         if (req.method !== "POST") {
             return res.status(405).json({ success: false, error: "Method not allowed" });
         }
 
-        const bodyData = req.body;
+        const bodyData = { ...(req.body || {}) };
         delete bodyData.token;
         const { role, ...profileFields } = bodyData;
         const sanitizedFields = sanitizeProfileFieldsForUpstream(profileFields);
@@ -57,16 +52,14 @@ export default async function ProfileUpdateHandler(req, res) {
             cache: "no-store",
         });
 
-        // 1. Сначала читаем ответ как текст
         const textData = await response.text();
         let data;
 
-        // 2. Безопасно пытаемся распарсить JSON
         try {
             data = textData ? JSON.parse(textData) : {};
-        } catch (e) {
-            console.error("Внешний API вернул не JSON:", textData);
-            data = { raw_message: textData }; // Сохраняем текст, чтобы понять, что пошло не так
+        } catch (error) {
+            console.error("External profile API returned non-JSON:", textData);
+            data = { raw_message: textData };
         }
 
         if (!response.ok) {
@@ -99,11 +92,11 @@ export default async function ProfileUpdateHandler(req, res) {
 
             if (!roleResponse.ok) {
                 const roleErrorText = await roleResponse.text();
-                console.error("Ошибка при обновлении роли:", roleResponse.status, roleErrorText);
+                console.error("Role update error:", roleResponse.status, roleErrorText);
 
                 return res.status(roleResponse.status).json({
                     success: false,
-                    error: `Профиль обновлен, но ошибка роли (${roleResponse.status}): ${roleErrorText}`,
+                    error: `Профиль обновлен, но роль не сохранилась (${roleResponse.status}): ${roleErrorText}`,
                 });
             }
         }

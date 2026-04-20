@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Button from "@/components/ui/Button";
 import VK from "@/assets/general/vk.svg";
 
-export default function VKWidget({ onBeforeLogin }) {
+export default function VKWidget() {
   const initialized = useRef(false);
   const [sdkState, setSdkState] = useState("loading");
 
@@ -65,14 +65,7 @@ export default function VKWidget({ onBeforeLogin }) {
   }, []);
 
   const handleVKLogin = () => {
-    if (!window.VKIDSDK?.Auth?.login) {
-      alert("VK ID is still loading. Wait a moment and try again.");
-      return;
-    }
-
-    if (typeof onBeforeLogin === "function") {
-      onBeforeLogin();
-    }
+    if (!window.VKIDSDK?.Auth?.login) return;
 
     const originalOpen = window.open;
 

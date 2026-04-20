@@ -130,8 +130,8 @@ export function SessionTaskReviewPopup({ taskData, elapsedTime, rejectedComment,
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
-            <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
                     <div>
                         <h3 className="text-xl font-bold">Загрузить материал по заданию №{taskData.number}</h3>
                         <p className="mt-1 text-sm text-slate-500">Время выполнения: {elapsedTime}</p>
@@ -141,6 +141,7 @@ export function SessionTaskReviewPopup({ taskData, elapsedTime, rejectedComment,
                     </Button>
                 </div>
 
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
                 {rejectedComment ? (
                     <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4">
                         <div className="mb-1 text-sm font-semibold text-red-700">Комментарий инспектора</div>
@@ -204,11 +205,13 @@ export function SessionTaskReviewPopup({ taskData, elapsedTime, rejectedComment,
                             placeholder={"\u041c\u043e\u0436\u043d\u043e \u043e\u0442\u043f\u0440\u0430\u0432\u0438\u0442\u044c \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 \u0442\u0435\u043a\u0441\u0442\u043e\u0432\u044b\u0439 \u0440\u0435\u0437\u0443\u043b\u044c\u0442\u0430\u0442 \u0434\u0430\u0436\u0435 \u0431\u0435\u0437 \u0444\u0430\u0439\u043b\u0430."}
                         />
                     </div>
-                    <div className="text-xs text-slate-500">{"\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u044b PDF, DOC/DOCX, PPT/PPTX, \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f, \u0430\u0443\u0434\u0438\u043e \u0438 \u0432\u0438\u0434\u0435\u043e. \u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c 15 \u041c\u0411."}</div>
+                    <div className="text-xs text-slate-500">{"\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u044b PDF, DOC/DOCX, PPT/PPTX, \u0438\u0437\u043e\u0431\u0440\u0430\u0436\u0435\u043d\u0438\u044f, \u0430\u0443\u0434\u0438\u043e \u0438 \u0432\u0438\u0434\u0435\u043e. \u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c 30 \u041c\u0411."}</div>
                     {uploadError ? <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{uploadError}</div> : null}
                 </div>
 
-                <div className="mt-6 flex justify-end gap-2">
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-slate-100 px-6 py-4">
                     <Button inverted onClick={onClose} disabled={uploadLoading}>
                         Позже
                     </Button>

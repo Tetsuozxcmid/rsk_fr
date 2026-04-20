@@ -14,10 +14,12 @@ import {
     parseQwenEvaluation,
     releaseQwenToken,
 } from "../../../lib/mayakQwen.js";
+import { getMayakPromptEvaluationSettings, readMayakSettings } from "../../../lib/mayakSettings.js";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1";
 const OPENROUTER_BACKUP_MODEL = "google/gemini-3-flash-preview";
 const TEMP_UNAVAILABLE_MESSAGE = "Проверка временно недоступна";
+const OLLAMA_TEMP_UNAVAILABLE_MESSAGE = "Локальная проверка Ollama временно недоступна";
 
 function isOpenRouterToken(token) {
     return typeof token === "string" && token.trim().startsWith("sk-or-v1");
@@ -34,7 +36,14 @@ function toClientPayload(evaluation) {
     };
 }
 
-async function requestEvaluation({ apiUrl, token, model, userMessageContent, responseFormat, extraHeaders = {} }) {
+async function requestStructuredEvaluation({
+    apiUrl,
+    token,
+    model,
+    userMessageContent,
+    responseFormat,
+    extraHeaders = {},
+}) {
     const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -87,23 +96,73 @@ async function requestEvaluation({ apiUrl, token, model, userMessageContent, res
     };
 }
 
-export default async function handler(req, res) {
-    if (req.method !== "POST") {
-        return res.status(405).json({ error: "Method not allowed" });
-    }
-
-    const { fields, taskContext } = req.body;
-    if (!fields || typeof fields !== "object") {
-        return res.status(400).json({ error: "fields are required" });
-    }
-
-    const userMessageContent = buildQwenEvaluationUserMessage({
-        taskContext,
-        fields,
+async function requestOllamaEvaluation({ baseUrl, model, userMessageContent }) {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model,
+            stream: false,
+            format: "json",
+            messages: [
+                {
+                    role: "system",
+                    content: QWEN_EVALUATION_SYSTEM_PROMPT,
+                },
+                {
+                    role: "user",
+                    content: userMessageContent,
+                },
+            ],
+            options: {
+                temperature: 0.1,
+                num_predict: 700,
+                top_p: 0.95,
+                top_k: 64,
+            },
+        }),
     });
 
+    if (!response.ok) {
+        return {
+            ok: false,
+            status: response.status,
+            errorText: await response.text(),
+        };
+    }
+
+    const data = await response.json();
+    const rawMessage = data?.message?.content || "";
+    const parsedEvaluation = parseQwenEvaluation(rawMessage);
+
+    if (!parsedEvaluation || !isValidQwenEvaluationShape(parsedEvaluation)) {
+        return {
+            ok: false,
+            status: 502,
+            errorText: rawMessage,
+            parseFailed: true,
+        };
+    }
+
+    return {
+        ok: true,
+        parsedEvaluation,
+    };
+}
+
+function buildNormalizedEvaluation(parsedEvaluation, { fields, taskContext }) {
+    return normalizeQwenEvaluation(parsedEvaluation, {
+        fields,
+        taskContext,
+    });
+}
+
+async function handleQwenPromptEvaluation({ res, userMessageContent, fields, taskContext }) {
     const tokenPool = await getQwenTokenPool();
     const backupToken = await getStoredQwenBackupToken();
+
     if (tokenPool.length === 0 && !backupToken) {
         return res.status(503).json({
             error: "Qwen tokens are not configured",
@@ -123,8 +182,8 @@ export default async function handler(req, res) {
         triedTokens.add(token);
 
         try {
-            const result = await requestEvaluation({
-                apiUrl: QWEN_API_URL + "/v1/chat/completions",
+            const result = await requestStructuredEvaluation({
+                apiUrl: `${QWEN_API_URL}/v1/chat/completions`,
                 token,
                 model: QWEN_MODEL,
                 userMessageContent,
@@ -132,7 +191,7 @@ export default async function handler(req, res) {
 
             if (!result.ok) {
                 if (result.parseFailed) {
-                    console.error("[Qwen] Invalid structured response:", result.errorText);
+                    console.error("[PromptEvaluation] Invalid Qwen response:", result.errorText);
                     return res.status(502).json({
                         error: "Qwen response parse failed",
                         message: TEMP_UNAVAILABLE_MESSAGE,
@@ -149,7 +208,7 @@ export default async function handler(req, res) {
                     activeLoad: getQwenTokenActiveLoad(token),
                 });
 
-                console.error("[Qwen] API error:", result.status, failure.reason, maskSecret(token), result.errorText);
+                console.error("[PromptEvaluation] Qwen API error:", result.status, failure.reason, maskSecret(token), result.errorText);
 
                 if (failure.shouldTryNextToken) {
                     continue;
@@ -162,14 +221,14 @@ export default async function handler(req, res) {
                 });
             }
 
-            const evaluation = normalizeQwenEvaluation(result.parsedEvaluation, {
+            const evaluation = buildNormalizedEvaluation(result.parsedEvaluation, {
                 fields,
                 taskContext,
             });
 
             return res.status(200).json(toClientPayload(evaluation));
         } catch (err) {
-            console.error("[Qwen] Request error:", maskSecret(token), err.message);
+            console.error("[PromptEvaluation] Qwen request error:", maskSecret(token), err.message);
             return res.status(502).json({
                 error: "Qwen request failed",
                 message: TEMP_UNAVAILABLE_MESSAGE,
@@ -182,11 +241,11 @@ export default async function handler(req, res) {
 
     if (backupToken && !triedTokens.has(backupToken)) {
         const backupProvider = isOpenRouterToken(backupToken) ? "openrouter" : "qwen";
-        const backupApiUrl = backupProvider === "openrouter" ? OPENROUTER_API_URL + "/chat/completions" : QWEN_API_URL + "/v1/chat/completions";
+        const backupApiUrl = backupProvider === "openrouter" ? `${OPENROUTER_API_URL}/chat/completions` : `${QWEN_API_URL}/v1/chat/completions`;
         const backupModel = backupProvider === "openrouter" ? OPENROUTER_BACKUP_MODEL : QWEN_MODEL;
 
         try {
-            const result = await requestEvaluation({
+            const result = await requestStructuredEvaluation({
                 apiUrl: backupApiUrl,
                 token: backupToken,
                 model: backupModel,
@@ -201,7 +260,7 @@ export default async function handler(req, res) {
             });
 
             if (result.ok) {
-                const evaluation = normalizeQwenEvaluation(result.parsedEvaluation, {
+                const evaluation = buildNormalizedEvaluation(result.parsedEvaluation, {
                     fields,
                     taskContext,
                 });
@@ -216,7 +275,7 @@ export default async function handler(req, res) {
                 token: maskSecret(backupToken),
             });
 
-            console.error("[Qwen] Backup error:", backupProvider, result.status, maskSecret(backupToken), result.errorText);
+            console.error("[PromptEvaluation] Backup error:", backupProvider, result.status, maskSecret(backupToken), result.errorText);
         } catch (err) {
             failures.push({
                 provider: backupProvider,
@@ -224,14 +283,111 @@ export default async function handler(req, res) {
                 reason: "backup_token_request_failed",
                 token: maskSecret(backupToken),
             });
-            console.error("[Qwen] Backup request error:", backupProvider, maskSecret(backupToken), err.message);
+            console.error("[PromptEvaluation] Backup request error:", backupProvider, maskSecret(backupToken), err.message);
         }
     }
 
-    console.error("[Qwen] All configured tokens failed:", failures);
+    console.error("[PromptEvaluation] All configured Qwen tokens failed:", failures);
     return res.status(503).json({
         error: "Qwen token pool exhausted",
         message: TEMP_UNAVAILABLE_MESSAGE,
         details: failures,
+    });
+}
+
+async function handleOllamaPromptEvaluation({
+    res,
+    userMessageContent,
+    fields,
+    taskContext,
+    promptEvaluationSettings,
+}) {
+    try {
+        const result = await requestOllamaEvaluation({
+            baseUrl: promptEvaluationSettings.ollamaBaseUrl,
+            model: promptEvaluationSettings.ollamaModel,
+            userMessageContent,
+        });
+
+        if (!result.ok) {
+            if (result.parseFailed) {
+                console.error("[PromptEvaluation] Invalid Ollama response:", result.errorText);
+                return res.status(502).json({
+                    error: "Ollama response parse failed",
+                    message: OLLAMA_TEMP_UNAVAILABLE_MESSAGE,
+                    details: result.errorText,
+                });
+            }
+
+            console.error(
+                "[PromptEvaluation] Ollama API error:",
+                promptEvaluationSettings.ollamaBaseUrl,
+                promptEvaluationSettings.ollamaModel,
+                result.status,
+                result.errorText
+            );
+
+            return res.status(502).json({
+                error: "Ollama API error",
+                message: OLLAMA_TEMP_UNAVAILABLE_MESSAGE,
+                details: result.errorText,
+            });
+        }
+
+        const evaluation = buildNormalizedEvaluation(result.parsedEvaluation, {
+            fields,
+            taskContext,
+        });
+
+        return res.status(200).json(toClientPayload(evaluation));
+    } catch (err) {
+        console.error(
+            "[PromptEvaluation] Ollama request error:",
+            promptEvaluationSettings.ollamaBaseUrl,
+            promptEvaluationSettings.ollamaModel,
+            err.message
+        );
+
+        return res.status(502).json({
+            error: "Ollama request failed",
+            message: OLLAMA_TEMP_UNAVAILABLE_MESSAGE,
+            details: err.message,
+        });
+    }
+}
+
+export default async function handler(req, res) {
+    if (req.method !== "POST") {
+        return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    const { fields, taskContext } = req.body;
+    if (!fields || typeof fields !== "object") {
+        return res.status(400).json({ error: "fields are required" });
+    }
+
+    const userMessageContent = buildQwenEvaluationUserMessage({
+        taskContext,
+        fields,
+    });
+
+    const settings = await readMayakSettings();
+    const promptEvaluationSettings = getMayakPromptEvaluationSettings(settings);
+
+    if (promptEvaluationSettings.provider === "ollama") {
+        return handleOllamaPromptEvaluation({
+            res,
+            userMessageContent,
+            fields,
+            taskContext,
+            promptEvaluationSettings,
+        });
+    }
+
+    return handleQwenPromptEvaluation({
+        res,
+        userMessageContent,
+        fields,
+        taskContext,
     });
 }

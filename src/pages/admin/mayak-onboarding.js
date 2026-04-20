@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import Header from "@/components/layout/Header";
+import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
+import QuestionnaireSettingsEditor from "@/components/mayak-onboarding/QuestionnaireSettingsEditor";
+import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
 import { archiveOnboardingLink, createOnboardingLink, getAdminChecklistConfig, getAdminDashboard, updateAdminChecklistConfig, uploadAdminInstructionAsset } from "@/lib/mayakOnboardingClient";
+import { normalizeMayakOnboardingQuestionnaire } from "@/lib/mayakOnboardingQuestionnaire";
 
-const AUTH_KEY = "mayak_content_admin_auth";
 const DRAFT_KEY = "mayak_onboarding_constructor_draft";
 const inputClassName =
     "!w-full !rounded-[0.95rem] !border-2 !border-stone-700/80 !bg-white !px-4 !py-3 !text-sm !text-(--color-black) !shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] outline-none transition placeholder:!text-[#94a3b8] focus:!border-black";
@@ -29,7 +32,15 @@ function formatDates(startDate, endDate) {
         return day && month && year ? `${day}.${month}.${year}` : value || "";
     };
     if (!startDate) return "";
-    return endDate ? `${format(startDate)} - ${format(endDate)}` : format(startDate);
+    return endDate && endDate !== startDate ? `${format(startDate)} - ${format(endDate)}` : format(startDate);
+}
+
+function pluralizeRu(count, one, few, many) {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod10 === 1 && mod100 !== 11) return one;
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+    return many;
 }
 
 function getSubmissionPhotos(submission) {
@@ -72,140 +83,6 @@ function CompactEditorField({ label, children, className = "" }) {
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#64748b]">{label}</div>
             <div className="mt-2">{children}</div>
         </label>
-    );
-}
-
-function normalizeImportedSection(section = {}, prefix = "section", index = 0) {
-    const id = String(section.id || `${prefix}-${index + 1}`).trim();
-    return {
-        id,
-        title: String(section.title || ""),
-        description: String(section.description || ""),
-        requirePhoto: Boolean(section.requirePhoto),
-        minPhotos: Boolean(section.requirePhoto) ? Math.max(Number(section.minPhotos || 1), 1) : 0,
-        photoLabel: String(section.photoLabel || ""),
-        examplePhotoHint: String(section.examplePhotoHint || ""),
-        examplePhotos: Array.isArray(section.examplePhotos) ? section.examplePhotos.map((photo) => ({ image: String(photo?.image || ""), caption: String(photo?.caption || "") })) : [],
-        items: Array.isArray(section.items)
-            ? section.items.map((item, itemIndex) => ({
-                  id: String(item?.id || `${id}-item-${itemIndex + 1}`),
-                  title: String(item?.title || ""),
-              }))
-            : [],
-    };
-}
-
-function normalizeImportedService(service = {}, index = 0) {
-    return {
-        id: String(service.id || `service-${index + 1}`),
-        name: String(service.name || ""),
-        url: String(service.url || ""),
-        instructionImage: String(service.instructionImage || ""),
-        instructionHint: String(service.instructionHint || ""),
-    };
-}
-
-function getConstructorExportPayload(view, config) {
-    if (view === "participant") {
-        return {
-            scope: "participant",
-            participantSections: (config.participantSections || []).map((section, index) => normalizeImportedSection(section, "participant", index)),
-        };
-    }
-
-    if (view === "tech") {
-        return {
-            scope: "tech",
-            techSections: (config.techSections || []).map((section, index) => normalizeImportedSection(section, "tech", index)),
-        };
-    }
-
-    return {
-        scope: "services",
-        organizer: {
-            name: String(config.organizer?.name || ""),
-            phone: String(config.organizer?.phone || ""),
-        },
-        services: (config.services || []).map((service, index) => normalizeImportedService(service, index)),
-    };
-}
-
-function applyImportedConstructorPayload(view, payload, currentConfig) {
-    if (view === "participant") {
-        const participantSections = Array.isArray(payload) ? payload : Array.isArray(payload?.participantSections) ? payload.participantSections : null;
-        if (!participantSections) {
-            throw new Error("JSON участника должен содержать массив participantSections.");
-        }
-
-        return {
-            ...currentConfig,
-            participantSections: participantSections.map((section, index) => normalizeImportedSection(section, "participant", index)),
-        };
-    }
-
-    if (view === "tech") {
-        const techSections = Array.isArray(payload) ? payload : Array.isArray(payload?.techSections) ? payload.techSections : null;
-        if (!techSections) {
-            throw new Error("JSON техспециалиста должен содержать массив techSections.");
-        }
-
-        return {
-            ...currentConfig,
-            techSections: techSections.map((section, index) => normalizeImportedSection(section, "tech", index)),
-        };
-    }
-
-    if (!payload || typeof payload !== "object" || !Array.isArray(payload?.services)) {
-        throw new Error("JSON сервисов должен содержать organizer и services.");
-    }
-
-    return {
-        ...currentConfig,
-        organizer: {
-            name: String(payload?.organizer?.name || ""),
-            phone: String(payload?.organizer?.phone || ""),
-        },
-        services: Array.isArray(payload?.services) ? payload.services.map((service, index) => normalizeImportedService(service, index)) : [],
-    };
-}
-
-function LoginForm({ onLogin }) {
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        setError("");
-        try {
-            const res = await fetch("/api/admin/mayak-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                setError(json.error || "Неверный пароль");
-                setPassword("");
-                return;
-            }
-            sessionStorage.setItem(AUTH_KEY, "true");
-            onLogin();
-        } catch {
-            setError("Ошибка входа");
-        }
-    };
-
-    return (
-        <div className="flex min-h-[60vh] items-center justify-center px-4">
-            <form onSubmit={handleSubmit} className="flex w-full max-w-[380px] flex-col gap-4 rounded-[1.25rem] border border-(--color-gray-plus-50) bg-white p-8 shadow-sm">
-                <h2 className="text-center text-2xl font-black text-(--color-black)">Онбординг MAYAK</h2>
-                <input type="password" placeholder="Пароль" value={password} onChange={(event) => setPassword(event.target.value)} className={inputClassName} />
-                {error ? <div className="text-sm font-medium text-[#b91c1c]">{error}</div> : null}
-                <button type="submit" className={primaryButtonClassName}>
-                    Войти
-                </button>
-            </form>
-        </div>
     );
 }
 
@@ -421,9 +298,10 @@ function ServiceEditor({ service, onChange, onDelete, onUpload }) {
 }
 
 export default function AdminMayakOnboardingPage() {
+    const router = useRouter();
     const [isAuth, setIsAuth] = useState(false);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState("dashboard");
+    const [activeTab, setActiveTab] = useState("links");
     const [links, setLinks] = useState([]);
     const [config, setConfig] = useState(null);
     const [savedConfigJson, setSavedConfigJson] = useState("");
@@ -444,7 +322,6 @@ export default function AdminMayakOnboardingPage() {
 
         return nextErrors;
     }, [form]);
-
     const loadAll = useCallback(async () => {
         const [dashboardResponse, configResponse] = await Promise.all([getAdminDashboard(), getAdminChecklistConfig()]);
         setLinks(dashboardResponse.links || []);
@@ -454,33 +331,55 @@ export default function AdminMayakOnboardingPage() {
             const draft = localStorage.getItem(DRAFT_KEY);
             if (draft) {
                 try {
-                    nextConfig = JSON.parse(draft);
+                    const parsedDraft = JSON.parse(draft);
+                    nextConfig = {
+                        ...configResponse.config,
+                        ...parsedDraft,
+                        questionnaire: normalizeMayakOnboardingQuestionnaire(parsedDraft?.questionnaire || configResponse.config?.questionnaire, parsedDraft?.survey || configResponse.config?.survey),
+                    };
                 } catch {
                     localStorage.removeItem(DRAFT_KEY);
                 }
             }
         }
 
-        setConfig(nextConfig);
+        setConfig({
+            ...nextConfig,
+            questionnaire: normalizeMayakOnboardingQuestionnaire(nextConfig?.questionnaire || configResponse.config?.questionnaire, nextConfig?.survey || configResponse.config?.survey),
+        });
         setSavedConfigJson(JSON.stringify(configResponse.config));
     }, []);
 
     useEffect(() => {
-        const saved = typeof window !== "undefined" ? sessionStorage.getItem(AUTH_KEY) : null;
+        if (!router.isReady) return;
+        let cancelled = false;
+
         (async () => {
             try {
-                const res = await fetch("/api/admin/mayak-auth");
-                const json = await res.json();
-                if (saved === "true" && json.authenticated) {
+                const { authenticated } = await getMayakAdminAuthStatus();
+                if (cancelled) return;
+
+                if (authenticated) {
                     setIsAuth(true);
                     await loadAll();
-                } else if (typeof window !== "undefined") {
-                    sessionStorage.removeItem(AUTH_KEY);
+                } else {
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-onboarding"));
                 }
-            } catch {}
-            setLoading(false);
+            } catch {
+                if (!cancelled) {
+                    router.replace(buildMayakAdminLoginUrl(router.asPath || "/admin/mayak-onboarding"));
+                }
+            }
+
+            if (!cancelled) {
+                setLoading(false);
+            }
         })();
-    }, [loadAll]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [loadAll, router]);
 
     useEffect(() => {
         if (config && typeof window !== "undefined") {
@@ -502,16 +401,16 @@ export default function AdminMayakOnboardingPage() {
 
     const isDirty = useMemo(() => Boolean(config) && JSON.stringify(config) !== savedConfigJson, [config, savedConfigJson]);
 
-    const confirmLeaveConstructor = useCallback(() => {
-        if (activeTab !== "constructor" || !isDirty || typeof window === "undefined") {
+    const confirmLeaveEditor = useCallback(() => {
+        if (!["constructor", "questionnaire"].includes(activeTab) || !isDirty || typeof window === "undefined") {
             return true;
         }
 
-        return window.confirm("Есть несохранённые изменения в конструкторе. Сначала сохраните их кнопкой «Сохранить конструктор» или подтвердите переход без сохранения.");
+        return window.confirm("Есть несохранённые изменения. Сначала сохраните их кнопкой «Сохранить конструктор» или подтвердите переход без сохранения.");
     }, [activeTab, isDirty]);
 
     useEffect(() => {
-        if (activeTab !== "constructor" || !isDirty || typeof window === "undefined") return undefined;
+        if (!["constructor", "questionnaire"].includes(activeTab) || !isDirty || typeof window === "undefined") return undefined;
 
         const handleBeforeUnload = (event) => {
             event.preventDefault();
@@ -524,20 +423,20 @@ export default function AdminMayakOnboardingPage() {
 
     const handleProtectedLinkClick = useCallback(
         (event) => {
-            if (!confirmLeaveConstructor()) {
+            if (!confirmLeaveEditor()) {
                 event.preventDefault();
             }
         },
-        [confirmLeaveConstructor]
+        [confirmLeaveEditor]
     );
 
     const handleTabChange = useCallback(
         (nextTab) => {
             if (nextTab === activeTab) return;
-            if (activeTab === "constructor" && nextTab !== "constructor" && !confirmLeaveConstructor()) return;
+            if (["constructor", "questionnaire"].includes(activeTab) && !["constructor", "questionnaire"].includes(nextTab) && !confirmLeaveEditor()) return;
             setActiveTab(nextTab);
         },
-        [activeTab, confirmLeaveConstructor]
+        [activeTab, confirmLeaveEditor]
     );
 
     const uploadAsset = async (file, folder = "instructions") => {
@@ -598,60 +497,19 @@ export default function AdminMayakOnboardingPage() {
             setConfig(response.config);
             setSavedConfigJson(JSON.stringify(response.config));
             if (typeof window !== "undefined") localStorage.removeItem(DRAFT_KEY);
-            setMessage("Конструктор сохранён");
+            setMessage(activeTab === "questionnaire" ? "Анкетирование сохранено" : "Конструктор сохранён");
             setError("");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Не удалось сохранить конструктор.");
+            setError(err instanceof Error ? err.message : activeTab === "questionnaire" ? "Не удалось сохранить анкетирование." : "Не удалось сохранить конструктор.");
             setMessage("");
         }
     };
-
-    const handleExportConstructor = useCallback(() => {
-        const payload = getConstructorExportPayload(constructorView, config);
-        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `mayak-onboarding-${constructorView}.json`;
-        anchor.click();
-        URL.revokeObjectURL(url);
-        setMessage("JSON экспортирован");
-        setError("");
-    }, [config, constructorView]);
-
-    const handleImportConstructor = useCallback(
-        async (event) => {
-            const file = event.target.files?.[0];
-            event.target.value = "";
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const payload = JSON.parse(text);
-                const nextConfig = applyImportedConstructorPayload(constructorView, payload, config);
-                setConfig(nextConfig);
-                setMessage("JSON импортирован в конструктор");
-                setError("");
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Не удалось импортировать JSON.");
-                setMessage("");
-            }
-        },
-        [config, constructorView]
-    );
 
     if (!isAuth) {
         return (
             <>
                 <Header />
-                {!loading && (
-                    <LoginForm
-                        onLogin={async () => {
-                            setIsAuth(true);
-                            await loadAll();
-                        }}
-                    />
-                )}
+                {!loading && <div className="px-8 py-10 text-sm text-[#64748b]">Проверка доступа…</div>}
             </>
         );
     }
@@ -679,23 +537,19 @@ export default function AdminMayakOnboardingPage() {
                             <p className="mt-2 text-sm leading-6 text-[#64748b]">Ссылки, прогресс и конструктор подготовки вынесены в отдельную панель MAYAK.</p>
                         </div>
                         <div className="flex flex-col gap-3 xl:min-w-[430px] xl:items-end">
+                            <MayakAdminBackLink className="xl:self-end" onClick={handleProtectedLinkClick} />
                             <div className="flex flex-wrap gap-2 xl:justify-end">
-                                <Link href="/admin/mayak-content" className={secondaryButtonClassName} onClick={handleProtectedLinkClick}>
-                                    Контент
-                                </Link>
-                                <Link href="/admin/mayak-sessions" className={secondaryButtonClassName} onClick={handleProtectedLinkClick}>
-                                    Сессии
-                                </Link>
-                                <Link href="/admin/mayak-tokens" className={secondaryButtonClassName} onClick={handleProtectedLinkClick}>
-                                    Токены
-                                </Link>
-                            </div>
-                            <div className="flex flex-wrap gap-2 xl:justify-end">
-                                <button type="button" className={activeTab === "dashboard" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("dashboard")}>
-                                    Ссылки и прогресс
+                                <button type="button" className={activeTab === "links" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("links")}>
+                                    Ссылки
+                                </button>
+                                <button type="button" className={activeTab === "progress" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("progress")}>
+                                    Прогресс
                                 </button>
                                 <button type="button" className={activeTab === "constructor" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("constructor")}>
                                     Конструктор
+                                </button>
+                                <button type="button" className={activeTab === "questionnaire" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => handleTabChange("questionnaire")}>
+                                    Анкета
                                 </button>
                             </div>
                         </div>
@@ -703,8 +557,9 @@ export default function AdminMayakOnboardingPage() {
                 </section>
                 {message ? <div className="rounded-[1rem] border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm font-medium text-[#166534]">{message}</div> : null}
                 {error ? <div className="rounded-[1rem] border border-[#fecaca] bg-[#fef2f2] px-4 py-3 text-sm font-medium text-[#b91c1c]">{error}</div> : null}
-                {activeTab === "dashboard" ? (
+                {activeTab === "links" || activeTab === "progress" ? (
                     <>
+<<<<<<< HEAD
                         <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                             <div className="mb-4 text-lg font-black text-(--color-black)">Создать ссылку</div>
                             <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -733,6 +588,38 @@ export default function AdminMayakOnboardingPage() {
                                 </button>
                             </div>
                         </section>
+=======
+                        {activeTab === "links" ? (
+                            <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
+                                <div className="mb-4 text-lg font-black text-(--color-black)">Создать ссылку</div>
+                                <div className="grid items-stretch gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                    <EditorField label="Название сессии" required invalid={createAttempted && Boolean(createLinkErrors.title)} hint={createAttempted ? createLinkErrors.title : ""}>
+                                        <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Название сессии" className={inputClassName} />
+                                    </EditorField>
+                                    <EditorField
+                                        label="Ссылка на чат"
+                                        invalid={createAttempted && Boolean(createLinkErrors.chatLink)}
+                                        hint={createAttempted ? createLinkErrors.chatLink || "Необязательно. Если ссылка есть, начните с https://." : "Необязательно. Если ссылка есть, начните с https://."}>
+                                        <input value={form.chatLink} onChange={(event) => setForm((current) => ({ ...current, chatLink: event.target.value }))} placeholder="https://..." className={inputClassName} />
+                                    </EditorField>
+                                    <EditorField label="Дата начала" required invalid={createAttempted && Boolean(createLinkErrors.startDate)} hint={createAttempted ? createLinkErrors.startDate : ""}>
+                                        <input type="date" value={form.startDate} onChange={(event) => setForm((current) => ({ ...current, startDate: event.target.value }))} className={inputClassName} />
+                                    </EditorField>
+                                    <EditorField
+                                        label="Дата окончания"
+                                        invalid={createAttempted && Boolean(createLinkErrors.endDate)}
+                                        hint={createAttempted ? createLinkErrors.endDate || "Необязательно. Заполняйте только для многодневного онбординга." : "Необязательно. Заполняйте только для многодневного онбординга."}>
+                                        <input type="date" value={form.endDate} onChange={(event) => setForm((current) => ({ ...current, endDate: event.target.value }))} className={inputClassName} />
+                                    </EditorField>
+                                </div>
+                                <div className="mt-4 flex justify-end">
+                                    <button type="button" className={primaryButtonClassName} onClick={handleCreateLink}>
+                                        Создать ссылку
+                                    </button>
+                                </div>
+                            </section>
+                        ) : null}
+>>>>>>> codex/mayak-auth-wip
 
                         <div className="grid gap-4">
                             {links.length === 0 ? (
@@ -742,21 +629,42 @@ export default function AdminMayakOnboardingPage() {
                                     const participantItems = (link.submissions || []).filter((item) => item.kind === "participant");
                                     const techItems = (link.submissions || []).filter((item) => item.kind === "tech");
                                     const linkUrl = buildOnboardingUrl(link.slug);
+                                    if (activeTab === "links") {
+                                        return (
+                                            <section key={link.id} className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
+                                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                                    <div className="max-w-3xl">
+                                                        <div className="text-[1.55rem] font-black text-(--color-black)">{link.title}</div>
+                                                        <div className="mt-2 text-sm text-[#64748b]">{formatDates(link.eventDate, link.endDate)}</div>
+                                                        <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">
+                                                            <span>{`Участники: ${participantItems.length}`}</span>
+                                                            <span>{`${pluralizeRu(techItems.length, "Техспециалист", "Техспециалиста", "Техспециалистов")}: ${techItems.length}`}</span>
+                                                        </div>
+                                                        <code className="mt-4 block break-all rounded-[1rem] border border-(--color-gray-plus-50) bg-[#f8fafc] px-4 py-3 text-xs text-(--color-black)">{linkUrl}</code>
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <button type="button" className={secondaryButtonClassName} onClick={() => handleCopyLink(link.slug, link.id)}>
+                                                            {copiedLinkId === link.id ? "Скопировано" : "Скопировать"}
+                                                        </button>
+                                                        <button type="button" className={dangerButtonClassName} onClick={() => handleDeleteLink(link.id)}>
+                                                            Удалить
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </section>
+                                        );
+                                    }
+
                                     return (
                                         <section key={link.id} className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                                             <div className="flex flex-wrap items-start justify-between gap-4">
                                                 <div className="max-w-3xl">
                                                     <div className="text-[1.55rem] font-black text-(--color-black)">{link.title}</div>
                                                     <div className="mt-2 text-sm text-[#64748b]">{formatDates(link.eventDate, link.endDate)}</div>
-                                                    <code className="mt-4 block break-all rounded-[1rem] border border-(--color-gray-plus-50) bg-[#f8fafc] px-4 py-3 text-xs text-(--color-black)">{linkUrl}</code>
                                                 </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <button type="button" className={secondaryButtonClassName} onClick={() => handleCopyLink(link.slug, link.id)}>
-                                                        {copiedLinkId === link.id ? "Скопировано" : "Скопировать"}
-                                                    </button>
-                                                    <button type="button" className={dangerButtonClassName} onClick={() => handleDeleteLink(link.id)}>
-                                                        Удалить
-                                                    </button>
+                                                <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#64748b]">
+                                                    <span className="rounded-full border border-(--color-gray-plus-50) bg-[#f8fafc] px-3 py-2">{`Участники: ${participantItems.length}`}</span>
+                                                    <span className="rounded-full border border-(--color-gray-plus-50) bg-[#f8fafc] px-3 py-2">{`${pluralizeRu(techItems.length, "Техспециалист", "Техспециалиста", "Техспециалистов")}: ${techItems.length}`}</span>
                                                 </div>
                                             </div>
                                             <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -769,7 +677,7 @@ export default function AdminMayakOnboardingPage() {
                                                             participantItems.map((item) => (
                                                                 <div key={item.id} className="rounded-[1rem] border border-(--color-gray-plus-50) bg-white px-4 py-3">
                                                                     <div className="font-bold text-(--color-black)">{item.name}</div>
-                                                                    <div className="mt-1 text-xs text-[#64748b]">{item.completed ? "Готово" : "В процессе"}</div>
+                                                                    <div className="mt-1 text-xs text-[#64748b]">{`${item.statusLabel || (item.completed ? "Готово" : "В процессе")} • ${item.progressPercent || 0}%`}</div>
                                                                 </div>
                                                             ))
                                                         )}
@@ -784,9 +692,7 @@ export default function AdminMayakOnboardingPage() {
                                                             techItems.map((item) => (
                                                                 <div key={item.id} className="rounded-[1rem] border border-(--color-gray-plus-50) bg-white px-4 py-3">
                                                                     <div className="font-bold text-(--color-black)">{item.name}</div>
-                                                                    <div className="mt-1 text-xs text-[#64748b]">
-                                                                        {item.contact || "Без контакта"} • {item.completed ? "Готово" : "В процессе"}
-                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-[#64748b]">{`${item.statusLabel || (item.completed ? "Готово" : "В процессе")} • ${item.progressPercent || 0}%`}</div>
                                                                 </div>
                                                             ))
                                                         )}
@@ -821,10 +727,10 @@ export default function AdminMayakOnboardingPage() {
                         <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                             <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
-                                    <div className="text-lg font-black text-(--color-black)">Что редактируем</div>
-                                    <div className="mt-1 text-sm text-[#64748b]">Конструктор разделён по ролям и общим сервисам.</div>
+                                    <div className="text-lg font-black text-(--color-black)">{activeTab === "questionnaire" ? "Анкета" : "Что редактируем"}</div>
+                                    <div className="mt-1 text-sm text-[#64748b]">{activeTab === "questionnaire" ? "Здесь настраивается внешняя Яндекс Форма и сразу показывается QR-код для публичной страницы." : "Конструктор разделён по ролям и общим сервисам."}</div>
                                 </div>
-                                <div className="flex flex-col items-stretch gap-2">
+                                {activeTab === "constructor" ? (
                                     <div className="flex flex-wrap gap-2">
                                         <button type="button" className={constructorView === "participant" ? primaryButtonClassName : secondaryButtonClassName} onClick={() => setConstructorView("participant")}>
                                             Участник
@@ -836,20 +742,11 @@ export default function AdminMayakOnboardingPage() {
                                             Сервисы
                                         </button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button type="button" className={secondaryButtonClassName} onClick={handleExportConstructor}>
-                                            Скачать JSON
-                                        </button>
-                                        <label className={secondaryButtonClassName}>
-                                            Загрузить JSON
-                                            <input type="file" accept="application/json,.json" className="hidden" onChange={handleImportConstructor} />
-                                        </label>
-                                    </div>
-                                </div>
+                                ) : null}
                             </div>
                         </section>
 
-                        {constructorView === "participant" ? (
+                        {activeTab === "constructor" && constructorView === "participant" ? (
                             <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                                 <div className="mb-4 text-lg font-black text-(--color-black)">Разделы участника</div>
                                 <div className="space-y-4">
@@ -891,7 +788,7 @@ export default function AdminMayakOnboardingPage() {
                                 </div>
                             </section>
                         ) : null}
-                        {constructorView === "tech" ? (
+                        {activeTab === "constructor" && constructorView === "tech" ? (
                             <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                                 <div className="mb-4 text-lg font-black text-(--color-black)">Разделы техспециалиста</div>
                                 <div className="space-y-4">
@@ -930,7 +827,8 @@ export default function AdminMayakOnboardingPage() {
                                 </div>
                             </section>
                         ) : null}
-                        {constructorView === "services" ? (
+                        {activeTab === "questionnaire" ? <QuestionnaireSettingsEditor questionnaire={config.questionnaire} onChange={(nextQuestionnaire) => setConfig({ ...config, questionnaire: nextQuestionnaire })} inputClassName={inputClassName} /> : null}
+                        {activeTab === "constructor" && constructorView === "services" ? (
                             <section className="rounded-[1.5rem] border border-(--color-gray-plus-50) bg-white p-5 shadow-sm">
                                 <div className="mb-4 text-lg font-black text-(--color-black)">Организатор и сервисы</div>
                                 <EditorBlock title="Организатор" hint="Контакты помощи на публичных страницах онбординга.">
@@ -1001,3 +899,4 @@ export default function AdminMayakOnboardingPage() {
         </>
     );
 }
+

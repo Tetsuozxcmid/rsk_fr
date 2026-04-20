@@ -190,6 +190,13 @@
                 "iconType": "standard",
                 "description": "Генерация высококачественных видео с помощью модели Google Veo.",
                 "order": 3
+            },
+            {
+                "name": "Vids",
+                "url": "https://workspace.google.com/products/vids/",
+                "iconType": "standard",
+                "description": "Генерация высококачественных видео с помощью модели Google Veo.",
+                "order": 4
             }
         ],
         "interactive": [

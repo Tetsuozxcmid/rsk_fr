@@ -1,6 +1,17 @@
 import { randomUUID } from "crypto";
 import { extname } from "path";
-import { readOnboardingConfig, writeOnboardingConfig, readOnboardingLinks, writeOnboardingLinks, readOnboardingSubmissions, writeOnboardingSubmissions, writeOnboardingFile, removeOnboardingDir } from "./mayakOnboardingStorage.js";
+import {
+    readOnboardingConfig,
+    writeOnboardingConfig,
+    readOnboardingLinks,
+    writeOnboardingLinks,
+    readOnboardingSubmissions,
+    writeOnboardingSubmissions,
+    writeOnboardingFile,
+    removeOnboardingDir,
+} from "./mayakOnboardingStorage.js";
+import { getOnboardingSubmissionProgress, getStructuredChecklistItems as getProgressStructuredChecklistItems } from "./mayakOnboardingProgress.js";
+import { normalizeMayakOnboardingQuestionnaire } from "./mayakOnboardingQuestionnaire.js";
 
 function clone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -11,6 +22,7 @@ function normalizeChecklistSection(section = {}, prefix = "section", index = 0) 
     const requirePhoto = Boolean(section.requirePhoto);
     const parsedMinPhotos = Number.parseInt(String(section.minPhotos ?? section.requiredPhotoCount ?? ""), 10);
     const minPhotos = requirePhoto ? Math.max(Number.isFinite(parsedMinPhotos) ? parsedMinPhotos : 1, 1) : 0;
+
     return {
         id,
         title: String(section.title || "").trim(),
@@ -40,6 +52,16 @@ function cloneChecklistItems(items = []) {
     return Array.isArray(items) ? items.map((item) => ({ id: String(item?.id || ""), title: String(item?.title || "") })) : [];
 }
 
+function normalizeService(service = {}, index = 0) {
+    return {
+        id: String(service?.id || `service-${index + 1}`),
+        name: String(service?.name || ""),
+        url: String(service?.url || ""),
+        instructionImage: String(service?.instructionImage || ""),
+        instructionHint: String(service?.instructionHint || ""),
+    };
+}
+
 export function normalizeChecklistConfig(rawConfig = {}) {
     const techSections = Array.isArray(rawConfig.techSections) ? rawConfig.techSections.map((section, index) => normalizeChecklistSection(section, "tech", index)) : [];
     const participantSections = Array.isArray(rawConfig.participantSections) ? rawConfig.participantSections.map((section, index) => normalizeChecklistSection(section, "participant", index)) : [];
@@ -52,15 +74,7 @@ export function normalizeChecklistConfig(rawConfig = {}) {
                   phone: String(rawConfig.organizer.phone || ""),
               }
             : { name: "", phone: "" },
-        services: Array.isArray(rawConfig.services)
-            ? rawConfig.services.map((service, index) => ({
-                  id: String(service?.id || `service-${index + 1}`),
-                  name: String(service?.name || ""),
-                  url: String(service?.url || ""),
-                  instructionImage: String(service?.instructionImage || ""),
-                  instructionHint: String(service?.instructionHint || ""),
-              }))
-            : [],
+        services: Array.isArray(rawConfig.services) ? rawConfig.services.map((service, index) => normalizeService(service, index)) : [],
         techSections,
         participantSections: participantSections.map((section) =>
             section.id === "laptop" && section.items.length === 0 && techLaptopSection?.items?.length
@@ -70,6 +84,7 @@ export function normalizeChecklistConfig(rawConfig = {}) {
                   }
                 : section
         ),
+        questionnaire: normalizeMayakOnboardingQuestionnaire(rawConfig.questionnaire || {}, rawConfig.survey || {}),
     };
 }
 
@@ -84,10 +99,7 @@ function slugifyTitle(title) {
 }
 
 export function getStructuredChecklistItems(checklist = {}) {
-    if (checklist && typeof checklist === "object" && checklist.items && typeof checklist.items === "object") {
-        return checklist.items;
-    }
-    return {};
+    return getProgressStructuredChecklistItems(checklist);
 }
 
 export function getCompletionPercent(checklist = {}) {
@@ -141,6 +153,59 @@ function normalizeLink(link = {}) {
     };
 }
 
+function decorateSubmission(config, submission, { includeContact = true } = {}) {
+    const progress = getOnboardingSubmissionProgress(config, submission);
+    return {
+        ...clone(submission),
+        ...(includeContact ? {} : { contact: "" }),
+        progressPercent: progress.progressPercent,
+        statusLabel: progress.statusLabel,
+        completedSectionIds: progress.completedSectionIds,
+        photos: progress.photos,
+        completed: progress.completed,
+    };
+}
+
+function buildPublicSummary(config, submissions = []) {
+    const decorated = submissions.map((submission) => decorateSubmission(config, submission, { includeContact: false }));
+    const participants = decorated
+        .filter((item) => item.kind === "participant")
+        .map((item) => ({
+            id: item.id,
+            name: item.name,
+            progressPercent: item.progressPercent,
+            statusLabel: item.statusLabel,
+            completed: item.completed,
+            updatedAt: item.updatedAt,
+        }));
+    const tech = decorated
+        .filter((item) => item.kind === "tech")
+        .map((item) => ({
+            id: item.id,
+            name: item.name,
+            progressPercent: item.progressPercent,
+            statusLabel: item.statusLabel,
+            completed: item.completed,
+            updatedAt: item.updatedAt,
+            photos: clone(item.photos || []),
+        }));
+
+    return {
+        participantCount: participants.length,
+        participantReady: participants.filter((item) => item.completed).length,
+        techCount: tech.length,
+        techReady: tech.filter((item) => item.completed).length,
+        participants,
+        tech,
+    };
+}
+
+function validateActiveLink(link) {
+    if (!link || link.status !== "active") {
+        throw new Error("Ссылка онбординга не найдена");
+    }
+}
+
 export async function getMayakOnboardingConfig() {
     return normalizeChecklistConfig(await readOnboardingConfig());
 }
@@ -184,10 +249,13 @@ export async function createMayakOnboardingLink(payload = {}) {
     }
 
     const endDate = String(payload.endDate || "").trim();
+<<<<<<< HEAD
     if (!endDate && payload?.requireEndDate) {
         throw new Error("Укажите дату окончания");
     }
 
+=======
+>>>>>>> codex/mayak-auth-wip
     if (endDate && endDate < eventDate) {
         throw new Error("Дата окончания не может быть раньше даты начала");
     }
@@ -237,9 +305,7 @@ export async function deleteMayakOnboardingLink(linkId) {
 
 export async function createMayakOnboardingSubmission({ slug, kind, name, contact = "" }) {
     const link = await getMayakOnboardingLinkBySlug(slug);
-    if (!link || link.status !== "active") {
-        throw new Error("Ссылка онбординга не найдена");
-    }
+    validateActiveLink(link);
 
     const trimmedName = String(name || "").trim();
     if (!trimmedName) {
@@ -292,6 +358,32 @@ export async function updateMayakOnboardingSubmission(submissionId, payload = {}
     submissions[targetIndex] = nextSubmission;
     await writeOnboardingSubmissions(submissions);
     return nextSubmission;
+}
+
+export async function getMayakOnboardingLinkSummary(linkId) {
+    const config = await getMayakOnboardingConfig();
+    const submissions = (await readOnboardingSubmissions()).map(normalizeSubmission).filter((submission) => submission.linkId === linkId);
+    return buildPublicSummary(config, submissions);
+}
+
+export async function getMayakOnboardingDashboard() {
+    const [links, config, submissions] = await Promise.all([listMayakOnboardingLinks(), getMayakOnboardingConfig(), readOnboardingSubmissions()]);
+    const normalizedSubmissions = submissions.map(normalizeSubmission);
+
+    return links.map((link) => {
+        const linkSubmissions = normalizedSubmissions.filter((submission) => submission.linkId === link.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
+        const decoratedSubmissions = linkSubmissions.map((submission) => decorateSubmission(config, submission));
+        const summary = buildPublicSummary(config, linkSubmissions);
+
+        return {
+            ...clone(link),
+            participantCount: summary.participantCount,
+            techCount: summary.techCount,
+            participantReady: summary.participantReady,
+            techReady: summary.techReady,
+            submissions: decoratedSubmissions.map(clone),
+        };
+    });
 }
 
 const ONBOARDING_IMAGE_EXTENSION_BY_MIME = {
@@ -353,25 +445,5 @@ export async function uploadMayakOnboardingBinaryAsset({ scope, parentId, folder
         fileName,
         mimeType,
         buffer: Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer || ""),
-    });
-}
-
-export async function getMayakOnboardingDashboard() {
-    const links = await listMayakOnboardingLinks();
-    const submissions = (await readOnboardingSubmissions()).map(normalizeSubmission);
-    return links.map((link) => {
-        const linkSubmissions = submissions.filter((submission) => submission.linkId === link.id).sort((a, b) => String(b.updatedAt || "").localeCompare(String(a.updatedAt || "")));
-        const participantCount = linkSubmissions.filter((item) => item.kind === "participant").length;
-        const techCount = linkSubmissions.filter((item) => item.kind === "tech").length;
-        const participantReady = linkSubmissions.filter((item) => item.kind === "participant" && item.completed).length;
-        const techReady = linkSubmissions.filter((item) => item.kind === "tech" && item.completed).length;
-        return {
-            ...clone(link),
-            participantCount,
-            techCount,
-            participantReady,
-            techReady,
-            submissions: linkSubmissions.map(clone),
-        };
     });
 }

@@ -37,8 +37,20 @@ export function clearMayakSessionCompletionState({ getStorageKey, removeKeyCooki
     localStorage.setItem("trainer_v2_sessionCompletionPending", "true");
 }
 
-export async function saveMayakCompletionDelta({ elapsedTime, levels }) {
-    const activeUser = getUserFromCookies();
+export async function executeMayakSessionCompletion({
+    elapsedTime,
+    levels,
+    onPersistArtifacts,
+    onSendToTelegram,
+    onClearState,
+    redirectTo = "/profile",
+}) {
+    const activeUser =
+        document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("active_user="))
+            ?.split("=")[1] || "anonymous";
+
     const payload = buildMayakSessionCompletionPayload({
         activeUserId: activeUser?.id,
         elapsedTime,
@@ -49,5 +61,17 @@ export async function saveMayakCompletionDelta({ elapsedTime, levels }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-    });
+    }).catch((error) => console.error("Ошибка сохранения измерений MAYAK (не критично):", error));
+
+    await onPersistArtifacts();
+
+    try {
+        await onSendToTelegram();
+    } catch (error) {
+        console.error("Telegram-отправка не удалась (не критично):", error);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    onClearState();
+    window.location.href = redirectTo;
 }

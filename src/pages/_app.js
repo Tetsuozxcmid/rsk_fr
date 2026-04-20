@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import "@/styles/prep-session.css";
+
 import { useEffect } from "react";
 import { useRouter } from "next/router";
 
@@ -50,5 +51,6 @@ export default function App({ Component, pageProps }) {
         syncOAuthSession();
     }, [router.asPath, router.isReady, router.pathname, router]);
 
+    return <Component {...pageProps} />;
     return <Component {...pageProps} />;
 }

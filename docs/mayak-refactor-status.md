@@ -27,6 +27,9 @@ Stabilize MAYAK architecture around:
 - Removed old client-side token bypass logic from `tools-2` trainer flow.
 - Removed server-side bypass token handling from `/api/mayak/validate-token`.
 - Reintroduced `fffff` only for localhost development through API behavior, not as a production bypass.
+- Replaced the old MAYAK post-token participant form in `tools-2/settings` with the embedded platform auth flow (login, registration, VK, Yandex).
+- MAYAK token entry now resumes external Yandex auth back into `/tools/mayak-oko`, while popup-based VK auth is detected in place without leaving the trainer settings flow.
+- MAYAK settings now block trainer entry until the platform profile contains at least `Фамилия + Имя`; if an authorized user has no FIO yet, the trainer shows an in-place mandatory FIO form and saves it back into the platform profile before entry.
 
 ### Content architecture
 
@@ -40,6 +43,7 @@ Stabilize MAYAK architecture around:
 - Added a dedicated MAYAK `maps` attachment channel in storage/admin/runtime with split-view PDF preview in the trainer.
 - Local content was verified to work through `data/mayak-content`.
 - Added shared MAYAK questionnaire-link settings in `data/mayak-settings.json` with admin editing in `/admin/mayak-content`.
+- Telegram bot runtime now also falls back to saved MAYAK settings for token/webhook mode, so webhook configuration survives process restarts and does not silently fall back to polling.
 - Added a separate experimental MAYAK session domain in `data/mayak-sessions.json` plus isolated session-token storage in `data/mayak-session-tokens.json`, with admin APIs for create/update/complete and cleanup of `data/mayak-session-files/<sessionId>/`.
 - Added experimental session runtime storage in `data/mayak-session-runtime.json` with participant registration, role assignment, inspector queue, review statuses, and session-scoped uploaded review files.
 - Session admin now lets the operator set token usage count separately from table count, so one session can have, for example, `3` tables and `100` token uses.
@@ -147,6 +151,19 @@ Stabilize MAYAK architecture around:
 - The largest remaining trainer risk is behavioral regression, not syntax.
 - Onboarding public flow now uses lighter MAYAK-style white surfaces, inline progress blocks in the hero area, and tech-section validation that highlights missing checklist items/photos before a section can be closed.
 - Onboarding admin now uses native date pickers for link creation, removes location from the main create-link flow, and exposes per-section minimum photo count in the constructor.
+- Onboarding public landing is now a two-step flow:
+  - external questionnaire first, persisted per device via `mayak_onboarding_questionnaire:<slug>` with legacy survey-key fallback
+  - role selection plus public progress summary only after the questionnaire link has been opened
+- The public questionnaire landing now shows a CTA button, the configured Yandex Form link, and an auto-generated QR code instead of the embedded anonymous survey schema.
+- Participant onboarding now always requires both the laptop checklist and service confirmations after laptop-type selection; the ownership choice no longer hides required sections.
+- Public onboarding summary now shows:
+  - participants with `ФИО`, status, and progress percent
+  - tech specialists with `ФИО`, status, progress percent, and uploaded photos
+- Tech specialist phone remains admin-only and is excluded from the public summary contract.
+- Onboarding admin now supports external questionnaire-link management with auto-generated QR preview instead of embedded survey-schema editing and response export.
+- MAYAK admin frontend pages now trust the shared `/api/admin/mayak-auth` cookie directly and redirect unauthenticated users to `/admin?next=...` instead of keeping separate page-local login flows.
+- MAYAK settings now build `active_user` from the platform profile snapshot (`portal user id + full name`) and keep the legacy `results.json` snapshot only as a compatibility mirror fed from portal data.
+- MAYAK certificate/history identity now relies on the platform profile full name; organization stays optional and is omitted from MAYAK surfaces when empty instead of showing a placeholder.
 
 ## Remaining Work
 
@@ -162,6 +179,12 @@ Stabilize MAYAK architecture around:
     - completion popups,
     - session participant upload / inspector review flow.
 2. Content storage selection and JSON save path were hardened: valid storage detection plus atomic JSON writes are now in place.
+3. Smoke-check the onboarding questionnaire-first flow end-to-end:
+   - clean-device questionnaire gate,
+   - opening the Yandex form in a new tab while the current page immediately unlocks the next step,
+   - local resume through `mayak_onboarding_questionnaire:<slug>` and legacy survey-key fallback,
+   - public summary rendering,
+   - admin URL update with live QR refresh.
 
 ### Medium priority
 

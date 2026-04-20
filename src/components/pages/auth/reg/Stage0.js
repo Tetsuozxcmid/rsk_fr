@@ -6,13 +6,13 @@ import Switcher from "@/components/ui/Switcher";
 import { useEffect } from "react";
 
 import Yandex from "@/assets/general/yandex.svg";
-import VK from "@/assets/general/vk.svg";
 import VKWidget from "@/components/features/auth/VKWidget";
 
-export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
+export default function RegStage0({ onContinue, pageVariants, custom = 1, onOAuthStart }) {
     const [userType, setUserType] = useState("student");
     const [formData, setFormData] = useState({
-        name: "",
+        last_name: "",
+        first_name: "",
         email: "",
         password: "",
         role: userType,
@@ -33,44 +33,54 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        //проверка длины пароля
         if (formData.password.length < 8) {
             alert("Пароль должен содержать минимум 8 символов");
             return;
         }
 
-        // Проверка что пароль не состоит только из цифр
         if (/^\d+$/.test(formData.password)) {
             alert("Пароль не может состоять только из цифр. Добавьте минимум одну строчную букву");
             return;
         }
 
-        // Проверка что пароль не состоит только из символов
         if (/^[^a-zA-Zа-яА-Я0-9]+$/.test(formData.password)) {
             alert("Пароль не может состоять только из специальных символов. Добавьте минимум одну строчную букву");
             return;
         }
 
-        // Проверка на наличие хотя бы одной строчной буквы
         if (!/[a-zа-я]/.test(formData.password)) {
             alert("Пароль должен содержать хотя бы одну строчную букву");
             return;
         }
 
-        // Валидация email
+        const email = String(formData.email || "").trim();
+        const firstName = String(formData.first_name || "").trim();
+        const lastName = String(formData.last_name || "").trim();
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
+        if (!emailRegex.test(email)) {
             alert("Введите корректный email адрес");
             return;
         }
 
-        // Валидация имени
-        if ((formData.name?.trim() || "").length < 2) {
+        if (lastName.length < 2) {
+            alert("Фамилия должна содержать минимум 2 символа");
+            return;
+        }
+
+        if (firstName.length < 2) {
             alert("Имя должно содержать минимум 2 символа");
             return;
         }
 
-        delete formData.confirmPassword;
+        const payload = {
+            first_name: firstName,
+            last_name: lastName,
+            name: [firstName, lastName].filter(Boolean).join(" "),
+            email,
+            password: formData.password,
+            role: formData.role,
+        };
 
         try {
             const response = await fetch("/api/auth/reg", {
@@ -78,46 +88,46 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    ...formData,
-                }),
+                body: JSON.stringify(payload),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                // Обработка ошибок через errorCode
                 switch (data.errorCode) {
                     case "EMAIL_NOT_CONFIRMED":
-                        return alert("Вы не подтвердили почту. Зайдите в свой почтовый клиент и перейдите по ссылке из письма");
+                        return alert(data.error || "Вы не подтвердили почту. Проверьте письмо и перейдите по ссылке из него");
 
                     case "VALIDATION_ERROR":
-                        return alert("Неверные данные: " + data.error);
+                        return alert(data.error || "Неверные данные");
 
+                    case "USER_EXISTS":
                     case "BAD_REQUEST":
-                        return alert("Пользователь с таким email уже существует");
+                        return alert(data.error || "Пользователь с таким email уже существует");
 
                     case "UNAUTHORIZED":
-                        return alert("Неавторизованный запрос");
+                        return alert(data.error || "Неавторизованный запрос");
 
                     case "FORBIDDEN":
-                        return alert("Доступ запрещён");
+                        return alert(data.error || "Доступ запрещён");
 
                     case "NOT_FOUND":
-                        return alert("Ресурс не найден");
+                        return alert(data.error || "Ресурс не найден");
 
                     case "SERVER_ERROR":
-                        return alert("Ошибка сервера. Попробуйте позже");
+                        return alert(data.error || "Ошибка сервера. Попробуйте позже");
 
                     case "UNKNOWN_ERROR":
                     default:
-                        return alert("Произошла неизвестная ошибка");
+                        return alert(data.error || "Произошла неизвестная ошибка");
                 }
-            } else {
-                delete formData.password;
-                delete formData.role;
-                onContinue({ ...formData });
             }
+
+            onContinue({
+                first_name: firstName,
+                last_name: lastName,
+                email,
+            });
         } catch (err) {
             console.error("Registration error:", err);
             alert("Ошибка соединения с сервером. Проверьте интернет-соединение");
@@ -131,11 +141,12 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                 <Switcher.Option value="student">Студент</Switcher.Option>
                 <Switcher.Option value="teacher">Сотрудник</Switcher.Option>
             </Switcher>
-            <form id="registration" className="w-full grid grid-rows-3 gap-[0.75rem]" onSubmit={handleSubmit}>
+            <form id="registration" className="w-full grid grid-cols-1 gap-[0.75rem]" onSubmit={handleSubmit}>
                 {[
-                    { name: "name", placeholder: "Имя", type: "text", autocomplete: "name", tabIndex: 0, minLength: 2 },
-                    { name: "email", placeholder: "Почта", type: "email", autocomplete: "email", tabIndex: 1 },
-                    { name: "password", placeholder: "Пароль", type: "password", autocomplete: "new-password", tabIndex: 2 },
+                    { name: "last_name", placeholder: "Фамилия", type: "text", autocomplete: "family-name", tabIndex: 0, minLength: 2 },
+                    { name: "first_name", placeholder: "Имя", type: "text", autocomplete: "given-name", tabIndex: 1, minLength: 2 },
+                    { name: "email", placeholder: "Почта", type: "email", autocomplete: "email", tabIndex: 2 },
+                    { name: "password", placeholder: "Пароль", type: "password", autocomplete: "new-password", tabIndex: 3 },
                 ].map(({ name, placeholder, type, tabIndex, autocomplete, minLength }) => (
                     <Input key={name} name={name} type={type} placeholder={placeholder} value={formData[name] || ""} autoComplete={autocomplete} onChange={handleInputChange} tabIndex={tabIndex} minLength={minLength} required />
                 ))}
@@ -149,12 +160,15 @@ export default function RegStage0({ onContinue, pageVariants, custom = 1 }) {
                         inverted
                         className="flex-1"
                         onClick={() => {
+                            if (typeof onOAuthStart === "function") {
+                                onOAuthStart("yandex");
+                            }
                             window.location.href = "https://api.rosdk.ru/auth/users_interaction/auth/yandex/login";
                         }}>
                         Яндекс ID <Yandex />
                     </Button>
                     <div className="flex-1 overflow-hidden h-[46px] flex items-center justify-center">
-                        <VKWidget />
+                        <VKWidget onStart={onOAuthStart} />
                     </div>
                 </div>
             </div>

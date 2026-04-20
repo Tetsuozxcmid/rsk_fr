@@ -1,3 +1,5 @@
+import { DEFAULT_MAYAK_ONBOARDING_QUESTIONNAIRE } from "./mayakOnboardingQuestionnaire.js";
+
 export const DEFAULT_MAYAK_ONBOARDING_CONFIG = {
     organizer: {
         name: "Андрей Лебедев",
@@ -150,4 +152,5 @@ export const DEFAULT_MAYAK_ONBOARDING_CONFIG = {
             items: [],
         },
     ],
+    questionnaire: DEFAULT_MAYAK_ONBOARDING_QUESTIONNAIRE,
 };

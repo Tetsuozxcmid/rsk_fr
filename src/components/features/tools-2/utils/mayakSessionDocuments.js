@@ -10,15 +10,8 @@ export async function buildMayakQrDataUrl(userId, baseUrl) {
     return QRCode.toDataURL(qrUrl, { width: 200, margin: 1 });
 }
 
-export async function buildMayakCertificateBlob({ userName, qrDataUrl, dateText, backgroundImageSrc }) {
-    return pdf(
-        <Certificate
-            userName={userName}
-            qrDataUrl={qrDataUrl}
-            dateText={dateText || buildCertificateDateText()}
-            backgroundImageSrc={backgroundImageSrc || (typeof window !== "undefined" ? `${window.location.origin}/certificat.png` : "")}
-        />
-    ).toBlob();
+export async function buildMayakCertificateBlob({ userName, dateStr, qrDataUrl, certificateNumber }) {
+    return pdf(<Certificate userName={userName} date={dateStr} qrDataUrl={qrDataUrl} certificateNumber={certificateNumber} />).toBlob();
 }
 
 export async function buildMayakSessionLogBlob({ userName, userRole, dateStr, totalTime, rankingData, tasks }) {

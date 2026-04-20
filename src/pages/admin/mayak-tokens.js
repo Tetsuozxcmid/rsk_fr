@@ -3,14 +3,12 @@
 export async function getServerSideProps() {
     return { props: {} };
 }
-import Link from "next/link";
 import Header from "@/components/layout/Header";
 import Layout from "@/components/layout/Layout";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input/Input";
-import Notify from "@/assets/general/notify.svg";
-
-const AUTH_STORAGE_KEY = "mayak_admin_auth";
+import MayakAdminBackLink from "@/components/mayak-admin/MayakAdminBackLink";
+import { buildMayakAdminLoginUrl, getMayakAdminAuthStatus } from "@/lib/mayakAdminClient";
 
 export default function AdminMayakTokens() {
     const [tokens, setTokens] = useState([]);
@@ -19,8 +17,6 @@ export default function AdminMayakTokens() {
 
     // Авторизация
     const [isAuthenticated, setIsAuthenticated] = useState(false);
-    const [password, setPassword] = useState("");
-    const [authError, setAuthError] = useState("");
 
     // Форма создания токена
     const [newTokenName, setNewTokenName] = useState("");
@@ -63,6 +59,8 @@ export default function AdminMayakTokens() {
     // Настройки API-ключей
     const [settingsTgToken, setSettingsTgToken] = useState("");
     const [settingsOrKey, setSettingsOrKey] = useState("");
+    const [settingsFinalFileOrKey, setSettingsFinalFileOrKey] = useState("");
+    const [settingsFinalFileModel, setSettingsFinalFileModel] = useState("");
     const [settingsQwenTokenName, setSettingsQwenTokenName] = useState("");
     const [settingsQwenTokens, setSettingsQwenTokens] = useState("");
     const [settingsQwenBackupTokenName, setSettingsQwenBackupTokenName] = useState("");
@@ -70,17 +68,26 @@ export default function AdminMayakTokens() {
     const [settingsBotUsername, setSettingsBotUsername] = useState("");
     const [settingsWebhookUrl, setSettingsWebhookUrl] = useState("");
     const [settingsBaseUrl, setSettingsBaseUrl] = useState("");
+    const [settingsPromptEvaluationProvider, setSettingsPromptEvaluationProvider] = useState("qwen");
+    const [settingsPromptEvaluationOllamaBaseUrl, setSettingsPromptEvaluationOllamaBaseUrl] = useState("");
+    const [settingsPromptEvaluationOllamaModel, setSettingsPromptEvaluationOllamaModel] = useState("");
     const [settingsInfo, setSettingsInfo] = useState({
         telegramBotToken: null,
         telegramBotTokenIsSet: false,
         openrouterApiKey: null,
         openrouterApiKeyIsSet: false,
+        finalFileOpenrouterApiKey: null,
+        finalFileOpenrouterApiKeyIsSet: false,
+        finalFileModel: "google/gemini-3-flash-preview",
         telegramBotUsername: "",
         telegramBotUsernameIsSet: false,
         telegramWebhookUrl: "",
         telegramWebhookUrlIsSet: false,
         baseUrl: "",
         baseUrlIsSet: false,
+        promptEvaluationProvider: "qwen",
+        promptEvaluationOllamaBaseUrl: "http://127.0.0.1:11434",
+        promptEvaluationOllamaModel: "gemma4:e2b",
         qwenTokens: [],
         qwenTokensCount: 0,
         qwenTokensIsSet: false,
@@ -93,44 +100,37 @@ export default function AdminMayakTokens() {
 
     // Проверка авторизации при загрузке
     useEffect(() => {
-        const savedAuth = sessionStorage.getItem(AUTH_STORAGE_KEY);
+        let cancelled = false;
+
         async function checkAuth() {
             try {
-                const res = await fetch("/api/admin/mayak-auth");
-                const json = await res.json();
-                if (savedAuth === "true" && json.authenticated) {
-                    setIsAuthenticated(true);
-                } else {
-                    sessionStorage.removeItem(AUTH_STORAGE_KEY);
-                }
-            } catch {}
-            setLoading(false);
-        }
-        checkAuth();
-    }, []);
+                const { authenticated } = await getMayakAdminAuthStatus();
+                if (cancelled) return;
 
-    // Обработка входа
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setAuthError("");
-        try {
-            const res = await fetch("/api/admin/mayak-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ password }),
-            });
-            const json = await res.json();
-            if (!json.success) {
-                setAuthError(json.error || "Неверный пароль");
-                setPassword("");
-                return;
+                if (authenticated) {
+                    setIsAuthenticated(true);
+                } else if (typeof window !== "undefined") {
+                    window.location.replace(buildMayakAdminLoginUrl(`${window.location.pathname}${window.location.search}`));
+                    return;
+                }
+            } catch {
+                if (!cancelled && typeof window !== "undefined") {
+                    window.location.replace(buildMayakAdminLoginUrl(`${window.location.pathname}${window.location.search}`));
+                    return;
+                }
             }
-            setIsAuthenticated(true);
-            sessionStorage.setItem(AUTH_STORAGE_KEY, "true");
-        } catch {
-            setAuthError("Ошибка входа");
+
+            if (!cancelled) {
+                setLoading(false);
+            }
         }
-    };
+
+        checkAuth();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Загрузка токенов
     const fetchTokens = async () => {
@@ -212,6 +212,9 @@ export default function AdminMayakTokens() {
             const data = JSON.parse(text);
             if (data.success) {
                 setSettingsInfo(data.data);
+                setSettingsPromptEvaluationProvider(data.data.promptEvaluationProvider || "qwen");
+                setSettingsPromptEvaluationOllamaBaseUrl(data.data.promptEvaluationOllamaBaseUrl || "");
+                setSettingsPromptEvaluationOllamaModel(data.data.promptEvaluationOllamaModel || "");
             }
         } catch (err) {
             console.error("Ошибка загрузки настроек:", err);
@@ -250,10 +253,15 @@ export default function AdminMayakTokens() {
         const fieldMap = {
             telegramBotToken: { value: settingsTgToken, clear: () => setSettingsTgToken(""), emptyMsg: "Введите токен бота", successMsg: (d) => (d.botRestarted ? "Токен сохранён, бот перезапущен" : "Токен сохранён") },
             openrouterApiKey: { value: settingsOrKey, clear: () => setSettingsOrKey(""), emptyMsg: "Введите API-ключ", successMsg: () => "API-ключ сохранён" },
+            finalFileOpenrouterApiKey: { value: settingsFinalFileOrKey, clear: () => setSettingsFinalFileOrKey(""), emptyMsg: "Введите API-ключ для итогового файла", successMsg: () => "Ключ итогового файла сохранён" },
+            finalFileModel: { value: settingsFinalFileModel, clear: () => setSettingsFinalFileModel(""), emptyMsg: "Введите модель для итогового файла", successMsg: () => "Модель итогового файла сохранена" },
             telegramBotUsername: { value: settingsBotUsername, clear: () => setSettingsBotUsername(""), emptyMsg: "Введите username бота", successMsg: () => "Username бота сохранён" },
-            telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: () => "Webhook URL сохранён" },
+            telegramWebhookUrl: { value: settingsWebhookUrl, clear: () => setSettingsWebhookUrl(""), emptyMsg: null, successMsg: (d) => (d.botRestarted ? "Webhook URL сохранён, бот перезапущен" : "Webhook URL сохранён") },
             baseUrl: { value: settingsBaseUrl, clear: () => setSettingsBaseUrl(""), emptyMsg: null, successMsg: () => "Base URL сохранён" },
             qwenBackupToken: { value: settingsQwenBackupToken, clear: () => setSettingsQwenBackupToken(""), emptyMsg: null, successMsg: () => "Резервный токен сохранён" },
+            promptEvaluationProvider: { value: settingsPromptEvaluationProvider, clear: null, emptyMsg: null, successMsg: () => "Провайдер оценки промптов сохранён" },
+            promptEvaluationOllamaBaseUrl: { value: settingsPromptEvaluationOllamaBaseUrl, clear: null, emptyMsg: null, successMsg: () => "URL Ollama сохранён" },
+            promptEvaluationOllamaModel: { value: settingsPromptEvaluationOllamaModel, clear: null, emptyMsg: null, successMsg: () => "Модель Ollama сохранена" },
         };
         const f = fieldMap[field];
         if (!f) return;
@@ -317,6 +325,15 @@ export default function AdminMayakTokens() {
     const handleRemoveBackupToken = async () => {
         if (!window.confirm("Удалить резервный токен?")) return;
         await saveSettingsRequest({ qwenBackupToken: "" }, "Резервный токен удалён");
+    };
+
+    const handleRemoveFinalFileOpenrouterApiKey = async () => {
+        if (!window.confirm("Удалить OpenRouter API Key для итогового файла?")) return;
+        await saveSettingsRequest(
+            { finalFileOpenrouterApiKey: "" },
+            "Ключ итогового файла удалён",
+            () => setSettingsFinalFileOrKey("")
+        );
     };
 
     // Добавление админа бота
@@ -638,9 +655,6 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
                 </Header>
                 <div className="flex h-full items-center justify-center">
                     <p>Загрузка...</p>
@@ -654,9 +668,7 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
+                    <MayakAdminBackLink />
                 </Header>
                 <div className="flex h-full items-center justify-center">
                     <div className="text-center">
@@ -674,22 +686,9 @@ export default function AdminMayakTokens() {
             <Layout>
                 <Header>
                     <Header.Heading>Токены МАЯК</Header.Heading>
-                    <Button icon>
-                        <Notify />
-                    </Button>
                 </Header>
                 <div className="flex h-full items-center justify-center">
-                    <div className="p-[2rem] rounded-[1rem] border-[1.5px] border-(--color-gray-plus-50) w-full max-w-[400px]">
-                        <h5 className="mb-[1.5rem] text-center">Вход в админ-панель</h5>
-                        <form onSubmit={handleLogin} className="flex flex-col gap-[1rem]">
-                            <div>
-                                <label className="link small text-(--color-gray-black) block mb-[.5rem]">Пароль</label>
-                                <Input type="password" placeholder="Введите пароль" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
-                            </div>
-                            {authError && <p className="text-[var(--color-red)] text-center">{authError}</p>}
-                            <Button type="submit">Войти</Button>
-                        </form>
-                    </div>
+                    <div className="text-center text-sm text-[#64748b]">Проверка доступа...</div>
                 </div>
             </Layout>
         );
@@ -699,17 +698,7 @@ export default function AdminMayakTokens() {
         <Layout>
             <Header>
                 <Header.Heading>Токены МАЯК</Header.Heading>
-                <div className="flex items-center gap-[.5rem]">
-                    <Link href="/admin/content" style={{ padding: "6px 14px", borderRadius: 6, background: "#3b82f6", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                        Контент
-                    </Link>
-                    <Link href="/admin/sessions" style={{ padding: "6px 14px", borderRadius: 6, background: "#0f766e", color: "#fff", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-                        Сессии
-                    </Link>
-                    <Button icon>
-                        <Notify />
-                    </Button>
-                </div>
+                <MayakAdminBackLink />
             </Header>
             <div className="hero">
                 <div className="col-span-12 flex flex-col gap-[1.5rem]">
@@ -803,6 +792,142 @@ export default function AdminMayakTokens() {
                                         <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("openrouterApiKey")} disabled={settingsSaving}>
                                             {settingsSaving ? "..." : "Сохранить"}
                                         </Button>
+                                    </div>
+                                    <div className="rounded-[.75rem] border border-(--color-gray-plus-50) bg-white p-[.75rem]">
+                                        <div className="flex flex-col gap-[.25rem] mb-[.75rem]">
+                                            <span className="link small text-(--color-gray-black)">Оценка промптов</span>
+                                            <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                Выберите, чем проверять поля MAYAK-ОКО: текущим Qwen-пулом или локальным Ollama для тестов.
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-[.75rem]">
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[220px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Провайдер оценки
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationProvider === "ollama" ? "Ollama" : "Qwen"})
+                                                        </span>
+                                                    </label>
+                                                    <select
+                                                        value={settingsPromptEvaluationProvider}
+                                                        onChange={(e) => setSettingsPromptEvaluationProvider(e.target.value)}
+                                                        style={{
+                                                            padding: "10px 12px",
+                                                            borderRadius: 12,
+                                                            border: "1.5px solid var(--color-gray-plus-50)",
+                                                            fontSize: 13,
+                                                            background: "#fff",
+                                                            minWidth: 220,
+                                                            width: "100%",
+                                                        }}>
+                                                        <option value="qwen">Qwen</option>
+                                                        <option value="ollama">Ollama</option>
+                                                    </select>
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationProvider")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[240px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        URL Ollama
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationOllamaBaseUrl || "http://127.0.0.1:11434"})
+                                                        </span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.promptEvaluationOllamaBaseUrl || "http://127.0.0.1:11434"}
+                                                        value={settingsPromptEvaluationOllamaBaseUrl}
+                                                        onChange={(e) => setSettingsPromptEvaluationOllamaBaseUrl(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationOllamaBaseUrl")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[240px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Модель Ollama
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>
+                                                            ({settingsInfo.promptEvaluationOllamaModel || "gemma4:e2b"})
+                                                        </span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.promptEvaluationOllamaModel || "gemma4:e2b"}
+                                                        value={settingsPromptEvaluationOllamaModel}
+                                                        onChange={(e) => setSettingsPromptEvaluationOllamaModel(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("promptEvaluationOllamaModel")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="rounded-[.75rem] border border-(--color-gray-plus-50) bg-white p-[.75rem]">
+                                        <div className="flex flex-col gap-[.25rem] mb-[.75rem]">
+                                            <span className="link small text-(--color-gray-black)">Итоговый файл: аналитика</span>
+                                            <span style={{ fontSize: 12, color: "#6b7280" }}>
+                                                Отдельные настройки для генерации итогового аналитического PDF. Если ключ не задан, используется общий OpenRouter API Key.
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-col gap-[.75rem]">
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[200px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        OpenRouter API Key для итогового файла
+                                                        {settingsInfo.finalFileOpenrouterApiKeyIsSet ? (
+                                                            <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>({settingsInfo.finalFileOpenrouterApiKey})</span>
+                                                        ) : (
+                                                            <span style={{ color: "#ef4444", marginLeft: 6, fontSize: 11 }}>(не задан)</span>
+                                                        )}
+                                                    </label>
+                                                    <Input
+                                                        type="password"
+                                                        placeholder="Введите отдельный ключ OpenRouter для итогового файла"
+                                                        value={settingsFinalFileOrKey}
+                                                        onChange={(e) => setSettingsFinalFileOrKey(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("finalFileOpenrouterApiKey")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                                {settingsInfo.finalFileOpenrouterApiKeyIsSet ? (
+                                                    <Button
+                                                        small
+                                                        inverted
+                                                        roundeful
+                                                        red
+                                                        className="!w-fit reject-button"
+                                                        onClick={handleRemoveFinalFileOpenrouterApiKey}
+                                                        disabled={settingsSaving}>
+                                                        Удалить
+                                                    </Button>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex gap-[.5rem] items-end flex-wrap">
+                                                <div className="flex-1 min-w-[260px]">
+                                                    <label className="link small text-(--color-gray-black) block mb-[.25rem]">
+                                                        Модель итогового файла
+                                                        <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>({settingsInfo.finalFileModel || "google/gemini-3-flash-preview"})</span>
+                                                    </label>
+                                                    <Input
+                                                        type="text"
+                                                        placeholder={settingsInfo.finalFileModel || "google/gemini-3-flash-preview"}
+                                                        value={settingsFinalFileModel}
+                                                        onChange={(e) => setSettingsFinalFileModel(e.target.value)}
+                                                    />
+                                                </div>
+                                                <Button small inverted roundeful className="!w-fit approve-button" onClick={() => handleSaveSettings("finalFileModel")} disabled={settingsSaving}>
+                                                    {settingsSaving ? "..." : "Сохранить"}
+                                                </Button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="flex flex-col gap-[.75rem]">
                                         <div className="flex flex-col gap-[.5rem]">
@@ -904,7 +1029,7 @@ export default function AdminMayakTokens() {
                                         </div>
                                         <div className="flex-1 min-w-[200px]">
                                             <label className="link small text-(--color-gray-black) block mb-[.25rem]">
-                                                Webhook URL (требует перезапуска сервера)
+                                                Webhook URL
                                                 {settingsInfo.telegramWebhookUrlIsSet ? (
                                                     <span style={{ color: "#22c55e", marginLeft: 6, fontSize: 11 }}>(задан)</span>
                                                 ) : (
